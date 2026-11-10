@@ -4,6 +4,32 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [setup 1.9.0] - 2026-11-10
+
+### Changed
+
+- **The status line takes light or dark from Claude Code's own theme.** It reads `theme` in
+  `settings.json`: built-in themes by name, `custom:<name>` by the `base` in its theme file. A
+  theme switch shows at the next refresh, including one that only rewrites a custom theme's file.
+  The check starts no process, so on any theme but `auto` a run inside tmux no longer starts
+  `tmux` to ask. `auto` works as before. `appearance` and `$STATUSLINE_APPEARANCE` still come
+  first. The setting is shared by every session, so sessions on different themes follow the last
+  `/theme` pick.
+
+---
+
+## [claudish 2.17.0] - 2026-11-10
+
+### Changed
+
+- **The status band picks light or dark from Claude Code's own theme.** The band's colours are
+  unchanged; only the choice between the two sets is. A `/theme` pick repaints the band at once,
+  and a rewritten custom theme file shows by the next turn end. `auto` works as before: the tmux
+  client, then `TERM_THEME`. The setting is shared by every session, so sessions on different
+  themes follow the last `/theme` pick.
+
+---
+
 ## [orchestrator 0.3.0] - 2026-11-09
 
 ### Added

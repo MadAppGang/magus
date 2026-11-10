@@ -49,20 +49,25 @@ drawn for a light or a dark terminal.
 ## Appearance
 
 The statusline resolves light vs dark at render time, because the same colours cannot
-work on both. It follows the same six-step order as magus and tmux-setup, first hit
-wins:
+work on both. First hit wins:
 
 1. `appearance` in this config, when set to `light` or `dark` (the script's own flag)
 2. `$STATUSLINE_APPEARANCE` — per-pane override without touching the config (its own
    variable)
-3. `$TERM_THEME`
-4. OSC 11 probe — **no step**: the statusline child has no tty (stdin, stdout and stderr
+3. Claude Code's own `theme` setting (`settings.json`, under `$CLAUDE_CONFIG_DIR` or
+   `~/.claude`): `light`, `dark` and their variants by name, `custom:<name>` by the
+   `base` in `themes/<name>.json`. `auto` is no opinion. Read with shell builtins on
+   every render, so a theme switch shows at the next refresh. The setting is shared by
+   every session: sessions on different themes all follow the last `/theme` pick.
+4. Inside tmux, the theme of the client showing this pane (`tmux list-clients`)
+5. `$TERM_THEME`
+6. OSC 11 probe — **no step**: the statusline child has no tty (stdin, stdout and stderr
    are pipes), so there is nowhere to send a background-colour query
-5. `COLORFGBG` — inside tmux, the session-scope copy read via `tmux show-environment`;
+7. `COLORFGBG` — inside tmux, the session-scope copy read via `tmux show-environment`;
    outside tmux, the `$COLORFGBG` environment variable
-6. `dark`
+8. `dark`
 
-**Only the exact lowercase words `light` and `dark` count** at steps 1-3. `Light`,
+**Only the exact lowercase words `light` and `dark` count** at steps 1, 2, 4 and 5. `Light`,
 `auto`, an empty value and unset are all "no opinion": the next step runs. No step ever
 prints a "could not detect" warning, including the dark default — it is a decision, not
 a failure.
@@ -80,7 +85,7 @@ Code inherits it once at launch and freezes it, so it reports whichever profile 
 active when the session started — measured stuck at `15;0` (dark) through an entire
 light session. tmux refreshes its own session-scope copy on every client attach because
 tmux-setup's `tmux.conf` lists `COLORFGBG` in `update-environment` (a stock tmux does
-not), which is why step 5 asks tmux rather than the environment there. Outside tmux there
+not), which is why step 7 asks tmux rather than the environment there. Outside tmux there
 is no refreshed copy, so the environment is read as-is: stale in the same way, but the
 best signal left before the default.
 

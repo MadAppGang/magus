@@ -23,7 +23,7 @@ import { bandTree, type TimelineLook } from './band'
 import { allowanceRow } from './allowance-row'
 import { allowanceRowTree, forecastTree } from './allowance'
 import { panelLines } from './forecast'
-import { DARK_PALETTE, TMUX_THEME_FORMAT, paletteFor, tmuxClientAppearance, type Appearance, type Palette } from './palette'
+import { DARK_PALETTE, TMUX_THEME_FORMAT, paletteFor, themeNameAppearance, tmuxClientAppearance, type Appearance, type Palette } from './palette'
 import { panelTree, type ModeSwitch } from './pane'
 
 // The ten atoms. plugin and key are literals HERE: the scan reads no reference from another file.
@@ -152,12 +152,36 @@ async function tmuxAppearance($: EngineInterface): Promise<Appearance | null> {
 }
 
 /**
- * The badges' palette, by the Magus status line's order (paletteFor): tmux's client appearance,
- * then TERM_THEME, then dark. Null where the reads are refused (keep what is drawn).
+ * Claude Code's own theme, the background the band is drawn on: the session's `theme` row in
+ * /config, and for `custom:<name>` the `base` in `<config dir>/themes/<name>.json` (the config dir
+ * is CLAUDE_CONFIG_DIR, else ~/.claude). Null for `auto`, a missing or unreadable file, or a
+ * refused read: no opinion, and the steps after it answer.
+ */
+async function claudeAppearance($: EngineInterface): Promise<Appearance | null> {
+  try {
+    const name = (await $.config.list()).find(row => row.key === 'theme')?.value
+    if (typeof name !== 'string' || !name.startsWith('custom:')) return themeNameAppearance(name)
+    const configDir = await $.env.get('CLAUDE_CONFIG_DIR')
+    const home = await $.env.get('HOME')
+    const dir = typeof configDir === 'string' && configDir !== '' ? configDir : typeof home === 'string' && home !== '' ? `${home}/.claude` : null
+    if (dir === null) return null
+    const text = await $.fs.read(`${dir}/themes/${name.slice('custom:'.length)}.json`)
+    return themeNameAppearance(typeof text === 'string' ? (JSON.parse(text) as { base?: unknown })?.base : undefined)
+  } catch {
+    return null
+  }
+}
+
+/**
+ * The badges' palette, by the Magus status line's order (paletteFor): Claude Code's own theme,
+ * then tmux's client appearance, then TERM_THEME, then dark. tmux is asked only when Claude Code's
+ * theme says nothing. Null where the reads are refused (keep what is drawn).
  */
 async function readTheme($: EngineInterface): Promise<Palette | null> {
   try {
-    return paletteFor(await tmuxAppearance($), await $.env.get('TERM_THEME'))
+    const claude = await claudeAppearance($)
+    if (claude !== null) return paletteFor(claude, null)
+    return paletteFor(null, await tmuxAppearance($), await $.env.get('TERM_THEME'))
   } catch {
     return null
   }
@@ -186,11 +210,22 @@ type ThemeGate = { asked: boolean; palette: () => Palette; set: (read: Palette) 
 function themeOnLoad($: EngineInterface, gate: ThemeGate): void {
   if (gate.asked) return
   gate.asked = true
-  void readTheme($).then(read => {
+  void repaintTheme($, gate)
+}
+
+/**
+ * Reads the theme and redraws when it changes the palette: the band redraws only on what it reads,
+ * and a theme change is none of that. A read or redraw refused keeps what is drawn.
+ */
+async function repaintTheme($: EngineInterface, gate: ThemeGate): Promise<void> {
+  try {
+    const read = await readTheme($)
     if (read === null || read === gate.palette()) return
     gate.set(read)
     $.ui.invalidate('ui.render')
-  }).catch(() => {}) // a redraw refused keeps what is drawn; the next turn end reads the theme again
+  } catch {
+    // the next turn end reads the theme again
+  }
 }
 
 export const register: Register = (on, options) => {
@@ -250,8 +285,18 @@ export const register: Register = (on, options) => {
     .catch(($, e, next) => next(e))
   on('turn.complete', async ($, e, next) => {
     theme.asked = true
-    palette = (await readTheme($)) ?? palette
+    await repaintTheme($, theme)
     return host ? wake.onTurnComplete(host, e, next) : next(e)
+  })
+    .catch(($, e, next) => next(e))
+
+  // A theme picked in /theme repaints at once rather than at the next turn end: read again once the
+  // setting is written. An observer: should it fail, the change still goes through.
+  on('config.set', { key: 'theme' }, async ($, e, next) => {
+    const set = await next(e)
+    theme.asked = true
+    await repaintTheme($, theme)
+    return set
   })
     .catch(($, e, next) => next(e))
 

@@ -75,7 +75,7 @@
       "name": "claudish",
       "source": "./plugins/claudish",
       "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting, manages async sessions, and shows the session's runs live above the prompt, with stop and live-screen tabs. Required by code-search, dev, multimodel and designer.",
-      "version": "2.16.1",
+      "version": "2.17.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -95,6 +95,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "2.17.0",
+          "date": "2026-11-10",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "The status band picks light or dark from Claude Code's own theme"
+        },
         {
           "version": "2.16.1",
           "date": "2026-11-08",
@@ -127,14 +135,6 @@
             "Fixed"
           ],
           "summary": "A finished tab of the Show panel draws the session's real Claude Code screen again, and it\u2026"
-        },
-        {
-          "version": "2.14.0",
-          "date": "2026-11-03",
-          "kinds": [
-            "Added"
-          ],
-          "summary": "The Show panel scrolls back through a session's earlier output (MTL-369). The wheel or the\u2026"
         }
       ]
     },
@@ -525,7 +525,7 @@
       "name": "setup",
       "source": "./plugins/setup",
       "description": "Project setup jobs in one plugin. Investigates a repository and provisions it \u2014 plugins, tools, framework best-practice references, and a seeded knowledge base \u2014 then installs the adaptive statusline and indexes every skill reachable from the project into browsable markdown.",
-      "version": "1.8.1",
+      "version": "1.9.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -545,6 +545,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "1.9.0",
+          "date": "2026-11-10",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "The status line takes light or dark from Claude Code's own theme"
+        },
         {
           "version": "1.8.1",
           "date": "2026-11-07",
@@ -571,11 +579,6 @@
           "version": "1.7.1",
           "date": "2026-10-20",
           "summary": "Status line bars render on Linux. Every bar showed as \ufffd, because GNU tr is byte-oriented and\u2026"
-        },
-        {
-          "version": "1.7.0",
-          "date": "2026-10-20",
-          "summary": "/setup:project reports an outdated plugin dependency with its found version and floor, and\u2026"
         }
       ]
     },

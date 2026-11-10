@@ -50,11 +50,16 @@ for (const surface of SURFACES) {
   })
 
   for (const [name, options, light] of [
-    // The order of the Magus status line: tmux's client (outside tmux here), TERM_THEME, dark.
-    // Claude Code's own theme setting (shared by every session) and COLORFGBG are not read.
-    ['a light Claude Code theme alone', { theme: 'light' }, false],
-    ['a light-daltonized Claude Code theme alone', { theme: 'light-daltonized' }, false],
-    ['a dark Claude Code theme under TERM_THEME=light', { theme: 'dark-ansi', env: { TERM_THEME: 'light' } }, true],
+    // The order of the Magus status line: Claude Code's own theme (a custom theme by its base), then
+    // tmux's client (outside tmux here), TERM_THEME, dark. COLORFGBG is not read.
+    ['a light Claude Code theme alone', { theme: 'light' }, true],
+    ['a light-daltonized Claude Code theme alone', { theme: 'light-daltonized' }, true],
+    ['a dark Claude Code theme under TERM_THEME=light', { theme: 'dark-ansi', env: { TERM_THEME: 'light' } }, false],
+    ['a light Claude Code theme under TERM_THEME=dark', { theme: 'light-ansi', env: { TERM_THEME: 'dark' } }, true],
+    ['a custom theme based on light under TERM_THEME=dark', { theme: 'custom:magus-auto', themeFiles: { 'magus-auto': '{ "name": "Magus auto", "base": "light", "overrides": {} }' }, env: { TERM_THEME: 'dark' } }, true],
+    ['a custom theme based on dark under TERM_THEME=light', { theme: 'custom:night', themeFiles: { night: '{"base":"dark"}' }, env: { TERM_THEME: 'light' } }, false],
+    ['a custom theme whose file is missing, TERM_THEME=light', { theme: 'custom:gone', env: { TERM_THEME: 'light' } }, true],
+    ['a custom theme file that is no JSON, TERM_THEME=light', { theme: 'custom:bad', themeFiles: { bad: '{ base: light' }, env: { TERM_THEME: 'light' } }, true],
     ['auto with TERM_THEME=light', { theme: 'auto', env: { TERM_THEME: 'light' } }, true],
     ['auto with TERM_THEME=dark over a light COLORFGBG', { theme: 'auto', env: { TERM_THEME: 'dark', COLORFGBG: '0;15' } }, false],
     ['auto with COLORFGBG 0;15 alone', { theme: 'auto', env: { COLORFGBG: '0;15' } }, false],
@@ -97,6 +102,38 @@ for (const surface of SURFACES) {
     await h.clock.settle()
     await b.redraw()
     expect(await codeInk(b, 'theme-model')).toEqual({ color: LIGHT.snow, backgroundColor: LIGHT.run })
+    await b.unmount()
+  })
+
+  test(`v2 §9: a custom theme file rewritten to light shows by the next turn end [${surface}]`, async ($, on) => {
+    const themeFiles = { 'magus-auto': '{"base":"dark"}' }
+    const h = harness(on, { theme: 'custom:magus-auto', themeFiles })
+    await start($, surface)
+    await team($, h, 'refile', ['file-model'])
+    const b = await mountBand($, surface, bandProps(200))
+    expect(await codeInk(b, 'file-model')).toEqual({ color: DARK.ink, backgroundColor: DARK.run })
+    themeFiles['magus-auto'] = '{"base":"light"}' // the one switch rewrites the theme file
+    await $.turn.complete({ turnId: 't-1', answer: 'done', durationMs: 1, isAborted: false, reason: 'answer' })
+    await h.clock.settle()
+    expect(await codeInk(b, 'file-model')).toEqual({ color: LIGHT.snow, backgroundColor: LIGHT.run })
+    await b.unmount()
+  })
+
+  test(`v2 §9: a theme change in /theme shows at once, with no turn end [${surface}]`, async ($, on) => {
+    const options: FakeOptions = { theme: 'dark' }
+    const h = harness(on, options)
+    on('config.set', { key: 'theme' }, ($, e) => {
+      options.theme = String(e.value) // the engine's writer: the row now holds the new value
+      return { value: e.value }
+    })
+    await start($, surface)
+    await team($, h, 'reset', ['set-model'])
+    const b = await mountBand($, surface, bandProps(200))
+    expect(await codeInk(b, 'set-model')).toEqual({ color: DARK.ink, backgroundColor: DARK.run })
+    await $.config.set({ key: 'theme', value: 'light' })
+    await h.clock.settle()
+    await b.redraw()
+    expect(await codeInk(b, 'set-model')).toEqual({ color: LIGHT.snow, backgroundColor: LIGHT.run })
     await b.unmount()
   })
 

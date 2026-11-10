@@ -38,6 +38,9 @@ export const SERVERS = ['plugin:claudish:claudish', 'claudish'] as const
 export const TEAM_TOOL = 'mcp__plugin_claudish_claudish__team'
 export const CREATE_TOOL = 'mcp__plugin_claudish_claudish__create_session'
 export const CWD = '/w'
+/** The home the fake answers for HOME, and Claude Code's config folder under it. */
+export const FAKE_HOME = '/fake-home'
+export const FAKE_CLAUDE_DIR = `${FAKE_HOME}/.claude`
 
 /** One override of a list answer: a whole answer, an error text, or a rejection. */
 export type ListOverride = { text: string; isError?: boolean } | { deny: string }
@@ -104,6 +107,8 @@ export type FakeOptions = {
   denyCancel?: string
   /** the person's Claude Code theme, as `$.config.list` answers its `theme` row; absent: no theme row */
   theme?: string
+  /** the custom themes under FAKE_CLAUDE_DIR/themes, by name: what `$.fs.read` answers for `<name>.json`; any other theme file is missing */
+  themeFiles?: Record<string, string>
   /** what `$.env.get` answers for TERM_THEME, COLORFGBG and TMUX_PANE; unset by default, so the machine's own never leaks in */
   env?: { TERM_THEME?: string; COLORFGBG?: string; TMUX_PANE?: string }
   /**
@@ -687,7 +692,18 @@ export function harness(on: On, options: FakeOptions = {}): Harness {
       provider: { plugin: 'engine', tier: 'core' as const }, isLocked: false, // the engine's own panel row
     }],
   }))
+  // Claude Code's config folder, pinned: HOME answers FAKE_HOME and CLAUDE_CONFIG_DIR is unset, so
+  // the theme files read are options.themeFiles and never the machine's own.
+  on('fs.read', ($, e, next) => {
+    if (!e.path.startsWith(`${FAKE_CLAUDE_DIR}/`)) return next(e)
+    const name = e.path.match(/^.*\/themes\/([^/]+)\.json$/)?.[1]
+    const text = name === undefined ? undefined : options.themeFiles?.[name]
+    if (text === undefined) throw new Error(`ENOENT: ${e.path}`)
+    return { value: text }
+  })
   on('env.get', ($, e, next) => {
+    if (e.name === 'HOME') return { value: FAKE_HOME }
+    if (e.name === 'CLAUDE_CONFIG_DIR') return { value: undefined }
     if (e.name === 'CLAUDISH_ACTIVE_MODEL_NAME') return { value: options.activeModel === undefined ? 'cx@gpt-test' : options.activeModel ?? undefined }
     return e.name === 'TERM_THEME' || e.name === 'COLORFGBG' || e.name === 'TMUX_PANE' ? { value: options.env?.[e.name] } : next(e)
   })

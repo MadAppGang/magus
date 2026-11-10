@@ -98,15 +98,23 @@ fi
 #
 #   1. `appearance` config key            (the script's own flag)
 #   2. $STATUSLINE_APPEARANCE             (the script's own variable)
-#   3. inside tmux: the theme of the client showing THIS pane's session
-#   4. $TERM_THEME
-#   5. OSC 11 probe — NO STEP HERE. The statusline child has no controlling
+#   3. Claude Code's own theme setting — claude_theme_appearance
+#   4. inside tmux: the theme of the client showing THIS pane's session
+#   5. $TERM_THEME
+#   6. OSC 11 probe — NO STEP HERE. The statusline child has no controlling
 #      terminal: stdin, stdout and stderr are all pipes and /dev/tty is "Device
 #      not configured", so there is nowhere to send a query and nothing to read.
-#   6. COLORFGBG — tmux's session-scope copy inside tmux, $COLORFGBG outside
-#   7. dark
+#   7. COLORFGBG — tmux's session-scope copy inside tmux, $COLORFGBG outside
+#   8. dark
 #
-# Step 3 is the probe the statusline cannot make itself, made by tmux instead.
+# Step 3 is the background Claude Code actually draws: its `theme` setting, or
+# for a custom theme the built-in it is based on. It answers for every theme but
+# `auto`, so for most people nothing below it runs. `auto` means Claude follows
+# the terminal itself, which is what steps 4-7 work out.
+# The setting is shared by every session, so sessions set to different themes all
+# follow the last /theme pick (ai-docs/terminal-theme-resolution.md, last section).
+#
+# Step 4 is the probe the statusline cannot make itself, made by tmux instead.
 # tmux 3.6+ asks each client OSC 11 on attach and subscribes to its mode-2031
 # theme reports, so #{client_theme} is live, and it is per CLIENT: a session
 # shown in a dark window and another in a light one each get their own answer.
@@ -117,7 +125,7 @@ fi
 # session may since have been attached from a different window. Blink on the
 # iPad reports no theme, leaves #{client_theme} empty, and falls through.
 #
-# Only the exact lowercase words `light` and `dark` count at steps 1-3. Anything
+# Only the exact lowercase words `light` and `dark` count at steps 1-4. Anything
 # else — `Light`, `auto`, empty, unset — is no opinion and the next step runs.
 # Nothing here prints a warning at any step: the dark default is a decision, not a
 # failure.
@@ -207,6 +215,40 @@ EOF
   esac
 }
 
+# Prints light|dark from Claude Code's own theme setting: the background the
+# status line is drawn on. `theme` in settings.json is a built-in name (light,
+# dark-ansi, light-daltonized, ...) or `custom:<name>`, whose themes/<name>.json
+# names the built-in it is based on in `base`. `auto`, a missing file or an
+# unknown name prints nothing. Builtins only — `read` and `=~` — so no process
+# starts on a run, and a switch shows at the next refresh without watching the
+# files. Claude Code writes top-level keys at a two-space indent, which keeps a
+# plugin option that is also called "theme" from answering.
+claude_theme_appearance() {
+  local dir="${CLAUDE_CONFIG_DIR:-$HOME/.claude}" text="" name re
+  [ -r "$dir/settings.json" ] || return 0
+  IFS= read -r -d '' text < "$dir/settings.json"
+  re='"theme"[[:space:]]*:[[:space:]]*"([^"]*)"'
+  case "$text" in
+    *$'\n  "'*) re=$'\n  '"$re" ;;
+  esac
+  [[ $text =~ $re ]] || return 0
+  name=${BASH_REMATCH[1]}
+  case "$name" in
+    custom:*)
+      [ -r "$dir/themes/${name#custom:}.json" ] || return 0
+      text=""
+      IFS= read -r -d '' text < "$dir/themes/${name#custom:}.json"
+      re='"base"[[:space:]]*:[[:space:]]*"([^"]*)"'
+      [[ $text =~ $re ]] || return 0
+      name=${BASH_REMATCH[1]}
+      ;;
+  esac
+  case "$name" in
+    light|light-*) printf 'light' ;;
+    dark|dark-*) printf 'dark' ;;
+  esac
+}
+
 resolve_appearance() {
   case "$APPEARANCE" in
     light|dark) printf '%s' "$APPEARANCE"; return ;;
@@ -214,6 +256,12 @@ resolve_appearance() {
 
   case "${STATUSLINE_APPEARANCE:-}" in
     light|dark) printf '%s' "$STATUSLINE_APPEARANCE"; return ;;
+  esac
+
+  local claude
+  claude=$(claude_theme_appearance)
+  case "$claude" in
+    light|dark) printf '%s' "$claude"; return ;;
   esac
 
   if [ -n "${TMUX:-}" ]; then

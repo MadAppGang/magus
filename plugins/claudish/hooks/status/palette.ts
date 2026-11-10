@@ -1,8 +1,8 @@
 // The badges' colours, as madbench draws its badges (madbench internal/tui/theme.go): one hue
 // per meaning, a solid half (the hue, with whichever of white or ink reads better on it) and a
 // quiet half (the hue tinted toward the page). Theme keys carry no tints of blue, teal or violet,
-// so the badges and the value text use these raw colours, light or dark by the Magus status line's
-// order (paletteFor). The rest of the band keeps theme keys. The allowance row and its forecast
+// so the badges and the value text use these raw colours, light or dark by Claude Code's own theme
+// first, as the Magus status line orders it (paletteFor). The rest of the band keeps theme keys. The allowance row and its forecast
 // panel draw only from `allowance` (AllowanceColors).
 
 export type Hue = 'run' | 'ask' | 'done' | 'fail' | 'format' | 'stopped' | 'model' | 'tools' | 'loops' | 'cost'
@@ -223,17 +223,27 @@ export function tmuxClientAppearance(stdout: string): Appearance | null {
 }
 
 /**
+ * The appearance a Claude Code theme name says: a built-in light or dark, plain or a variant
+ * (`light-daltonized`, `dark-ansi`). Null for anything else: `auto`, a custom name, no string.
+ * A custom theme says it through its file's `base`, which is a built-in name.
+ */
+export function themeNameAppearance(name: unknown): Appearance | null {
+  if (typeof name !== 'string') return null
+  if (name === 'light' || name.startsWith('light-')) return 'light'
+  if (name === 'dark' || name.startsWith('dark-')) return 'dark'
+  return null
+}
+
+/**
  * The palette by the Magus status line's order (setup's statusline.sh, "Appearance detection"),
- * first answer wins: inside tmux, the appearance of the client showing this pane (`tmux`, from
- * tmuxClientAppearance; null says nothing), since tmux follows the screen the session is shown on
- * now; then TERM_THEME, only the exact lowercase `light` or `dark`, as magus and the statusline
- * read it (anything else says nothing);
- * then dark. Claude Code's own `theme` setting is not read: it is shared by every session, so one
- * session's choice would repaint another's screen. COLORFGBG is not read either: it is frozen at
+ * first answer wins: Claude Code's own theme (`claude`: the theme setting, or a custom theme's
+ * base), the background the band is drawn on; then, for `auto` and anything unreadable, inside
+ * tmux the appearance of the client showing this pane (`tmux`, from tmuxClientAppearance), since
+ * tmux follows the screen the session is shown on now; then TERM_THEME, only the exact lowercase
+ * `light` or `dark`; then dark. A null says nothing. COLORFGBG is not read: it is frozen at
  * launch and is not a signal (the dotfiles' house rule).
  */
-export function paletteFor(tmux: Appearance | null, termTheme?: string): Palette {
-  if (tmux === 'light') return LIGHT_PALETTE
-  if (tmux === 'dark') return DARK_PALETTE
-  return termTheme === 'light' ? LIGHT_PALETTE : DARK_PALETTE
+export function paletteFor(claude: Appearance | null, tmux: Appearance | null, termTheme?: string): Palette {
+  const appearance = claude ?? tmux ?? (termTheme === 'light' || termTheme === 'dark' ? termTheme : 'dark')
+  return appearance === 'light' ? LIGHT_PALETTE : DARK_PALETTE
 }

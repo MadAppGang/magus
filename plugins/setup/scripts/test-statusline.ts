@@ -179,8 +179,25 @@ if (!appearanceFn) {
     { id: "S-live-5", what: "no TMUX_PANE: the client step is skipped", env: { TMUX: "1", TERM_THEME: "light" }, tmuxClients: "100 dark", want: "light" },
     { id: "S-live-6", what: "outside tmux the client step never runs", env: { TMUX_PANE: "%1", TERM_THEME: "light" }, tmuxClients: "100 dark", want: "light" },
     { id: "S-live-7", what: "STATUSLINE_APPEARANCE still beats the client theme", env: { TMUX: "1", TMUX_PANE: "%1", STATUSLINE_APPEARANCE: "light" }, tmuxClients: "100 dark", want: "light" },
+    // Claude Code's own theme setting: the background the status line is drawn on.
+    { id: "S-claude-1", what: "a custom theme's base beats the tmux client and TERM_THEME", env: { TMUX: "1", TMUX_PANE: "%1", TERM_THEME: "dark" }, tmuxClients: "100 dark", homeFiles: { ".claude/settings.json": '{\n  "model": "opus",\n  "theme": "custom:magus-auto"\n}\n', ".claude/themes/magus-auto.json": '{ "name": "Magus auto", "base": "light", "overrides": {} }\n' }, want: "light" },
+    { id: "S-claude-1b", what: "a custom theme with a dark base selects dark over TERM_THEME=light", env: { TERM_THEME: "light" }, homeFiles: { ".claude/settings.json": '{"theme":"custom:night"}', ".claude/themes/night.json": '{"base":"dark"}' }, want: "dark" },
+    { id: "S-claude-1c", what: "a custom theme based on light-daltonized counts as light", env: { TERM_THEME: "dark" }, homeFiles: { ".claude/settings.json": '{"theme":"custom:soft"}', ".claude/themes/soft.json": '{"base":"light-daltonized"}' }, want: "light" },
+    { id: "S-claude-2", what: "built-in light-ansi selects light", env: { TERM_THEME: "dark" }, homeFiles: { ".claude/settings.json": '{"theme": "light-ansi"}' }, want: "light" },
+    { id: "S-claude-2b", what: "built-in dark-daltonized selects dark", env: { TERM_THEME: "light" }, homeFiles: { ".claude/settings.json": '{"theme": "dark-daltonized"}' }, want: "dark" },
+    { id: "S-claude-3", what: "theme auto is no opinion; TERM_THEME answers", env: { TERM_THEME: "light" }, homeFiles: { ".claude/settings.json": '{"theme": "auto"}' }, want: "light" },
+    { id: "S-claude-3b", what: "a custom theme whose file is missing is no opinion", env: { TERM_THEME: "light" }, homeFiles: { ".claude/settings.json": '{"theme": "custom:gone"}' }, want: "light" },
+    { id: "S-claude-3c", what: "settings without a theme is no opinion", env: { TERM_THEME: "light" }, homeFiles: { ".claude/settings.json": '{"model": "opus"}' }, want: "light" },
+    { id: "S-claude-4", what: "STATUSLINE_APPEARANCE still beats Claude's theme", env: { STATUSLINE_APPEARANCE: "dark" }, homeFiles: { ".claude/settings.json": '{"theme": "light"}' }, want: "dark" },
+    { id: "S-claude-6", what: "a plugin option called theme does not beat the top-level key", env: { TERM_THEME: "light" }, homeFiles: { ".claude/settings.json": '{\n  "pluginConfigs": {\n    "x": { "options": { "theme": "light" } }\n  },\n  "theme": "dark"\n}\n' }, want: "dark" },
+    { id: "S-claude-6b", what: "a plugin option called theme alone is no opinion", env: { TERM_THEME: "dark" }, homeFiles: { ".claude/settings.json": '{\n  "pluginConfigs": {\n    "x": { "options": { "theme": "light" } }\n  }\n}\n' }, want: "dark" },
+    { id: "S-claude-5", what: "CLAUDE_CONFIG_DIR is where the settings live", env: { CLAUDE_CONFIG_DIR: "@HOME/alt", TERM_THEME: "dark" }, homeFiles: { "alt/settings.json": '{"theme": "custom:x"}', "alt/themes/x.json": '{"base": "light"}', ".claude/settings.json": '{"theme": "dark"}' }, want: "light" },
     { id: "S-removed", what: "the old tmux theme-file pin is gone", homeFiles: { [join(".config", "tmux", "theme")]: "light\n" }, want: "dark" },
   ];
+
+  // "@HOME" in an env value stands for the case's temp HOME, unknown when the cases are written.
+  const withHome = (home: string, env: Record<string, string> = {}) =>
+    Object.fromEntries(Object.entries(env).map(([k, v]) => [k, v.replaceAll("@HOME", home)]));
 
   const runAppearance = (
     home: string,
@@ -189,7 +206,7 @@ if (!appearanceFn) {
   ) => {
     const probe = `APPEARANCE=${JSON.stringify(c.appearance ?? "auto")}\n${appearanceFn}\nresolve_appearance\n`;
     return Bun.spawnSync(["bash", "-c", probe], {
-      env: { HOME: home, PATH: `${shimDir}:/usr/bin:/bin`, ...(c.env ?? {}) },
+      env: { HOME: home, PATH: `${shimDir}:/usr/bin:/bin`, ...withHome(home, c.env) },
     });
   };
 

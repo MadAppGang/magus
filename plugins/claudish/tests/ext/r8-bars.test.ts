@@ -31,7 +31,7 @@ const FAMILIES = [
 async function setup($: Engine, on: On, surface: Surface, finished: Step[], current = ACTIVE, theme = 'dark') {
   const extra: { row: Json } = { row: { activity: 'Bash', tool_calls: 1 } }
   const h: Harness = harness(on, {
-    env: { TERM_THEME: theme }, // the screen's appearance (Claude Code's theme setting is not read)
+    env: { TERM_THEME: theme }, // the screen's appearance: no Claude Code theme row, so TERM_THEME decides
     rowPatch: row => silentFor(() => h, () => 1)({ ...row, ...extra.row }),
   })
   await start($, surface)
