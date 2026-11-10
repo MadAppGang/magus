@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "timeout",
+    "message": "timed out waiting for output match"
+  },
+  "id": "cli:pane:wait-output"
+}

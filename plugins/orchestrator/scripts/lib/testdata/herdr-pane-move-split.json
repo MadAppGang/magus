@@ -1,0 +1,77 @@
+{
+  "id": "cli:pane:move",
+  "result": {
+    "move_result": {
+      "changed": true,
+      "closed_tab_id": "w1:t2",
+      "focused_pane_id": "w1:p1",
+      "pane": {
+        "agent_status": "unknown",
+        "cwd": "/tmp/repo",
+        "focused": false,
+        "foreground_cwd": "/tmp/repo",
+        "pane_id": "w1:p2",
+        "revision": 0,
+        "scroll": {
+          "max_offset_from_bottom": 0,
+          "offset_from_bottom": 0,
+          "viewport_rows": 47
+        },
+        "tab_id": "w1:t1",
+        "terminal_id": "term_65fe05005794f2",
+        "workspace_id": "w1"
+      },
+      "previous_pane_id": "w1:p2",
+      "previous_tab_id": "w1:t2",
+      "previous_workspace_id": "w1",
+      "target_layout": {
+        "area": {
+          "height": 49,
+          "width": 174,
+          "x": 0,
+          "y": 0
+        },
+        "focused_pane_id": "w1:p1",
+        "panes": [
+          {
+            "focused": true,
+            "pane_id": "w1:p1",
+            "rect": {
+              "height": 49,
+              "width": 58,
+              "x": 0,
+              "y": 0
+            }
+          },
+          {
+            "focused": false,
+            "pane_id": "w1:p2",
+            "rect": {
+              "height": 49,
+              "width": 116,
+              "x": 58,
+              "y": 0
+            }
+          }
+        ],
+        "splits": [
+          {
+            "direction": "right",
+            "id": "split_0_root",
+            "ratio": 0.3333,
+            "rect": {
+              "height": 49,
+              "width": 174,
+              "x": 0,
+              "y": 0
+            }
+          }
+        ],
+        "tab_id": "w1:t1",
+        "workspace_id": "w1",
+        "zoomed": false
+      }
+    },
+    "type": "pane_move"
+  }
+}

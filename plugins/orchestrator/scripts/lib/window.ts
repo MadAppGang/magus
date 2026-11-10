@@ -4,6 +4,9 @@
 // function is a plain mapping from its arguments to its result.
 
 import { join } from "node:path";
+import type { Multiplexer } from "./mux-choice.ts";
+
+export type { Multiplexer } from "./mux-choice.ts";
 
 /** The nine tokens Claude Code's `/color` accepts. */
 const COLOURS = ["red", "blue", "green", "yellow", "purple", "orange", "pink", "cyan", "default"] as const;
@@ -43,14 +46,13 @@ const VALUE_FLAGS = new Set([
   "mux",
   "ticket",
   "ticket-url",
+  "trust-after",
+  "expect-terminal",
 ]);
 const BOOLEAN_FLAGS = new Set(["no-wait", "dry-run", "print-line"]);
-const DELIVER_FLAGS = new Set(["deliver-to", "prompt", "lock", "mux"]);
+const DELIVER_FLAGS = new Set(["deliver-to", "prompt", "lock", "mux", "trust-after", "expect-terminal"]);
 /** Flags that only make sense when a window or tab is opened, so never with `--print-line`. */
 const NOT_WITH_PRINT_LINE = ["prompt", "session", "no-wait", "dry-run"] as const;
-
-/** The two terminal multiplexers the launcher can open a ticket in. */
-export type Multiplexer = "tmux" | "herdr";
 
 function isMultiplexer(value: string): value is Multiplexer {
   return value === "tmux" || value === "herdr";
@@ -98,6 +100,10 @@ export interface DeliverArgs {
   /** The multiplexer the pane lives in. */
   mux: Multiplexer;
   lock?: string;
+  /** A refusal to start counts only when it follows the last occurrence of this text on screen. */
+  trustAfter?: string;
+  /** The terminal the pane must still hold before any input: herdr only. */
+  expectTerminal?: string;
 }
 
 export type ParseResult = { ok: true; args: StartArgs | PrintLineArgs | DeliverArgs } | { ok: false; error: string };
@@ -126,9 +132,11 @@ export type ParseResult = { ok: true; args: StartArgs | PrintLineArgs | DeliverA
  * both when starting a window and with `--print-line`.
  *
  * With `--deliver-to <pane>` the result is `DeliverArgs`; only `--prompt`,
- * `--lock` and `--mux` may accompany it, and `--mux` is required with a value
- * of exactly `tmux` or `herdr`. `--lock` or `--mux` without `--deliver-to` is
- * an error.
+ * `--lock`, `--mux`, `--trust-after` and `--expect-terminal` may accompany it,
+ * and `--mux` is required with a value of exactly `tmux` or `herdr`.
+ * `--expect-terminal` needs a non-empty value and `--mux herdr`. Any of
+ * `--lock`, `--mux`, `--trust-after` or `--expect-terminal` without
+ * `--deliver-to` is an error.
  *
  * With `--print-line` the result is `PrintLineArgs`; `--prompt`, `--session`,
  * `--no-wait`, `--dry-run` and `--deliver-to` may not accompany it.
@@ -165,14 +173,27 @@ export function parseArgs(argv: readonly string[], env: Readonly<Record<string, 
     const mux = values.get("mux");
     if (mux === undefined) return { ok: false, error: "--deliver-to needs --mux tmux or --mux herdr" };
     if (!isMultiplexer(mux)) return { ok: false, error: `invalid --mux ${quote(mux)}; one of: tmux herdr` };
+    const expectTerminal = values.get("expect-terminal");
+    if (expectTerminal === "") return { ok: false, error: "--expect-terminal needs a terminal id" };
+    if (expectTerminal !== undefined && mux !== "herdr") return { ok: false, error: "--expect-terminal is only valid with --mux herdr" };
     const lock = values.get("lock");
+    const trustAfter = values.get("trust-after");
     return {
       ok: true,
-      args: { mode: "deliver", pane, prompt: values.get("prompt") ?? "", mux, ...(lock ? { lock } : {}) },
+      args: {
+        mode: "deliver",
+        pane,
+        prompt: values.get("prompt") ?? "",
+        mux,
+        ...(lock ? { lock } : {}),
+        ...(trustAfter ? { trustAfter } : {}),
+        ...(expectTerminal !== undefined ? { expectTerminal } : {}),
+      },
     };
   }
-  if (values.has("lock")) return { ok: false, error: "--lock is internal and only valid with --deliver-to" };
-  if (values.has("mux")) return { ok: false, error: "--mux is internal and only valid with --deliver-to" };
+  for (const key of ["lock", "mux", "trust-after", "expect-terminal"]) {
+    if (values.has(key)) return { ok: false, error: `--${key} is internal and only valid with --deliver-to` };
+  }
 
   const printLine = booleans.has("print-line");
   if (printLine) {
@@ -405,51 +426,6 @@ export function buildChildLine(spec: LaunchSpec & { dir: string }): string {
   return `cd ${shellQuote(spec.dir)} && git pull --ff-only && ${launch}`;
 }
 
-/** Result of `detectMultiplexer`. */
-export type MultiplexerDetection = { ok: true; mux: Multiplexer } | { ok: false; error: string };
-
-/**
- * Decides which multiplexer the caller runs in.
- *
- * A non-empty `ORCHESTRATOR_MULTIPLEXER` decides alone: `tmux` needs a
- * non-empty `TMUX`, `herdr` a non-empty `HERDR_PANE_ID`, and any other value is
- * an error; `probeHerdr` is not called. Otherwise a herdr claim
- * (`HERDR_ENV === "1"` and a non-empty `HERDR_PANE_ID`) is confirmed by calling
- * `probeHerdr` exactly once; `true` means herdr. herdr is checked before tmux
- * because herdr inherits `TMUX` when it runs inside tmux. Failing that, a
- * non-empty `TMUX` means tmux, and anything else is the error
- * `not inside tmux or herdr`. An exception from `probeHerdr` counts as `false`.
- * Never throws.
- */
-export function detectMultiplexer(
-  env: Readonly<Record<string, string | undefined>>,
-  probeHerdr: () => boolean,
-): MultiplexerDetection {
-  const forced = env.ORCHESTRATOR_MULTIPLEXER;
-  if (forced) {
-    if (forced === "tmux") {
-      return env.TMUX ? { ok: true, mux: "tmux" } : { ok: false, error: "ORCHESTRATOR_MULTIPLEXER=tmux, but not inside tmux (TMUX is unset)" };
-    }
-    if (forced === "herdr") {
-      return env.HERDR_PANE_ID
-        ? { ok: true, mux: "herdr" }
-        : { ok: false, error: "ORCHESTRATOR_MULTIPLEXER=herdr, but not inside herdr (HERDR_PANE_ID is unset)" };
-    }
-    return { ok: false, error: `invalid ORCHESTRATOR_MULTIPLEXER ${quote(forced)}; one of: tmux herdr` };
-  }
-  if (env.HERDR_ENV === "1" && env.HERDR_PANE_ID) {
-    let confirmed = false;
-    try {
-      confirmed = probeHerdr();
-    } catch {
-      confirmed = false;
-    }
-    if (confirmed) return { ok: true, mux: "herdr" };
-  }
-  if (env.TMUX) return { ok: true, mux: "tmux" };
-  return { ok: false, error: "not inside tmux or herdr" };
-}
-
 /**
  * The argv that opens a herdr tab at `dir`, labelled `name`, in workspace
  * `workspace`, without moving the user's focus:
@@ -546,6 +522,37 @@ export function parseHerdrPane(stdout: string): HerdrPane | null {
 }
 
 /**
+ * Parses `herdr pane get <pane>` for what decides whether input may be sent:
+ * `terminal` is `result.pane.terminal_id`, `agent` is `result.pane.agent`,
+ * `status` is `result.pane.agent_status`, each null when missing or empty.
+ * Returns `null` for output that is not JSON or carries no `result.pane`
+ * object. Never throws.
+ */
+export function parseHerdrPaneState(stdout: string): { terminal: string | null; agent: string | null; status: string | null } | null {
+  const pane = (parseJson(stdout) as { result?: { pane?: unknown } } | undefined)?.result?.pane;
+  if (typeof pane !== "object" || pane === null) return null;
+  return {
+    terminal: nonEmptyStringAt(pane, "terminal_id"),
+    agent: nonEmptyStringAt(pane, "agent"),
+    status: nonEmptyStringAt(pane, "agent_status"),
+  };
+}
+
+/**
+ * The id of the focused workspace in the JSON `herdr workspace list` prints
+ * (`result.workspaces[]`, each with `workspace_id` and `focused`). `null` when
+ * none is focused or the output is not that shape. Never throws.
+ */
+export function herdrFocusedWorkspace(stdout: string): string | null {
+  const workspaces = (parseJson(stdout) as { result?: { workspaces?: unknown } } | undefined)?.result?.workspaces;
+  if (!Array.isArray(workspaces)) return null;
+  for (const workspace of workspaces) {
+    if ((workspace as { focused?: unknown } | null)?.focused === true) return nonEmptyStringAt(workspace, "workspace_id");
+  }
+  return null;
+}
+
+/**
  * The argv that types `line` into a herdr pane's interactive shell and presses
  * Enter: `herdr pane run <pane> <line>`. Throws an Error when `pane` is empty
  * or `line` contains a newline.
@@ -563,9 +570,14 @@ const TRUST_ERROR = "Workspace trust not yet accepted";
  * True exactly when `screen` contains `Workspace trust not yet accepted`
  * (case-sensitive, on any line). The caller joins wrapped lines before
  * passing the screen, so the phrase is never split across lines.
+ *
+ * With a non-empty `after`, only the text following the last occurrence of
+ * `after` is searched, so a refusal from an earlier launch does not count; when
+ * `after` is not on the screen, the whole screen is searched.
  */
-export function screenShowsTrustError(screen: string): boolean {
-  return screen.includes(TRUST_ERROR);
+export function screenShowsTrustError(screen: string, after?: string): boolean {
+  const from = after ? screen.lastIndexOf(after) : -1;
+  return (from === -1 ? screen : screen.slice(from + (after?.length ?? 0))).includes(TRUST_ERROR);
 }
 
 /**

@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "agents": [
+    {
+      "pane_id": "w1:p2",
+      "terminal_id": "term_2",
+      "agent_pane_id": "w1:p1"
+    },
+    {
+      "pane_id": "w1:p3",
+      "terminal_id": "term_3",
+      "agent_pane_id": "w1:p1"
+    }
+  ],
+  "tabs": []
+}

@@ -27,6 +27,7 @@ describe("session-record process [R1.4–R1.5, R2.2–R2.3, R3.4; §4.5]", () =>
       });
       expect(ownedKey(s.ctx, SELF)).toBe(MANAGER);
       expect(readdirSync(join(s.ctx.stateDir, "progress"))).toEqual([]);
+      expect(s.calls()).toContainEqual(["pane", "process-info", "--pane", "pane-a"]);
       expect(s.reports()).toHaveLength(1);
       expect(s.reports()[0]).toEqual(expect.arrayContaining(["pane-a", "--title", "--seq"]));
       const before = readFileSync(join(s.ctx.stateDir, "sessions", MANAGER + ".json"), "utf8");
@@ -119,6 +120,14 @@ describe("session-record process [R1.4–R1.5, R2.2–R2.3, R3.4; §4.5]", () =>
       expect(s.reports()).toHaveLength(1);
     } finally { await a.stop(); }
   }, 30_000);
+});
+
+test("[REQ-432] TEST-807 a plain session with inherited herdr variables never probes or publishes", async () => {
+  const s = space(); s.installHerdr();
+  Object.assign(s.env, { HERDR_ENV: "1", HERDR_PANE_ID: "pane-a", TMUX: "host" });
+  expect(await runBun(s, "hooks/session-record.ts", [], start(s, "plain001"))).toEqual({ code: 0, stdout: "", stderr: "" });
+  expect(s.calls()).toEqual([]);
+  expect(readdirSync(join(s.ctx.stateDir, "sessions"))).toEqual([]);
 });
 
 describe("hook failures and deadlines [R3.4; §4.3, §4.5]", () => {

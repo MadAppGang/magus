@@ -846,8 +846,8 @@
     {
       "name": "orchestrator",
       "source": "./plugins/orchestrator",
-      "description": "Runs ticket work as three levels of Claude Code sessions: triage owns tickets and the plan, a manager per ticket works in its own tmux window or herdr tab and worktree, children in slots beside it. A status band lists them; a guard keeps ticket changes with triage. Needs bun, git, tmux or herdr.",
-      "version": "0.3.0",
+      "description": "Runs ticket work as three levels of Claude Code sessions: triage owns tickets and the plan, a manager per ticket works in its own tmux window or herdr tab and worktree, children in panes beside it. A status band lists them; a guard keeps ticket changes with triage. Needs bun, git, tmux or herdr.",
+      "version": "0.4.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -864,6 +864,15 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.4.0",
+          "date": "2026-11-10",
+          "kinds": [
+            "Added",
+            "Changed"
+          ],
+          "summary": "Under herdr, a manager's children open as panes in its own tab, laid out for you"
+        },
         {
           "version": "0.3.0",
           "date": "2026-11-09",

@@ -77,6 +77,8 @@ prompt. If the prompt names none, ask the manager once.
   suites, builds, servers, REPLs. You run in a slot of your manager's window, so a visible
   slot of yours would split a pane inside the manager's layout. Background Bash is fine
   too. Close your own slots with `close-pane` before you report.
+- **Under herdr you run in a pane of your manager's tab.** Never split, move or close herdr
+  panes there. `child-pane.ts` is your manager's.
 - **A command that seems not to have run** may only be late. Check before resending, or it
   runs twice.
 - **A pull request is named by its full URL**, never a bare `PR #N`.
@@ -84,7 +86,7 @@ prompt. If the prompt names none, ask the manager once.
 ## Closing
 
 Do not quit this session, and do not remove your worktree or branch: your manager closes
-your slot. Once it has proven your work merged it types `/quit` and removes the worktree;
+your slot or pane. Once it has proven your work merged it types `/quit` and removes the worktree;
 otherwise it keeps it.
 
 Free every shared environment you hold (`orch-state release "<what>"`) first.

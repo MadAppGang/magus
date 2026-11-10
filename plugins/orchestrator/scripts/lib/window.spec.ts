@@ -8,7 +8,8 @@ import {
   buildLaunchLine,
   buildLaunch,
   buildChildLine,
-  detectMultiplexer,
+  parseHerdrPaneState,
+  herdrFocusedWorkspace,
   buildHerdrTabCreate,
   parseHerdrTabCreate,
   herdrPaneOfTab,
@@ -822,129 +823,7 @@ describe("print-line and delivery argument changes", () => {
   });
 });
 
-function expectMultiplexerError(result: ReturnType<typeof detectMultiplexer>): string {
-  if (result.ok) {
-    throw new Error("Expected multiplexer detection to fail");
-  }
-  expect(result).toEqual({ ok: false, error: expect.any(String) });
-  expect(result.error.trim()).not.toBe("");
-  return result.error;
-}
-
-describe("multiplexer choice", () => {
-  test("TEST-34 [REQ-28] honors a forced backend without consulting the herdr probe", () => {
-    const cases = [
-      { env: { ORCHESTRATOR_MULTIPLEXER: "tmux", TMUX: "session", HERDR_ENV: "1", HERDR_PANE_ID: "w5:p3" }, mux: "tmux" },
-      { env: { ORCHESTRATOR_MULTIPLEXER: "herdr", HERDR_PANE_ID: "w5:p3", TMUX: "session" }, mux: "herdr" },
-      { env: { ORCHESTRATOR_MULTIPLEXER: "herdr", HERDR_ENV: "0", HERDR_PANE_ID: "w5:p3" }, mux: "herdr" },
-      { env: { ORCHESTRATOR_MULTIPLEXER: "tmux", TMUX: " " }, mux: "tmux" },
-      { env: { ORCHESTRATOR_MULTIPLEXER: "herdr", HERDR_PANE_ID: " " }, mux: "herdr" },
-    ] as const;
-
-    for (const { env, mux } of cases) {
-      let calls = 0;
-
-      const result = detectMultiplexer(Object.freeze(env), () => {
-        calls++;
-        throw new Error("A forced backend must not probe");
-      });
-
-      expect(result).toEqual({ ok: true, mux });
-      expect(calls).toBe(0);
-    }
-  });
-
-  test("TEST-35 [REQ-28] rejects a forced backend whose required environment is empty rather than falling back", () => {
-    const cases: Environment[] = [
-      { ORCHESTRATOR_MULTIPLEXER: "tmux", HERDR_ENV: "1", HERDR_PANE_ID: "w5:p3" },
-      { ORCHESTRATOR_MULTIPLEXER: "tmux", TMUX: "", HERDR_ENV: "1", HERDR_PANE_ID: "w5:p3" },
-      { ORCHESTRATOR_MULTIPLEXER: "herdr", TMUX: "session" },
-      { ORCHESTRATOR_MULTIPLEXER: "herdr", HERDR_PANE_ID: "", TMUX: "session" },
-    ];
-
-    for (const env of cases) {
-      let calls = 0;
-
-      const result = detectMultiplexer(env, () => { calls++; return true; });
-
-      expectMultiplexerError(result);
-      expect(calls).toBe(0);
-    }
-  });
-
-  test("TEST-36 [REQ-28] names both valid backends when a nonempty override is invalid", () => {
-    for (const override of ["screen", "TMUX", "HERDR", " tmux", "tmux ", " ", "0"]) {
-      let calls = 0;
-
-      const result = detectMultiplexer({
-        ORCHESTRATOR_MULTIPLEXER: override, TMUX: "session", HERDR_ENV: "1", HERDR_PANE_ID: "w5:p3",
-      }, () => { calls++; return true; });
-
-      const error = expectMultiplexerError(result);
-      expect(error).toContain("tmux");
-      expect(error).toContain("herdr");
-      expect(calls).toBe(0);
-    }
-  });
-
-  test("TEST-37 [REQ-29] confirms a complete herdr claim once and prefers it over inherited tmux", () => {
-    for (const override of [undefined, ""]) {
-      for (const tmux of [undefined, "", "inherited-session"]) {
-        let calls = 0;
-
-        const result = detectMultiplexer({
-          ORCHESTRATOR_MULTIPLEXER: override, HERDR_ENV: "1", HERDR_PANE_ID: "w5:p3", TMUX: tmux,
-        }, () => { calls++; return true; });
-
-        expect(result).toEqual({ ok: true, mux: "herdr" });
-        expect(calls).toBe(1);
-      }
-    }
-  });
-
-  test("TEST-38 [REQ-29] treats a failed or throwing herdr probe as false and then falls back to tmux", () => {
-    for (const throws of [false, true]) {
-      for (const tmux of [undefined, "", "session"]) {
-        let calls = 0;
-
-        const result = detectMultiplexer({ HERDR_ENV: "1", HERDR_PANE_ID: "w5:p3", TMUX: tmux }, () => {
-          calls++;
-          if (throws) throw new Error("herdr unavailable");
-          return false;
-        });
-
-        expect(result).toEqual(tmux
-          ? { ok: true, mux: "tmux" }
-          : { ok: false, error: "not inside tmux or herdr" });
-        expect(calls).toBe(1);
-      }
-    }
-  });
-
-  test("TEST-39 [REQ-29] never probes an incomplete claim and returns the exact no-multiplexer error", () => {
-    const claims: Environment[] = [
-      {}, { HERDR_ENV: "1" }, { HERDR_ENV: "1", HERDR_PANE_ID: "" },
-      { HERDR_PANE_ID: "w5:p3" }, { HERDR_ENV: "0", HERDR_PANE_ID: "w5:p3" },
-      { HERDR_ENV: "true", HERDR_PANE_ID: "w5:p3" },
-      { HERDR_ENV: "01", HERDR_PANE_ID: "w5:p3" },
-      { HERDR_ENV: "1 ", HERDR_PANE_ID: "w5:p3" },
-      { HERDR_WORKSPACE_ID: "w5" },
-    ];
-
-    for (const claim of claims) {
-      for (const tmux of [undefined, "", "session"]) {
-        let calls = 0;
-
-        const result = detectMultiplexer({ ...claim, TMUX: tmux }, () => { calls++; return true; });
-
-        expect(result).toEqual(tmux
-          ? { ok: true, mux: "tmux" }
-          : { ok: false, error: "not inside tmux or herdr" });
-        expect(calls).toBe(0);
-      }
-    }
-  });
-});
+// Session and new-window choices have separate contracts in mux-choice.spec.ts.
 
 describe("standalone and child launch lines", () => {
   test("TEST-40 [REQ-30, REQ-12] builds only the default launch and includes exactly the flags supplied", () => {
@@ -1216,6 +1095,39 @@ describe("herdr argv and response contracts", () => {
     for (const line of ["\n", "\ntrue", "true\n", "first\nsecond", "first\r\nsecond"]) {
       expect(() => buildHerdrRun("w5:p3", line)).toThrow(Error);
     }
+  });
+});
+
+describe("witnessed delivery arguments and launch-scoped trust", () => {
+  test("[REQ-425] TEST-2722 --expect-terminal is herdr-delivery-only and preserves the witness literally", () => {
+    expect(parseArgs(["--deliver-to", "w1:pA", "--mux", "herdr", "--trust-after", "l-launch", "--expect-terminal", "term_A", "--prompt", "hello"], {})).toEqual({
+      ok: true, args: { mode: "deliver", pane: "w1:pA", mux: "herdr", prompt: "hello", trustAfter: "l-launch", expectTerminal: "term_A" },
+    });
+    for (const args of [
+      ["--deliver-to", "w1:pA", "--mux", "tmux", "--expect-terminal", "term_A"],
+      ["--deliver-to", "w1:pA", "--mux", "herdr", "--expect-terminal", ""],
+      startArgv("--expect-terminal", "term_A"),
+      startArgv("--trust-after", "l-launch"),
+    ]) expectParseError(args);
+  });
+  test("[REQ-425] TEST-2722 parses the captured terminal, agent and status, refusing absent panes", () => {
+    expect(parseHerdrPaneState(readFileSync(join(import.meta.dir, "testdata", "herdr-pane-get.json"), "utf8"))).toEqual({
+      terminal: "term_65fe052984f745", agent: "claude", status: "idle",
+    });
+    for (const text of ["{", "", "null", "{}", '{"error":{"code":"pane_not_found"}}']) expect(parseHerdrPaneState(text)).toBeNull();
+    expect(parseHerdrPaneState('{"result":{"pane":{}}}')).toEqual({ terminal: null, agent: null, status: null });
+    const raw = readFileSync(join(import.meta.dir, "testdata", "herdr-workspace-list.json"), "utf8");
+    const expected = JSON.parse(raw).result.workspaces.find((w: { focused: boolean }) => w.focused)?.workspace_id ?? null;
+    expect(herdrFocusedWorkspace(raw)).toBe(expected);
+    expect(herdrFocusedWorkspace("{")).toBeNull();
+  });
+  test("[REQ-422, REQ-427] TEST-2721 a stale refusal before the latest launch never blocks trust recovery", () => {
+    const error = "Workspace trust not yet accepted", claim = "l-launch";
+    expect(screenShowsTrustError(error + "\n" + claim, claim)).toBe(false);
+    expect(screenShowsTrustError(claim + "\n" + error, claim)).toBe(true);
+    expect(screenShowsTrustError(error, claim)).toBe(true);
+    expect(screenShowsTrustError(error + "\n" + claim + "\n" + error, claim)).toBe(true);
+    expect(screenShowsTrustError(claim + "\n" + error + "\n" + claim, claim)).toBe(false);
   });
 });
 

@@ -1,0 +1,182 @@
+{
+  "id": "cli:pane:move",
+  "result": {
+    "move_result": {
+      "changed": true,
+      "closed_tab_id": "w1:tA",
+      "focused_pane_id": "w1:p7",
+      "pane": {
+        "agent_status": "unknown",
+        "cwd": "/tmp/repo",
+        "focused": true,
+        "foreground_cwd": "/tmp/repo",
+        "pane_id": "w1:p7",
+        "revision": 0,
+        "scroll": {
+          "max_offset_from_bottom": 0,
+          "offset_from_bottom": 0,
+          "viewport_rows": 22
+        },
+        "tab_id": "w1:t1",
+        "terminal_id": "term_65fe0529c15d27",
+        "workspace_id": "w1"
+      },
+      "previous_pane_id": "w1:p7",
+      "previous_tab_id": "w1:tA",
+      "previous_workspace_id": "w1",
+      "target_layout": {
+        "area": {
+          "height": 49,
+          "width": 174,
+          "x": 0,
+          "y": 0
+        },
+        "focused_pane_id": "w1:p7",
+        "panes": [
+          {
+            "focused": false,
+            "pane_id": "w1:p1",
+            "rect": {
+              "height": 49,
+              "width": 52,
+              "x": 0,
+              "y": 0
+            }
+          },
+          {
+            "focused": false,
+            "pane_id": "w1:p2",
+            "rect": {
+              "height": 25,
+              "width": 41,
+              "x": 52,
+              "y": 0
+            }
+          },
+          {
+            "focused": false,
+            "pane_id": "w1:p3",
+            "rect": {
+              "height": 24,
+              "width": 41,
+              "x": 52,
+              "y": 25
+            }
+          },
+          {
+            "focused": false,
+            "pane_id": "w1:p4",
+            "rect": {
+              "height": 25,
+              "width": 41,
+              "x": 93,
+              "y": 0
+            }
+          },
+          {
+            "focused": false,
+            "pane_id": "w1:p6",
+            "rect": {
+              "height": 13,
+              "width": 40,
+              "x": 134,
+              "y": 0
+            }
+          },
+          {
+            "focused": true,
+            "pane_id": "w1:p7",
+            "rect": {
+              "height": 12,
+              "width": 40,
+              "x": 134,
+              "y": 13
+            }
+          },
+          {
+            "focused": false,
+            "pane_id": "w1:p5",
+            "rect": {
+              "height": 24,
+              "width": 81,
+              "x": 93,
+              "y": 25
+            }
+          }
+        ],
+        "splits": [
+          {
+            "direction": "right",
+            "id": "split_0_root",
+            "ratio": 0.3,
+            "rect": {
+              "height": 49,
+              "width": 174,
+              "x": 0,
+              "y": 0
+            }
+          },
+          {
+            "direction": "right",
+            "id": "split_1_1",
+            "ratio": 0.3333,
+            "rect": {
+              "height": 49,
+              "width": 122,
+              "x": 52,
+              "y": 0
+            }
+          },
+          {
+            "direction": "down",
+            "id": "split_2_10",
+            "ratio": 0.5,
+            "rect": {
+              "height": 49,
+              "width": 41,
+              "x": 52,
+              "y": 0
+            }
+          },
+          {
+            "direction": "down",
+            "id": "split_3_11",
+            "ratio": 0.5,
+            "rect": {
+              "height": 49,
+              "width": 81,
+              "x": 93,
+              "y": 0
+            }
+          },
+          {
+            "direction": "right",
+            "id": "split_4_110",
+            "ratio": 0.5,
+            "rect": {
+              "height": 25,
+              "width": 81,
+              "x": 93,
+              "y": 0
+            }
+          },
+          {
+            "direction": "down",
+            "id": "split_5_1101",
+            "ratio": 0.5,
+            "rect": {
+              "height": 25,
+              "width": 40,
+              "x": 134,
+              "y": 0
+            }
+          }
+        ],
+        "tab_id": "w1:t1",
+        "workspace_id": "w1",
+        "zoomed": false
+      }
+    },
+    "type": "pane_move"
+  }
+}

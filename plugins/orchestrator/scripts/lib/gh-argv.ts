@@ -46,7 +46,7 @@ export function shellSegments(command: string): ShellSegment[] {
 
 /**
  * The files a command writes by output redirection (`> f`, `>> f`, `>| f`,
- * `&> f`), each as written with its quotes removed. Input redirections and
+ * `&> f`, `>& f`), each as written with its quotes removed. Input redirections and
  * heredoc delimiters are not included.
  */
 export function redirectTargets(command: string): string[] {
@@ -206,8 +206,17 @@ function readShell(command: string): { segments: ShellSegment[]; written: string
       while (command[j] === ">" || command[j] === "<" || command[j] === "|") j++;
       if (command[j] === "&") {
         j++;
-        while (j < command.length && /[0-9-]/.test(command[j] as string)) j++;
+        let k = j;
+        while (k < command.length && /[0-9-]/.test(command[k] as string)) k++;
+        const duplicatesFd = k > j && (k === command.length || /[\s;&|()<>]/.test(command[k] as string));
+        if (c === "<" || duplicatesFd) {
+          i = k;
+          continue;
+        }
+        // `>&file`: both streams go to a file, like `&>`.
         i = j;
+        skippedIsOutput = true;
+        skipNextWord = true;
         continue;
       }
       // `<<-EOF`: the dash belongs to the operator, not to the delimiter word.
@@ -435,6 +444,8 @@ export type HeredocScan = {
   text: string;
   /** True when an unquoted heredoc body (`<<EOF`, `<<-EOF`) holds `$(…)` or a backtick. */
   substitutingBody: boolean;
+  /** The heredoc bodies that were removed from `text`, one after another. */
+  dataBodies: string;
 };
 
 /**
@@ -453,6 +464,7 @@ export type HeredocScan = {
 export function scanHeredocs(command: string): HeredocScan {
   let out = "";
   let substitutingBody = false;
+  let dataBodies = "";
   const frames: Frame[] = [{ close: null, depth: 0, cmdStart: 0, inDouble: false, data: true }];
   let pending: PendingHeredoc[] = [];
   const top = (): Frame => frames[frames.length - 1] as Frame;
@@ -489,6 +501,7 @@ export function scanHeredocs(command: string): HeredocScan {
       const substitutes = !h.quoted && BODY_SUBSTITUTION_RE.test(command.slice(i, bodyEnd));
       if (substitutes) substitutingBody = true;
       if (!h.data || substitutes) out += command.slice(i, end);
+      else dataBodies += command.slice(i, bodyEnd);
       i = end;
     }
     pending = [];
@@ -639,7 +652,7 @@ export function scanHeredocs(command: string): HeredocScan {
     out += c;
     i++;
   }
-  return { text: out, substitutingBody };
+  return { text: out, substitutingBody, dataBodies };
 }
 
 /** The command with the bodies of data heredocs removed (`scanHeredocs`). */

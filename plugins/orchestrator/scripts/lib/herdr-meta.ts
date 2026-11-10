@@ -1,5 +1,5 @@
-// Pure core of herdr sidebar publishing: whether herdr is the multiplexer, and
-// the `herdr pane report-metadata` argv for a record. No IO.
+// Pure core of herdr sidebar publishing: the herdr ids a record stores, and the
+// `herdr pane report-metadata` argv for a record. No IO.
 //
 // herdr's behaviour this encodes: the pane id must come before the options; a
 // report that sets anything replaces the source's whole entry, so every publish
@@ -7,32 +7,20 @@
 // source and must strictly increase, or the report is ignored; `--clear-title`
 // alone keeps the labels; an empty label value is refused.
 
+import type { SessionMux } from "./mux-choice.ts";
 import { type OrchestratorDep, type OrchestratorHerdr, type OrchestratorRecord, progressOf } from "./state-core.ts";
 
 /** The `--source` every orchestrator report carries. */
 export const HERDR_SOURCE = "orchestrator";
 
 /**
- * True when the session runs under herdr, by the rule the launcher's
- * multiplexer detection applies: `ORCHESTRATOR_MULTIPLEXER` is not `tmux`;
- * either it is `herdr` or `HERDR_ENV` is `1`; and `HERDR_PANE_ID` is non-empty.
- * tmux started inside herdr inherits `HERDR_PANE_ID`, which is why the forced
- * value wins.
- */
-export function herdrDetected(env: Readonly<Record<string, string | undefined>>): boolean {
-  const forced = env.ORCHESTRATOR_MULTIPLEXER;
-  if (forced === "tmux") return false;
-  if (forced !== "herdr" && env.HERDR_ENV !== "1") return false;
-  return typeof env.HERDR_PANE_ID === "string" && env.HERDR_PANE_ID !== "";
-}
-
-/**
  * The herdr ids a record stores for this session: the pane, tab and workspace
- * from `HERDR_PANE_ID`, `HERDR_TAB_ID` and `HERDR_WORKSPACE_ID`, or null when
- * herdr is not detected (`herdrDetected`). An empty tab or workspace is null.
+ * from `HERDR_PANE_ID`, `HERDR_TAB_ID` and `HERDR_WORKSPACE_ID`, or null unless
+ * `session` says this session runs in herdr. tmux started inside herdr inherits
+ * those variables, so they alone prove nothing. An empty tab or workspace is null.
  */
-export function herdrIdsOf(env: Readonly<Record<string, string | undefined>>): OrchestratorHerdr | null {
-  if (!herdrDetected(env)) return null;
+export function herdrIdsOf(env: Readonly<Record<string, string | undefined>>, session: SessionMux): OrchestratorHerdr | null {
+  if (!session.ok || session.mux !== "herdr") return null;
   return { pane: env.HERDR_PANE_ID ?? "", tab: env.HERDR_TAB_ID || null, workspace: env.HERDR_WORKSPACE_ID || null };
 }
 

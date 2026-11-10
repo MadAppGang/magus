@@ -15,6 +15,7 @@ import { bandModel, listModel, panelFit, screenNote, sessionModel } from './layo
 import { bandTree, type BandActions } from './band'
 import { panelTree, type PanelActions } from './panel'
 import * as controls from './controls'
+import { herdrFallbackArgv } from './mux'
 import * as poll from './poll'
 
 // The three atoms. plugin and key are literals HERE: the scan reads no reference from another file.
@@ -25,6 +26,9 @@ const SCREEN = atom({ plugin: 'orchestrator', key: 'screen' } as const, { key: n
 function text(v: unknown): string | undefined {
   return typeof v === 'string' && v !== '' ? v : undefined
 }
+
+// True once herdr answered at its fallback path: later calls go straight there.
+let herdrAtFallback = false
 
 // The interface itself may not be kept, so each effect is one closure spelling it out.
 function bindHost($: EngineInterface): Host {
@@ -42,15 +46,21 @@ function bindHost($: EngineInterface): Host {
       claudeConfigDir: text(await $.env.get('CLAUDE_CONFIG_DIR')),
       stateDir: text(await $.env.get('ORCHESTRATOR_STATE_DIR')),
       tmuxPane: text(await $.env.get('TMUX_PANE')),
-      herdrEnv: text(await $.env.get('HERDR_ENV')),
-      herdrPane: text(await $.env.get('HERDR_PANE_ID')),
-      multiplexer: text(await $.env.get('ORCHESTRATOR_MULTIPLEXER')),
     }),
     list: dir => $.fs.list(dir).then(entries => entries.map(e => ({ name: e.name })), () => []),
     read: path => $.fs.read(path).then(t => (typeof t === 'string' ? t : null), () => null),
     exists: path => $.fs.exists(path).catch(() => false),
-    run: (argv, timeoutMs) =>
-      $.process.run(argv, { timeoutMs }).then(r => ({ exitCode: r.exitCode, stdout: r.stdout, stderr: r.stderr }), () => null),
+    run: async (argv, timeoutMs) => {
+      const exec = (a: readonly string[]) =>
+        $.process.run(a, { timeoutMs }).then(r => ({ exitCode: r.exitCode, stdout: r.stdout, stderr: r.stderr }), () => null)
+      const fallback = argv[0] === 'herdr' ? herdrFallbackArgv(argv, text(await $.env.get('HOME'))) : null
+      if (fallback !== null && herdrAtFallback) return exec(fallback)
+      const first = await exec(argv)
+      if (first !== null || fallback === null) return first
+      const second = await exec(fallback)
+      if (second !== null) herdrAtFallback = true
+      return second
+    },
     sessionId: () => $.session.id(),
     toast: (msg, timeoutMs) => $.ui.toast(msg, timeoutMs === undefined ? undefined : { timeoutMs }),
     fill: msg => $.prompt.fill({ text: msg, mode: 'replace' }).then(r => r.isFilled, () => false),

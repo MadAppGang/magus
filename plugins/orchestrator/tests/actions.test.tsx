@@ -2,7 +2,7 @@ import { expect } from "claude-code/testing";
 import { test } from "./kit";
 import { machine, seedFamily, start, captures } from "./fake-machine";
 import { SURFACES, mountBand, mountPane, press, pressRow, rowAction, textOf, SHOW_PANE_ID } from "./ui";
-import { CHILD, MANAGER, taskRows, NOW } from "./testdata";
+import { CHILD, MANAGER, taskRows, NOW, ROOT } from "./testdata";
 
 for (const surface of SURFACES) {
   test(`[REQ-3, REQ-6, REQ-9] TEST-1401 [R1.3, R1.6; §6 Mod wiring] ${surface} Show opens first, displays details/screen, and Hide reaches ui.close next`, async ($, on) => {
@@ -58,6 +58,7 @@ for (const surface of SURFACES) {
 
   test(`[REQ-3, REQ-6, REQ-9] TEST-1402 [R1.6, R2.1] ${surface} herdr wins over inherited tmux for Show and Jump`, async ($, on) => {
     const h = machine(on, { mux: "herdr" }), records = seedFamily(h);
+    h.seed({ ...records.find(r => r.key === MANAGER)!, herdr: { pane: "own-herdr", tab: "own-tab", workspace: "workspace" } });
     h.seed({ ...records.find(r => r.key === CHILD)!, herdr: { pane: "child-pane", tab: "child-tab", workspace: "workspace" } });
     await start($, h, surface);
     const band = await mountBand($, surface);
@@ -81,6 +82,42 @@ for (const surface of SURFACES) {
     expect(await textOf(pane)).toContain("Build API");
     expect(await textOf(pane)).toContain("not reachable from this multiplexer");
     expect(captures(h)).toEqual([]);
+  });
+
+  test("[REQ-432] TEST-1402 " + surface + " inherited herdr env cannot re-address a tmux self record", async ($, on) => {
+    const h = machine(on, { mux: "herdr" }), records = seedFamily(h);
+    h.seed({ ...records.find(r => r.key === CHILD)!, herdr: { pane: "child-pane", tab: "tab", workspace: "w" } });
+    await start($, h, surface);
+    const band = await mountBand($, surface);
+    await pressRow(band, "child-01", "Jump");
+    expect(h.toasts.join("\n")).toContain("not reachable from this multiplexer");
+    expect(h.commands.filter(a => a.includes("focus"))).toEqual([]);
+  });
+
+  test("[REQ-432] TEST-1402 " + surface + " missing PATH herdr retries once at home and remembers the binary for Show", async ($, on) => {
+    const h = machine(on, { mux: "herdr", herdrAtFallback: true }), records = seedFamily(h);
+    for (const key of [MANAGER, CHILD]) h.seed({ ...records.find(r => r.key === key)!, herdr: { pane: key === MANAGER ? "own-herdr" : "child-pane", tab: "tab", workspace: "w" } });
+    await start($, h, surface);
+    const band = await mountBand($, surface), before = h.commands.length;
+    await pressRow(band, "child-01", "Jump");
+    expect(h.commands.slice(before)).toEqual([
+      ["herdr", "agent", "focus", "child-pane"],
+      [ROOT + "/.local/bin/herdr", "agent", "focus", "child-pane"],
+    ]);
+    await pressRow(band, "child-01", "Show");
+    await h.clock.settle();
+    expect(captures(h)[0]).toEqual([ROOT + "/.local/bin/herdr", "pane", "read", "child-pane", "--source", "visible", "--format", "text"]);
+    expect(h.commands.filter(a => a[0] === "herdr")).toHaveLength(1);
+  });
+
+  test("[REQ-432] TEST-1402 " + surface + " both herdr executables refused retain the unavailable toast", async ($, on) => {
+    const h = machine(on, { mux: "herdr", herdrUnavailable: true }), records = seedFamily(h);
+    for (const key of [MANAGER, CHILD]) h.seed({ ...records.find(r => r.key === key)!, herdr: { pane: key === MANAGER ? "own-herdr" : "child-pane", tab: "tab", workspace: "w" } });
+    await start($, h, surface);
+    const band = await mountBand($, surface);
+    await pressRow(band, "child-01", "Jump");
+    expect(h.toasts.length).toBeGreaterThan(0);
+    expect(h.commands.some(a => a[0] === ROOT + "/.local/bin/herdr")).toBe(true);
   });
 
   test(`[REQ-3, REQ-6, REQ-9] TEST-1403 [R1.6; final Open decision] ${surface} Open is a button using opener fallback and a final URL toast`, async ($, on) => {

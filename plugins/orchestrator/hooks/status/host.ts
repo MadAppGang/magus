@@ -25,9 +25,6 @@ export type OrchestratorEnv = {
   claudeConfigDir?: string
   stateDir?: string
   tmuxPane?: string
-  herdrEnv?: string
-  herdrPane?: string
-  multiplexer?: string
 }
 
 export type RunResult = { exitCode: number; stdout: string; stderr: string }

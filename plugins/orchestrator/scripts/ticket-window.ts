@@ -43,14 +43,18 @@
 //                 && <launch>, with the claim id. Opens nothing, takes no lock, needs no multiplexer
 //
 // The multiplexer: ORCHESTRATOR_MULTIPLEXER=tmux|herdr decides when set. Else
-// herdr when HERDR_ENV=1 and HERDR_PANE_ID are set and `herdr pane current`
-// answers, else tmux when TMUX is set. Under herdr the ticket opens in a new
-// tab of the caller's workspace, without taking the focus.
+// the ticket opens where this session runs (herdr when HERDR_ENV=1 and
+// HERDR_PANE_ID are set and that pane hosts this process, else tmux when TMUX
+// is set), unless the answer stored by orch-config.ts picks the other one in an
+// ambiguous case: herdr inside tmux, or tmux with herdr installed. Under herdr
+// the ticket opens in a new tab, without taking the focus: in the caller's
+// workspace, or from tmux in HERDR_WORKSPACE_ID, else the focused workspace.
 //
 // Exit codes:
 //   0  opened (or, with --dry-run, would open; with --print-line, printed)
 //   1  bad input, not inside tmux or herdr, --session under herdr, a tmux, herdr or git error,
-//      or the claim could not be written (nothing is typed or printed then)
+//      no herdr server for a stored herdr choice, or the claim could not be
+//      written (nothing is typed or printed then)
 //   2  the main checkout is not on its default branch (the worktree would start from it)
 //   3  the worktree already exists
 //   6  the checkout's lock is busy (--no-wait, or 16 minutes of waiting)
@@ -74,14 +78,20 @@
 // command defined as a shell function in the user's rc file works too.
 //
 // Internal: --deliver-to <pane> --mux tmux|herdr --prompt <text> [--lock <dir>]
-// runs the second stage. Its exit codes: 0 sent or ready, 4 TIMEOUT, 5 GONE,
-// 7 UNTRUSTED, 8 NOT_SENT.
+// [--trust-after <text>] [--expect-terminal <id>] runs the second stage. A
+// refusal to start counts only after the last occurrence of --trust-after on
+// screen. With --expect-terminal, herdr must still report that terminal for the
+// pane before every input; otherwise nothing more is sent. Its exit codes:
+// 0 sent or ready, 4 TIMEOUT, 5 GONE, 7 UNTRUSTED, 8 NOT_SENT.
 
 import { randomUUID } from "node:crypto";
-import { appendFileSync, existsSync, mkdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, realpathSync, rmSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
-import { type StoreContext, claudeConfigDirOf, ownedKey, readIdentity, writeClaim } from "./lib/record-store.ts";
+import { type HerdrResult, type HerdrRunner, HERDR_TIMEOUT_MS, herdrRunner, resolveHerdrBin } from "./lib/herdr-cli.ts";
+import { chooseStartMux } from "./lib/mux-choice.ts";
+import { resolveMux } from "./lib/mux-io.ts";
+import { type StoreContext, awaitLockHandOver, claudeConfigDirOf, handLockTo, ownedKey, pidAlive, readIdentity, writeAtomic, writeClaim } from "./lib/record-store.ts";
 import { type OrchestratorClaim, isSessionId, launchKey, normaliseTicketId } from "./lib/state-core.ts";
 import { childTicket, repoFromRemoteUrl } from "./lib/ticket.ts";
 import {
@@ -93,7 +103,7 @@ import {
   buildHerdrRun,
   buildHerdrTabCreate,
   buildLaunchLine,
-  detectMultiplexer,
+  herdrFocusedWorkspace,
   herdrPaneOfTab,
   isClaudeForeground,
   lockIsStale,
@@ -101,6 +111,7 @@ import {
   mainCheckoutFromCommonDir,
   parseArgs,
   parseHerdrPane,
+  parseHerdrPaneState,
   parseHerdrTabCreate,
   promptStillInInput,
   screenShowsTrustError,
@@ -121,6 +132,8 @@ const DRY_RUN_CLAIM = "l-dry-run";
 
 /** How long a start waits for another start in the same checkout. */
 const LOCK_WAIT_MS = 16 * 60_000;
+/** How long stage 2 waits to be named in the lock before leaving the lock alone. */
+const LOCK_HAND_OVER_WAIT_MS = 2_000;
 /** How long the second stage waits for Claude Code: git pull, magus update and boot; magus may ask a question. */
 const DELIVER_DEADLINE_MS = 15 * 60_000;
 /** How long the new shell may take to draw its prompt. */
@@ -129,6 +142,10 @@ const SHELL_READY_DEADLINE_MS = 15_000;
 const HERDR_AGENT_POLL_MS = 500;
 /** How long stage 2 waits for Claude Code to show it took a submitted prompt. */
 const LANDED_WAIT_MS = 15_000;
+/** How much longer than its own `--timeout` a blocking herdr call may run. */
+const HERDR_WAIT_GRACE_MS = 2_000;
+const NO_HERDR_SERVER =
+  "herdr is your stored choice for new ticket windows, but no herdr server answers. Start herdr, or run orch-config.ts multiplexer --set tmux.";
 
 let heldLock: string | undefined;
 
@@ -158,14 +175,30 @@ function run(cmd: string[], cwd?: string): { ok: boolean; out: string } {
   }
 }
 
-/** Like `run`, but stdout only, so a JSON answer is not mixed with warnings on stderr. */
-function runStdout(cmd: string[]): { ok: boolean; out: string } {
-  try {
-    const p = Bun.spawnSync(cmd, { stdout: "pipe", stderr: "pipe" });
-    return { ok: p.exitCode === 0, out: p.exitCode === 0 ? p.stdout.toString().trim() : p.stderr.toString().trim() };
-  } catch (err) {
-    return { ok: false, out: err instanceof Error ? err.message : String(err) };
-  }
+let herdrExec: HerdrRunner | undefined;
+
+/** One herdr call, through the resolved binary, with a timeout. */
+function herdr(args: readonly string[], timeoutMs?: number): HerdrResult {
+  herdrExec ??= herdrRunner(resolveHerdrBin(process.env, process.env.HOME || homedir()) ?? "herdr");
+  return herdrExec(args, timeoutMs);
+}
+
+/** A herdr call's whole output, for reading a screen. */
+function herdrAll(args: readonly string[]): { ok: boolean; out: string } {
+  const r = herdr(args);
+  return { ok: r.ok, out: (r.stdout + r.stderr).trim() };
+}
+
+/** A herdr call's stdout, so a JSON answer is not mixed with warnings on stderr; on failure its stderr. */
+function herdrJson(args: readonly string[]): { ok: boolean; out: string } {
+  const r = herdr(args);
+  if (r.timedOut) return { ok: false, out: `herdr did not answer within ${HERDR_TIMEOUT_MS} ms` };
+  return { ok: r.ok, out: (r.ok ? r.stdout : r.stderr).trim() };
+}
+
+/** Whether the pane's agent reaches one of `until` within `ms`. */
+function herdrAgentReaches(pane: string, until: readonly string[], ms: number): boolean {
+  return herdr(["agent", "wait", pane, ...until.flatMap((state) => ["--until", state]), "--timeout", String(ms)], ms + HERDR_WAIT_GRACE_MS).ok;
 }
 
 function resolveStateDir(): string {
@@ -173,16 +206,6 @@ function resolveStateDir(): string {
     return stateDir(process.env, process.env.HOME || homedir());
   } catch (err) {
     return fail(err instanceof Error ? err.message : String(err));
-  }
-}
-
-function pidAlive(pid: number): boolean {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (err) {
-    // EPERM: the process exists but belongs to someone else.
-    return (err as NodeJS.ErrnoException).code === "EPERM";
   }
 }
 
@@ -198,6 +221,8 @@ interface MuxIO {
   screen(pane: string): string;
   /** Whether Claude Code is the pane's foreground program and the multiplexer sees it at rest. */
   claudeUp(pane: string): boolean;
+  /** Whether the multiplexer reports that the pane's agent has finished a turn. */
+  finishedTurn(pane: string): boolean;
   /** The pane's working directory, or null when it cannot be read. */
   cwd(pane: string): string | null;
   /** Types one line into the pane's interactive shell and presses Enter. */
@@ -207,9 +232,10 @@ interface MuxIO {
   sendEnter(pane: string): void;
   /**
    * Whether Claude Code took a submitted prompt, waiting up to LANDED_WAIT_MS.
-   * `before` is the screen as it was just before the prompt was typed.
+   * `before` is the screen as it was just before the prompt was typed;
+   * `wasDone` is `finishedTurn` as it was then.
    */
-  landed(pane: string, prompt: string, before: string): boolean;
+  landed(pane: string, prompt: string, before: string, wasDone: boolean): boolean;
 }
 
 /** The part of a prompt looked for on screen: its first 40 characters, up to the first line break. */
@@ -251,6 +277,7 @@ const tmuxIO: MuxIO = {
     const fg = run(["tmux", "display", "-p", "-t", pane, "#{pane_current_command}"]);
     return fg.ok && isClaudeForeground(fg.out);
   },
+  finishedTurn: () => false,
   cwd: (pane) => {
     const p = run(["tmux", "display", "-p", "-t", pane, "#{pane_current_path}"]);
     return p.ok && p.out !== "" ? p.out : null;
@@ -271,27 +298,42 @@ const tmuxIO: MuxIO = {
 };
 
 const herdrIO: MuxIO = {
-  exists: (pane) => run(["herdr", "pane", "get", pane]).ok,
-  visible: (pane) => run(["herdr", "pane", "read", pane, "--source", "visible"]).out,
-  screen: (pane) => run(["herdr", "pane", "read", pane, "--source", "recent-unwrapped", "--lines", "200"]).out,
-  // herdr recognises Claude Code in a pane and reports when it is idle.
-  claudeUp: (pane) => run(["herdr", "agent", "wait", pane, "--until", "idle", "--timeout", String(HERDR_AGENT_POLL_MS)]).ok,
+  exists: (pane) => herdr(["pane", "get", pane]).ok,
+  visible: (pane) => herdrAll(["pane", "read", pane, "--source", "visible"]).out,
+  screen: (pane) => herdrAll(["pane", "read", pane, "--source", "recent-unwrapped", "--lines", "200"]).out,
+  // herdr recognises Claude Code in a pane and reports when it is at rest:
+  // idle, or done when it finished a turn while unfocused.
+  claudeUp: (pane) => herdrAgentReaches(pane, ["idle", "done"], HERDR_AGENT_POLL_MS),
+  finishedTurn: (pane) => {
+    const answer = herdr(["pane", "get", pane]);
+    return answer.ok && parseHerdrPaneState(answer.stdout)?.status === "done";
+  },
   cwd: (pane) => {
-    const p = runStdout(["herdr", "pane", "get", pane]);
+    const p = herdrJson(["pane", "get", pane]);
     return p.ok ? parseHerdrPane(p.out)?.cwd || null : null;
   },
-  runLine: (pane, line) => run(buildHerdrRun(pane, line)),
+  runLine: (pane, line) => herdrAll(buildHerdrRun(pane, line).slice(1)),
   sendText: (pane, text) => {
-    run(["herdr", "pane", "send-text", pane, text]);
+    herdr(["pane", "send-text", pane, text]);
   },
   sendEnter: (pane) => {
-    run(["herdr", "pane", "send-keys", pane, "enter"]);
+    herdr(["pane", "send-keys", pane, "enter"]);
   },
   // herdr tracks the agent's state: a prompt Claude Code took turns it to
-  // working, or to done when the turn is already over.
-  landed: (pane) =>
-    run(["herdr", "agent", "wait", pane, "--until", "working", "--until", "done", "--timeout", String(LANDED_WAIT_MS)]).ok,
+  // working, or to done when the turn is already over. A pane that was already
+  // done would satisfy `done` at once, so only `working` proves anything there.
+  landed: (pane, _prompt, _before, wasDone) => herdrAgentReaches(pane, wasDone ? ["working"] : ["working", "done"], LANDED_WAIT_MS),
 };
+
+/** Why the pane no longer holds `terminal` (or, with `needAgent`, has no agent to type to); null while it does. */
+function witnessLost(pane: string, terminal: string, needAgent: boolean): string | null {
+  const answer = herdr(["pane", "get", pane], HERDR_TIMEOUT_MS);
+  if (answer.errorCode === "pane_not_found") return "the pane closed";
+  const state = answer.ok ? parseHerdrPaneState(answer.stdout) : null;
+  if (state === null) return "herdr gave no readable answer for the pane";
+  if (state.terminal !== terminal) return `the pane now holds another terminal (${state.terminal ?? "none"}, expected ${terminal})`;
+  return needAgent && state.agent === null ? "no agent runs in the pane any more" : null;
+}
 
 function ioFor(mux: Multiplexer): MuxIO {
   switch (mux) {
@@ -335,7 +377,7 @@ switch (parsed.args.mode) {
 // Claude Code is its foreground program and its screen has been unchanged for
 // 2 s. A `claude -w` that refuses an untrusted checkout exits at once; that is
 // logged as UNTRUSTED and the lock is released straight away.
-function deliver({ pane, prompt, lock, mux }: DeliverArgs): never {
+function deliver({ pane, prompt, lock, mux, trustAfter, expectTerminal }: DeliverArgs): never {
   const io = ioFor(mux);
   const logFile = join(resolveStateDir(), "ticket-window.log");
   const log = (msg: string): void => {
@@ -346,23 +388,41 @@ function deliver({ pane, prompt, lock, mux }: DeliverArgs): never {
     }
   };
 
+  // Released once: after that the path may name the next start's lock. Only a
+  // lock that names this stage is removed, which also keeps the starter's
+  // hand-off from landing on a lock taken after this one was freed.
+  let heldByThisStage = lock;
+  const freeLock = (): void => {
+    if (heldByThisStage !== undefined && awaitLockHandOver(heldByThisStage, LOCK_HAND_OVER_WAIT_MS)) releaseLock(heldByThisStage);
+    heldByThisStage = undefined;
+  };
+  const gone = (why: string): never => {
+    log(`${pane} GONE: ${why}; not typed: ${prompt}`);
+    freeLock();
+    process.exit(EXIT_GONE);
+  };
+  // herdr addresses input by pane id alone and a restart reuses ids, so the
+  // terminal is read again right before each input.
+  const requireWitness = (needAgent: boolean): void => {
+    if (expectTerminal === undefined) return;
+    const lost = witnessLost(pane, expectTerminal, needAgent);
+    if (lost !== null) gone(lost);
+  };
+
   const deadline = Date.now() + DELIVER_DEADLINE_MS;
   let last = "";
   let stableSince = Date.now();
   for (;;) {
     if (Date.now() > deadline) {
       log(`${pane} TIMEOUT: Claude Code never became ready; not typed: ${prompt}`);
-      releaseLock(lock);
+      freeLock();
       process.exit(EXIT_TIMEOUT);
     }
-    if (!io.exists(pane)) {
-      log(`${pane} GONE: the pane closed before Claude Code was ready; not typed: ${prompt}`);
-      releaseLock(lock);
-      process.exit(EXIT_GONE);
-    }
+    requireWitness(false);
+    if (expectTerminal === undefined && !io.exists(pane)) gone("the pane closed before Claude Code was ready");
     const screen = io.screen(pane);
-    if (screenShowsTrustError(screen)) {
-      releaseLock(lock);
+    if (screenShowsTrustError(screen, trustAfter)) {
+      freeLock();
       const dir = io.cwd(pane) ?? "the checkout";
       log(
         `${pane} UNTRUSTED: Claude Code has not been trusted in ${dir}, so claude -w refused to start. ` +
@@ -380,7 +440,7 @@ function deliver({ pane, prompt, lock, mux }: DeliverArgs): never {
   }
 
   // Everything the typed line does is finished: the next start in this checkout may go.
-  releaseLock(lock);
+  freeLock();
   if (!prompt) {
     log(`${pane} READY: Claude Code is up; no prompt to type`);
     process.exit(0);
@@ -404,18 +464,24 @@ function deliver({ pane, prompt, lock, mux }: DeliverArgs): never {
   }
 
   const typeOnce = (): void => {
+    requireWitness(true);
     io.sendText(pane, prompt);
     Bun.sleepSync(2000);
+    requireWitness(true);
     io.sendEnter(pane);
   };
+  const wasDone = io.finishedTurn(pane);
   typeOnce();
 
   // A prompt still in the input box gets one more Enter, never another copy.
   Bun.sleepSync(3000);
   const secondEnter = promptStillInInput(io.screen(pane), prompt);
-  if (secondEnter) io.sendEnter(pane);
+  if (secondEnter) {
+    requireWitness(true);
+    io.sendEnter(pane);
+  }
 
-  if (io.landed(pane, prompt, settled)) {
+  if (io.landed(pane, prompt, settled, wasDone)) {
     log(secondEnter ? `${pane} SENT (needed a second Enter): ${prompt}` : `${pane} SENT: ${prompt}`);
     process.exit(0);
   }
@@ -431,7 +497,7 @@ function deliver({ pane, prompt, lock, mux }: DeliverArgs): never {
   }
   typeOnce();
   log(`${pane} SENT (retyped once: the first copy was dropped): ${prompt}`);
-  if (io.landed(pane, prompt, before)) process.exit(0);
+  if (io.landed(pane, prompt, before, wasDone)) process.exit(0);
 
   const reason = promptStillInInput(io.screen(pane), prompt)
     ? "the retyped copy is still in the input box"
@@ -578,7 +644,7 @@ function takeLock(lockPath: string, name: string, noWait: boolean): void {
     try {
       mkdirSync(lockPath); // the atomic step
       heldLock = lockPath;
-      writeFileSync(infoFile, JSON.stringify({ pid: process.pid, name, since: Date.now() }));
+      writeAtomic(infoFile, JSON.stringify({ pid: process.pid, name, since: Date.now() }));
       return;
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code !== "EEXIST") fail(`cannot create the lock ${lockPath}: ${String(err)}`);
@@ -605,21 +671,17 @@ function takeLock(lockPath: string, name: string, noWait: boolean): void {
   }
 }
 
-function chooseMultiplexer(args: StartArgs): Multiplexer {
-  const detected = detectMultiplexer(process.env, () => run(["herdr", "pane", "current"]).ok);
-  if (detected.ok) {
-    if (detected.mux === "herdr" && args.session !== undefined) {
-      fail("--session is tmux only; under herdr the ticket opens as a tab in the current workspace (ORCHESTRATOR_MULTIPLEXER=tmux forces tmux)");
-    }
-    return detected.mux;
-  }
-  // A named tmux session can be created from outside any multiplexer.
-  if (args.session !== undefined && !process.env.ORCHESTRATOR_MULTIPLEXER) return "tmux";
-  return fail(
-    detected.error === "not inside tmux or herdr"
-      ? "not inside tmux or herdr; run it from a tmux pane or a herdr tab, or pass --session <name> for a tmux session"
-      : detected.error,
-  );
+/** Where this start opens, and whether the session itself runs in tmux. */
+function windowMuxFor(args: StartArgs): { mux: Multiplexer; fromTmux: boolean } {
+  const resolved = resolveMux(process.env, { home: process.env.HOME || homedir(), stateDir: resolveStateDir() });
+  const start = chooseStartMux({
+    session: resolved.session,
+    windows: resolved.windows,
+    named: args.session !== undefined,
+    forced: Boolean(process.env.ORCHESTRATOR_MULTIPLEXER),
+  });
+  if (!start.ok) fail(start.error);
+  return { mux: start.mux, fromTmux: resolved.session.ok && resolved.session.mux === "tmux" };
 }
 
 function resolveSession(sessionArg: string | undefined): string {
@@ -635,10 +697,21 @@ function herdrWorkspace(): string {
   const fromEnv = process.env.HERDR_WORKSPACE_ID;
   if (fromEnv) return fromEnv;
   const self = process.env.HERDR_PANE_ID;
-  const answer = runStdout(self ? ["herdr", "pane", "get", self] : ["herdr", "pane", "current"]);
+  const answer = herdrJson(self ? ["pane", "get", self] : ["pane", "current"]);
   if (!answer.ok) fail(`could not read the current herdr pane: ${answer.out}`);
   const workspace = parseHerdrPane(answer.out)?.workspaceId;
   if (!workspace) fail(`herdr did not name the current pane's workspace: ${answer.out}`);
+  return workspace;
+}
+
+/** The workspace for a new tab opened from a tmux session, which has no herdr pane of its own. */
+function herdrWorkspaceFromTmux(): string {
+  const fromEnv = process.env.HERDR_WORKSPACE_ID;
+  if (fromEnv) return fromEnv;
+  const answer = herdrJson(["workspace", "list"]);
+  if (!answer.ok) fail(NO_HERDR_SERVER);
+  const workspace = herdrFocusedWorkspace(answer.out);
+  if (workspace === null) fail(`herdr names no focused workspace to open the tab in. Focus one, or run orch-config.ts multiplexer --set tmux: ${answer.out}`);
   return workspace;
 }
 
@@ -651,21 +724,25 @@ function tmuxOpenArgv(session: string, hasSession: boolean, name: string, dir: s
 }
 
 /** Opens the tab and returns its tab id and pane id. */
-function openHerdrTab(argv: string[]): { tabId: string; pane: string } {
-  const created = runStdout(argv);
-  if (!created.ok) fail(`herdr could not open the tab: ${created.out}`);
-  const tab = parseHerdrTabCreate(created.out);
-  if (tab === null || tab.tabId === "") fail(`herdr opened a tab but its answer did not name it: ${created.out}`);
+function openHerdrTab(argv: string[], fromTmux: boolean): { tabId: string; pane: string } {
+  // One call only: repeating a failed create could open a second tab.
+  const created = herdr(argv.slice(1));
+  if (!created.ok) {
+    if (fromTmux && created.errorCode === "server_not_running") fail(NO_HERDR_SERVER);
+    fail(`herdr could not open the tab: ${created.timedOut ? `no answer within ${HERDR_TIMEOUT_MS} ms` : created.stderr.trim()}`);
+  }
+  const tab = parseHerdrTabCreate(created.stdout);
+  if (tab === null || tab.tabId === "") fail(`herdr opened a tab but its answer did not name it: ${created.stdout.trim()}`);
   // An empty root pane id names no pane; look the tab's pane up instead.
   if (tab.paneId !== null && tab.paneId !== "") return { tabId: tab.tabId, pane: tab.paneId };
-  const panes = runStdout(["herdr", "pane", "list"]);
+  const panes = herdrJson(["pane", "list"]);
   const pane = panes.ok ? herdrPaneOfTab(panes.out, tab.tabId) : null;
   if (pane === null) fail(`herdr opened tab ${tab.tabId} but no pane of it was found`);
   return { tabId: tab.tabId, pane };
 }
 
 function start(args: StartArgs): never {
-  const mux = chooseMultiplexer(args);
+  const { mux, fromTmux } = windowMuxFor(args);
   const io = ioFor(mux);
   const session = mux === "tmux" ? resolveSession(args.session) : null;
   const dir = resolveCheckout(args.dir);
@@ -682,7 +759,10 @@ function start(args: StartArgs): never {
   const logFile = join(state, "ticket-window.log");
 
   const hasSession = session === null ? true : run(["tmux", "has-session", "-t", `=${session}`]).ok;
-  const openArgv = session === null ? buildHerdrTabCreate({ dir, name: args.name, workspace: herdrWorkspace() }) : tmuxOpenArgv(session, hasSession, args.name, dir);
+  const openArgv =
+    session === null
+      ? buildHerdrTabCreate({ dir, name: args.name, workspace: fromTmux ? herdrWorkspaceFromTmux() : herdrWorkspace() })
+      : tmuxOpenArgv(session, hasSession, args.name, dir);
 
   if (args.dryRun) {
     const typeArgv =
@@ -730,11 +810,19 @@ function start(args: StartArgs): never {
     if (!created.ok) fail(`tmux could not open the window: ${created.out}`);
     pane = created.out;
   } else {
-    const tab = openHerdrTab(openArgv);
+    const tab = openHerdrTab(openArgv, fromTmux);
     pane = tab.pane;
     tabId = tab.tabId;
   }
   const where = mux === "tmux" ? `${session}, pane ${pane}` : `herdr tab ${tabId}, pane ${pane}`;
+
+  // Stage 2 never runs under herdr without knowing which terminal this pane holds.
+  let terminal: string | null = null;
+  if (mux === "herdr") {
+    const answer = herdr(["pane", "get", pane]);
+    terminal = answer.ok ? (parseHerdrPaneState(answer.stdout)?.terminal ?? null) : null;
+    if (terminal === null) fail(`window opened (${where}) but herdr did not name its terminal; nothing was typed`);
+  }
 
   // Wait for the shell to be ready before typing. A login shell queries the
   // terminal (OSC 11 / DA) while it starts, and those reads eat typeahead: the
@@ -761,12 +849,24 @@ function start(args: StartArgs): never {
 
   // Stage 2, detached: type the prompt once Claude Code is up.
   const child = Bun.spawn(
-    [process.execPath, import.meta.path, "--deliver-to", pane, "--mux", mux, "--prompt", args.prompt, "--lock", lockPath],
+    [
+      process.execPath,
+      import.meta.path,
+      "--deliver-to",
+      pane,
+      "--mux",
+      mux,
+      "--prompt",
+      args.prompt,
+      "--lock",
+      lockPath,
+      ...(terminal !== null ? ["--expect-terminal", terminal] : []),
+    ],
     { stdio: ["ignore", "ignore", "ignore"], detached: true },
   );
   child.unref();
   // From here the lock belongs to stage 2; its pid is what a waiting start checks.
-  writeFileSync(join(lockPath, "info.json"), JSON.stringify({ pid: child.pid, name: args.name, since: Date.now() }));
+  handLockTo(lockPath, child.pid, args.name);
   heldLock = undefined;
 
   console.log(

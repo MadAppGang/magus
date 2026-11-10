@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "timeout",
+    "message": "timed out waiting for agent status"
+  },
+  "id": "cli:agent:wait"
+}

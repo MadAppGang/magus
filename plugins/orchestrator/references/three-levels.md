@@ -9,7 +9,7 @@ most in this setup is the user's attention, so each rule protects it.
 |---|---|---|---|---|
 | **Triage** | One per product | Its own tmux window or herdr tab at the main checkout, on the default branch | Every ticket and the backlog: starting ticket sessions, filing, scoping, placing, links. The plan, the order of work, status, overlap analysis, the product's workbook. Writes no product code | The user, every manager |
 | **Manager** | One per ticket (or two or three given together) | Its own tmux window or herdr tab, its own worktree, its own branch | One ticket from start to release, including its deploy steps and their approvals, and its children | The user, triage, its own children |
-| **Child** | As many as the ticket needs; more than 10 at once only on the user's word | A visible terminal slot in its manager's window or tab, in its repo's own worktree | One named part of the ticket, usually in another repo | Its manager only |
+| **Child** | As many as the ticket needs; more than 10 at once only on the user's word | Beside its manager, in its repo's own worktree: a terminal slot under tmux, a herdr pane of the manager's tab when the manager runs in herdr | One named part of the ticket, usually in another repo | Its manager only |
 
 The user drives triage and the managers directly. The user does not read child panes, so
 everything a child needs from the user goes through its manager.
@@ -284,7 +284,8 @@ commit lands, so running managers also get it by message and pass it to their ch
 |---|---|
 | A long `--prompt` arrives truncated | The child asks its manager to resend; the manager sends the full text by SendMessage |
 | Resuming a session that ran in another folder | `claude --resume` lists only the current folder's sessions. `cd` into that session's worktree first, then resume |
-| Reading a child's screen | `capture-pane` on its slot. `watch-pane` only waits for a pattern, with a short timeout; never use it to read, and never with `mode: "screen"`: on a Claude Code pane it returns every redraw of the spinner, hundreds of thousands of characters |
+| Reading a herdr child | `child-pane.ts list` for its state first; `child-pane.ts read` only to see what it asks |
+| Reading a child's screen under tmux | `capture-pane` on its slot. `watch-pane` only waits for a pattern, with a short timeout; never use it to read, and never with `mode: "screen"`: on a Claude Code pane it returns every redraw of the spinner, hundreds of thousands of characters |
 | `capture-pane` returns only `{"slot": N}` and no text | The installed terminal plugin predates the tmux-mcp that returns the text. Tell the user to update the terminal plugin; do not fall back to raw `tmux` commands, which bypass the slot registry |
 | A child's own terminal slot lands in its manager's window | The child opens every slot it uses with `isolated: true` |
 | A new pane runs its first command several minutes late | Check before resending, or it runs twice |
@@ -302,8 +303,20 @@ commit lands, so running managers also get it by message and pass it to their ch
 | A resume wipes the session scratchpad | Keep scripts that must survive, such as the status script, in a durable folder |
 | The launcher logs `SENT (unconfirmed)` or `NOT_SENT` | Read the pane. Unconfirmed: the prompt is on screen; submit or wait, never type it again. `NOT_SENT`: send the prompt by hand, once |
 | Known issue: the log has shown one prompt `SENT` to two panes about 90 seconds apart. The cause is not explained | Before acting on a `SENT` line, look at the pane it names. If a prompt ran twice, stop the duplicate session |
+| `child-pane.ts` exits 9 | This session is not the live owner of a manager record. Tell the user and stop the herdr steps |
+| `child-pane.ts` exits 10 | This session does not run in herdr. Use the tmux steps |
+| `child-pane.ts` exits 11 | That pane is not a child of this manager. `child-pane.ts list` names the children |
+| `child-pane.ts` exits 12 | 10 children are open. `--past-limit` only on the user's word |
+| `child-pane.ts` exits 13 | The pane's state does not allow it; `status` says which: `not-up`, `blocked`, `working`, `other-agent`, `unbound`, `busy` or `bound` |
+| `child-pane.ts` exits 14 | The layout left a pane outside the tab. `layout.error` names the command that puts it back, and the user runs it |
+| `child-pane.ts` exits 15, or `layout.status` is `refused` | The tab holds panes the orchestrator did not open, and nothing was moved. Tell the user once. Never move or close those panes |
+| A terminal slot in a manager's herdr tab | A slot this manager opened joins the layout. Another agent's slot counts as foreign and the layout refuses |
+| Text sent into a running child | It can reach that child's `!` shell mode, which the guard does not see. Send only what the task needs |
+| A herdr child's prompt outcome | The band shows no `SENT` line. Read `ticket-window.log` in the state directory |
+| The stored multiplexer | It decides only where new ticket windows open, and only in the ambiguous cases. Children always open where their manager runs |
 
 Starts are one at a time per checkout, because `git pull`, plugin updates and worktree
-creation share one main checkout. The launcher enforces this with a lock for ticket starts.
-A child's line (`--print-line`) takes no lock, so the manager keeps child starts to one at a
-time per repo itself.
+creation share one main checkout. The launcher enforces this with a lock for ticket starts,
+and `child-pane.ts` takes the same lock for herdr children. Under tmux a child's line
+(`--print-line`) takes no lock, so the manager keeps child starts to one at a time per repo
+itself.

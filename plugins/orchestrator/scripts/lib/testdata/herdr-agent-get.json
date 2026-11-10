@@ -1,0 +1,27 @@
+{
+  "id": "cli:agent:get",
+  "result": {
+    "agent": {
+      "agent": "claude",
+      "agent_session": {
+        "agent": "claude",
+        "kind": "id",
+        "source": "herdr:claude",
+        "value": "def5cd5b-1566-4099-84c3-4f36648031a6"
+      },
+      "agent_status": "idle",
+      "cwd": "/tmp/repo",
+      "focused": false,
+      "foreground_cwd": "/tmp/repo",
+      "pane_id": "w1:p5",
+      "revision": 3,
+      "state_change_seq": 1,
+      "tab_id": "w1:t1",
+      "terminal_id": "term_65fe052984f745",
+      "terminal_title": "✳ Claude Code",
+      "terminal_title_stripped": "Claude Code",
+      "workspace_id": "w1"
+    },
+    "type": "agent_info"
+  }
+}

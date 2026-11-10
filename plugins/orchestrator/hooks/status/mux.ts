@@ -2,27 +2,34 @@
 // `ps` argv and its parser live in state-core.ts, shared with the store. No IO: poll.ts and
 // controls.ts run the argv through the host.
 
-import type { OrchestratorRecord, OrchestratorTarget } from '../../types'
+import type { OrchestratorRecord, OrchestratorRow, OrchestratorTarget } from '../../types'
 import { parseTmuxField } from '../../scripts/lib/state-core'
 import type { SessionFile } from './model'
 
-/** The multiplexer this session runs in, by the launcher's rule: herdr wins, since it inherits TMUX. */
+/** The multiplexer this session runs in, as its own record says. */
 export type OwnMux = 'tmux' | 'herdr' | 'none'
 
-/** The environment fields the multiplexer rule reads. */
-export type MuxEnv = { tmuxPane?: string; herdrEnv?: string; herdrPane?: string; multiplexer?: string }
+/** The environment field the multiplexer rule reads. */
+export type MuxEnv = { tmuxPane?: string }
 
 /**
- * `ORCHESTRATOR_MULTIPLEXER` forces either; otherwise herdr when `HERDR_ENV=1` and
- * `HERDR_PANE_ID` is set, else tmux when `TMUX_PANE` is set, else none.
+ * Read from this session's own row, which holds what the session hook decided when it bound:
+ * herdr when the row targets herdr, else tmux when `TMUX_PANE` is set, else none. With no row
+ * yet the answer is none, and there are no rows to act on either.
  */
-export function ownMuxOf(env: MuxEnv): OwnMux {
-  const herdr = typeof env.herdrPane === 'string' && env.herdrPane !== ''
-  const tmux = typeof env.tmuxPane === 'string' && env.tmuxPane !== ''
-  if (env.multiplexer === 'tmux') return tmux ? 'tmux' : 'none'
-  if (env.multiplexer === 'herdr') return herdr ? 'herdr' : 'none'
-  if (env.herdrEnv === '1' && herdr) return 'herdr'
-  return tmux ? 'tmux' : 'none'
+export function ownMuxOf(self: Pick<OrchestratorRow, 'target'> | null, env: MuxEnv): OwnMux {
+  if (self === null) return 'none'
+  if (self.target?.mux === 'herdr') return 'herdr'
+  return typeof env.tmuxPane === 'string' && env.tmuxPane !== '' ? 'tmux' : 'none'
+}
+
+/**
+ * The same herdr call through `<home>/.local/bin/herdr`, for a host whose PATH lacks herdr; null
+ * when `argv` does not call herdr or `home` is not absolute.
+ */
+export function herdrFallbackArgv(argv: readonly string[], home: string | undefined): string[] | null {
+  if (argv[0] !== 'herdr' || !home?.startsWith('/')) return null
+  return [`${home}/.local/bin/herdr`, ...argv.slice(1)]
 }
 
 /**

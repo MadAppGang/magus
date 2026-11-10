@@ -70,6 +70,7 @@ import {
 import { repoFromRemoteUrl } from "./lib/ticket.ts";
 import { herdrIdsOf } from "./lib/herdr-meta.ts";
 import { type HerdrOutcome, publishRecord } from "./lib/herdr-publish.ts";
+import { sessionMuxNow } from "./lib/mux-io.ts";
 import { mainCheckoutFromCommonDir, stateDir } from "./lib/window.ts";
 
 const EXIT_BAD_INPUT = 1;
@@ -242,7 +243,8 @@ function register(argv: readonly string[]): void {
   if (!isRole(role)) die(EXIT_BAD_INPUT, `invalid role ${JSON.stringify(role)}; one of: triage manager child`);
   const sessionId = sessionIdOrExit();
   const ctx = storeContext();
-  const cwd = safeCwd(process.env, process.env.HOME || homedir());
+  const home = process.env.HOME || homedir();
+  const cwd = safeCwd(process.env, home);
   const now = Date.now();
 
   // A stray argument never fails the skill's line: an unusable ticket or URL is stored as null.
@@ -252,13 +254,14 @@ function register(argv: readonly string[]): void {
   if (ticketArg !== "" && ticketId === null) console.error(`orch-state: ignoring --ticket ${JSON.stringify(ticketArg)}: not a ticket id`);
   const ticket = ticketId === null ? null : { id: ticketId, url: TICKET_URL_RE.test(urlArg) ? urlArg : null };
 
+  const session = sessionMuxNow(process.env, { home, stateDir: ctx.stateDir });
   let bound: BindResult;
   try {
     bound = bindSession(ctx, {
       sessionId,
       claimId: process.env.ORCHESTRATOR_CLAIM?.trim() || null,
       cwd,
-      herdr: herdrIdsOf(process.env),
+      herdr: herdrIdsOf(process.env, session),
       now,
       self: ownPid(ctx.claudeConfigDir),
       allowClear: true,

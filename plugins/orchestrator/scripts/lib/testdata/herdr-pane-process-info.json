@@ -1,0 +1,49 @@
+{
+  "idle_shell": {
+    "id": "cli:pane:process_info",
+    "result": {
+      "process_info": {
+        "foreground_process_group_id": 81297,
+        "foreground_processes": [
+          {
+            "argv": [
+              "-zsh"
+            ],
+            "argv0": "zsh",
+            "cmdline": "-zsh",
+            "cwd": "/tmp/repo",
+            "name": "zsh",
+            "pid": 81297
+          }
+        ],
+        "pane_id": "w1:p4",
+        "shell_pid": 81297
+      },
+      "type": "pane_process_info"
+    }
+  },
+  "running_command": {
+    "id": "cli:pane:process_info",
+    "result": {
+      "process_info": {
+        "foreground_process_group_id": 88592,
+        "foreground_processes": [
+          {
+            "argv": [
+              "sleep",
+              "25"
+            ],
+            "argv0": "sleep",
+            "cmdline": "sleep 25",
+            "cwd": "/tmp/repo",
+            "name": "sleep",
+            "pid": 88592
+          }
+        ],
+        "pane_id": "w1:p4",
+        "shell_pid": 81297
+      },
+      "type": "pane_process_info"
+    }
+  }
+}

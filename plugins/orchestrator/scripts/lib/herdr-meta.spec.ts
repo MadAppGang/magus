@@ -1,18 +1,15 @@
 import { describe, expect, test } from "bun:test";
-import { herdrDetected, herdrIdsOf, herdrTitle, herdrLabels, herdrMetaArgv, herdrClearArgv } from "./herdr-meta";
+import { herdrIdsOf, herdrTitle, herdrLabels, herdrMetaArgv, herdrClearArgv } from "./herdr-meta";
 import { record, taskRows, NOW, MANAGER } from "../../tests/testdata";
 
 describe("herdr metadata [R2.1–R2.3; §4.5, final metadata decisions]", () => {
-  test("[REQ-10, REQ-11] TEST-401 requires a detected herdr pane and honours forced tmux inside herdr", () => {
+  test("[REQ-432] TEST-401 records ids only when the session decision says herdr, never from inherited env alone", () => {
     const env = { HERDR_ENV: "1", HERDR_PANE_ID: "pane-a", HERDR_TAB_ID: "tab-a", HERDR_WORKSPACE_ID: "workspace-a", TMUX: "inherited" };
-    expect(herdrDetected(env)).toBe(true);
-    expect(herdrIdsOf(env)).toEqual({ pane: "pane-a", tab: "tab-a", workspace: "workspace-a" });
-    expect(herdrDetected({ ...env, ORCHESTRATOR_MULTIPLEXER: "tmux" })).toBe(false);
-    expect(herdrIdsOf({ ...env, ORCHESTRATOR_MULTIPLEXER: "tmux" })).toBeNull();
-    expect(herdrDetected({ HERDR_PANE_ID: "pane-a" })).toBe(false);
-    expect(herdrDetected({ HERDR_ENV: "1" })).toBe(false);
-    expect(herdrDetected({ HERDR_ENV: "yes", HERDR_PANE_ID: "pane-a" })).toBe(false);
-    expect(herdrIdsOf({ ORCHESTRATOR_MULTIPLEXER: "herdr", HERDR_PANE_ID: "pane-a", HERDR_TAB_ID: "" })).toEqual({ pane: "pane-a", tab: null, workspace: null });
+    expect(herdrIdsOf(env, { ok: true, mux: "herdr", source: "detected", nesting: "herdr-in-tmux" })).toEqual({ pane: "pane-a", tab: "tab-a", workspace: "workspace-a" });
+    expect(herdrIdsOf(env, { ok: true, mux: "tmux", source: "detected", nesting: "tmux-in-herdr" })).toBeNull();
+    expect(herdrIdsOf(env, { ok: true, mux: "tmux", source: "forced", nesting: null })).toBeNull();
+    expect(herdrIdsOf(env, { ok: false, error: "not inside tmux or herdr" })).toBeNull();
+    expect(herdrIdsOf({ HERDR_PANE_ID: "pane-a", HERDR_TAB_ID: "" }, { ok: true, mux: "herdr", source: "forced", nesting: null })).toEqual({ pane: "pane-a", tab: null, workspace: null });
   });
 
   test("[REQ-10, REQ-11] TEST-402 only an explicit block marks title; idle labels omit session dependencies", () => {

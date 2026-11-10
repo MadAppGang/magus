@@ -25,10 +25,9 @@
 // with no script). Each of its segments that names `gh` or the launcher must
 // then be one plain command in one of a few explicit forms; the other
 // segments (`cd`, `| head`) pass. Heredoc bodies under a quoted delimiter that
-// only feed data are not read as commands; when such a body is the only place
-// a line names `gh` or the launcher, the line is refused if any segment runs a
-// file or text, since that may be the file the body was written to. Any other
-// command passes untouched.
+// only feed data are not read as commands; when such a body names `gh` or the
+// launcher, the line is refused if any segment runs a file or text, since that
+// may be the file the body was written to. Any other command passes untouched.
 //
 // Tracker MCP servers: every write of a server named for Linear, Jira,
 // YouTrack, Shortcut, ClickUp or Asana, and the issue, label, project and
@@ -118,6 +117,8 @@ const R_LAUNCH =
   "Tickets and ticket sessions belong to triage. Send triage the request by SendMessage, with what you read or ran. " +
   "A child for a part in another repo starts with ticket-window.ts --print-line; --dry-run checks a start and opens nothing.";
 const R_CHILD_LAUNCH = "A child starts no sessions. Send the need to your manager by SendMessage.";
+const R_CHILD_PANES = "A child opens no panes and starts no sessions. Send the need to your manager by SendMessage.";
+const R_CHILD_PANE_FORM = 'Run child-pane.ts as bun --env-file=/dev/null "${CLAUDE_PLUGIN_ROOT}/scripts/child-pane.ts" <command> …, with no assignment in front and no $(…) or backtick.';
 const R_CHILD_TRACKER = "A child never writes to the tracker. Send the finding or ticket need to your manager by SendMessage.";
 
 function rScope(own: OwnTicket | null, ending?: string): string {
@@ -198,6 +199,8 @@ function invokedName(toolInput: unknown): string | null {
 // --- Bash ---------------------------------------------------------------------------------
 
 const LAUNCHER = "ticket-window.ts";
+/** Opens and drives a manager's child panes; it writes a claim, so it counts as a launcher word. */
+const CHILD_PANE = "child-pane.ts";
 
 /** Words that, beside a `gh` word, mean the command could reach the tracker. */
 const TRACKER_WORDS = new Set(["issue", "label", "api", "project", "alias"]);
@@ -284,9 +287,9 @@ function scopeDenial(own: OwnTicket | null, ending: string): GuardDecision {
 
 /**
  * True when a command (heredoc data already removed) could reach the tracker
- * or start a session: a word names the launcher (`ticket-window`), or a word
- * from `TRACKER_WORDS` stands beside a `gh` word or beside a command word that
- * is a variable, which may hold `gh`.
+ * or start a session: a word names the launcher (`ticket-window`) or is exactly
+ * `child-pane.ts`, or a word from `TRACKER_WORDS` stands beside a `gh` word or
+ * beside a command word that is a variable, which may hold `gh`.
  */
 function reachesTracker(text: string): boolean {
   return wordsReach(commandWords(text), shellSegments(text));
@@ -303,7 +306,7 @@ function wordsReach(words: ReadonlySet<string>, segments: readonly { tokens: rea
   let gh = false;
   let tracker = false;
   for (const w of words) {
-    if (w.includes("ticket-window")) return true;
+    if (w.includes("ticket-window") || basename(w) === CHILD_PANE) return true;
     if (basename(w) === "gh") gh = true;
     if (TRACKER_WORDS.has(w)) tracker = true;
   }
@@ -333,6 +336,12 @@ function plainRuntimeHead(head: readonly ShellToken[]): boolean {
     if (!RUNTIME_PLAIN_FLAG_RE.test(t)) return false;
   }
   return true;
+}
+
+/** True when a segment whose command word is `child-pane.ts` has the plain form: no assignment in front, only the runtime flags the skills pass, no `$(…)` or backtick. */
+function plainChildPane(tokens: readonly ShellToken[], at: number): boolean {
+  if (isAssignment(tokens[0]?.text ?? "") || !plainRuntimeHead(tokens.slice(0, at)) || !plainPath(tokens[at] as ShellToken)) return false;
+  return !tokens.some((t, i) => i !== at && /\$\(|`/.test(t.text));
 }
 
 /**
@@ -449,6 +458,11 @@ function decidePlain(role: "manager" | "child", own: OwnTicket | null, tokens: r
     if (tokens.some((t) => t.expanded)) return deny(rForms(role, own, refused("$(…), a backtick or a variable in a gh command")));
     return decideGh(role, own, ghSegment(tokens.slice(at + 1)), k > 0, setsGhRepo);
   }
+  if (word === CHILD_PANE) {
+    if (role === "child") return deny(R_CHILD_PANES);
+    // The script checks its own caller and arguments, so the subcommand is not read here.
+    return plainChildPane(tokens, at) ? ALLOW : deny(R_CHILD_PANE_FORM);
+  }
   if (isMention(tokens, at, wrapped)) return ALLOW;
   return deny(rForms(role, own, refused(`${word}, which names gh or the launcher and is not an allowed form`)));
 }
@@ -464,34 +478,76 @@ function feedsCommands(tokens: readonly ShellToken[], at: number): boolean {
 /** Commands that run the command they are given as arguments. */
 const WRAPPERS = new Set(["nohup", "timeout", "nice", "time", "stdbuf", "setsid", "sudo", "doas", "watch", "caffeinate", "script", "strace", "dtruss", "ionice", "taskset", "chrt", "unbuffer"]);
 
+/** Commands that cannot write a file unless the shell redirects their output. */
+const WRITES_NOTHING = new Set(["cat", "head", "tail", "wc", "ls", "stat", "grep", "egrep", "fgrep", "rg", "echo", "printf"]);
+
+/** True when a segment runs `orch-state.ts`, `ticket-ref.ts` or `child-pane.ts` in the form the skills use. */
+function runsOwnScript(tokens: readonly ShellToken[], at: number): boolean {
+  const word = basename(tokens[at]?.text ?? "");
+  if (word === CHILD_PANE) return plainChildPane(tokens, at);
+  const wrapped = at > 0 && !isAssignment(tokens[at - 1]?.text ?? "");
+  return wrapped && OWN_SCRIPTS.has(word) && isMention(tokens, at, true);
+}
+
 /**
- * For a line whose only mention of `gh` or the launcher sits in a heredoc
- * body that feeds data (`cat > f <<'EOF' … EOF`): the command word of the
- * first segment that runs a file or text, which may be the file that body was
- * just written to; null when no segment does. Such a segment's command word is
- * a shell or another command in `FEEDERS`, `bun` or `node` themselves, a
- * script run by them, a shell keyword, a wrapper, a variable, a path
- * (`./x.sh`, `/tmp/x.sh`), or a bare name the line writes as a file
- * (`cat > job … job`) or names elsewhere as a path's last component
- * (`~/bin/x … x`). This plugin's `orch-state.ts` and
- * `ticket-ref.ts`, run in the form the skills use and named nowhere else on
- * the line, do not count: a heredoc fed to them is their input.
+ * True when nothing on the line can have put a heredoc body in a file: every
+ * output redirection goes to `/dev/null`, and each segment runs one of this
+ * plugin's scripts in the form the skills use, a `cd`, or a literal command
+ * from `WRITES_NOTHING`. Any other command, and any segment with no command
+ * word, may have written one.
+ */
+function writesNoFile(text: string, segments: readonly { tokens: readonly ShellToken[] }[]): boolean {
+  if (redirectTargets(text).some((target) => target !== "/dev/null")) return false;
+  return segments.every(({ tokens }) => {
+    const at = commandWordIndex(tokens);
+    if (at === -1) return false;
+    if (runsOwnScript(tokens, at)) return true;
+    const word = tokens[at]?.text ?? "";
+    if (word === "cd") return at === 0 && tokens.every((t) => !t.expanded);
+    return WRITES_NOTHING.has(word) && isMention(tokens, at, false);
+  });
+}
+
+/**
+ * For a line with a heredoc body that feeds data (`cat > f <<'EOF' … EOF`) and
+ * names `gh` or the launcher: the command word of the first segment that runs
+ * a file or text, which may be the file that body was just written to; null
+ * when no segment does. Such a segment's command word is a shell or another
+ * command in `FEEDERS`, `bun` or `node` themselves, a script run by them, a
+ * shell keyword, a wrapper, a variable, a path (`./x.sh`, `/tmp/x.sh`), or a
+ * bare name the line writes as a file (`cat > job … job`) or names elsewhere
+ * as a path's last component (`~/bin/x … x`). This plugin's `orch-state.ts`,
+ * `ticket-ref.ts` and `child-pane.ts` count too, unless they run in the form
+ * the skills use on a line that can have written no file (`writesNoFile`): a
+ * heredoc fed to them is then their input. The written file is not looked for
+ * by name, since quotes, braces, globs and variables all reach the same name
+ * without spelling it.
  */
 function runsWrittenFile(text: string): string | null {
   const written = new Set<string>();
   for (const w of commandWords(text)) if (w.includes("/")) written.add(basename(w));
   for (const target of redirectTargets(text)) written.add(basename(target));
-  for (const { tokens } of shellSegments(text)) {
+  const segments = shellSegments(text);
+  const noFile = writesNoFile(text, segments);
+  for (const { tokens } of segments) {
     const at = commandWordIndex(tokens);
     if (at === -1) continue;
     const token = tokens[at] as ShellToken;
     const word = basename(token.text);
+    if (word === CHILD_PANE || OWN_SCRIPTS.has(word)) {
+      if (noFile) continue;
+      return word;
+    }
     const wrapped = at > 0 && !isAssignment(tokens[at - 1]?.text ?? "");
-    if (wrapped && OWN_SCRIPTS.has(word) && isMention(tokens, at, true) && text.split(word).length === 2) continue;
     if (wrapped || feedsCommands(tokens, at) || word === "bun" || word === "node") return word;
     if (SHELL_KEYWORDS.has(word) || WRAPPERS.has(word) || token.expanded || token.text.includes("/") || written.has(word)) return word;
   }
   return null;
+}
+
+/** The denial for a line that runs `runner` beside a heredoc body naming `gh` or the launcher. */
+function writtenFileDenial(role: "manager" | "child", own: OwnTicket | null, runner: string): GuardDecision {
+  return deny(rForms(role, own, refused(`${runner}, which runs a file or text, on a line whose heredoc names gh or the launcher`)));
 }
 
 /**
@@ -502,12 +558,13 @@ function runsWrittenFile(text: string): string | null {
  * otherwise. One that reaches it without them is denied when it holds a command or process
  * substitution anywhere (an unquoted heredoc body included), when it holds a
  * `( )` group, a function or a `case` pattern (`hasGroup`), when any segment
- * runs text it is given (`feedsCommands`), or, with more than one segment,
- * when a segment's command word is a variable. Otherwise every segment that
- * itself names `gh` or the launcher must be a plain command in an allowed
- * form (`decidePlain`); the others (`cd <dir>`, `| head`) pass. A `GH_REPO`
- * word anywhere in the call (`export GH_REPO=…; …`, `…; GH_REPO=…`) makes
- * every manager `gh issue` write in it not the own ticket's.
+ * runs text it is given (`feedsCommands`), with more than one segment when a
+ * segment's command word is a variable, or, when a removed body also reaches
+ * the tracker, when a segment runs a file or text (`runsWrittenFile`). Otherwise
+ * every segment that itself names `gh` or the launcher must be a plain command
+ * in an allowed form (`decidePlain`); the others (`cd <dir>`, `| head`) pass. A
+ * `GH_REPO` word anywhere in the call (`export GH_REPO=…; …`, `…; GH_REPO=…`)
+ * makes every manager `gh issue` write in it not the own ticket's.
  */
 function decideBash(role: "manager" | "child", own: OwnTicket | null, toolInput: unknown): GuardDecision {
   if (toolInput === null || typeof toolInput !== "object") return ALLOW;
@@ -518,7 +575,7 @@ function decideBash(role: "manager" | "child", own: OwnTicket | null, toolInput:
   if (!reachesTracker(text)) {
     if (!reachesTracker(command)) return ALLOW;
     const runner = runsWrittenFile(text);
-    return runner === null ? ALLOW : deny(rForms(role, own, refused(`${runner}, which runs a file or text, on a line whose heredoc names gh or the launcher`)));
+    return runner === null ? ALLOW : writtenFileDenial(role, own, runner);
   }
   if (scan.substitutingBody || hasSubstitution(text)) return deny(rForms(role, own, SUBSTITUTION));
   if (hasGroup(text)) return deny(rForms(role, own, refused("a ( ) group, a function or a case pattern in a command that names gh or the launcher")));
@@ -531,6 +588,10 @@ function decideBash(role: "manager" | "child", own: OwnTicket | null, toolInput:
       return deny(rForms(role, own, refused(`${basename(tokens[at]?.text ?? "")}, which runs text it is given as commands, in a command that names gh or the launcher`)));
     }
     if (segments.length > 1 && tokens[at]?.expanded === true) return deny(rForms(role, own, refused("a variable as a command word")));
+  }
+  if (reachesTracker(scan.dataBodies)) {
+    const runner = runsWrittenFile(text);
+    if (runner !== null) return writtenFileDenial(role, own, runner);
   }
   for (const { tokens } of segments) {
     if (segments.length > 1 && !segmentReaches(tokens)) continue;

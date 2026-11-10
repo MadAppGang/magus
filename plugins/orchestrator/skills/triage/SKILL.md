@@ -45,6 +45,43 @@ If that read is skipped, these still hold:
 The user asks short questions, often, maybe on a small screen. Put the answer in the first
 line.
 
+## Step 0b: where new ticket windows open
+
+You are the only session that asks this, and it is asked once per user. Run:
+
+```
+bun --env-file=/dev/null "${CLAUDE_PLUGIN_ROOT}/scripts/orch-config.ts" multiplexer
+```
+
+- `windows.note` set: tell the user once.
+- `windows.ask` null, or an `error` instead of `windows`: carry on. Report an error once; a
+  start will report it again in its own words.
+- `windows.ask` set: claim the question, so that two triage sessions do not both ask:
+
+  ```
+  bun --env-file=/dev/null "${CLAUDE_PLUGIN_ROOT}/scripts/orch-config.ts" multiplexer --claim-question
+  ```
+
+  `question` `pending` or `null`: carry on without asking. `question` `owned`: explain both
+  options in text first, then ask with AskUserQuestion:
+
+  | Option | What it means |
+  |---|---|
+  | `herdr` | New ticket windows open as herdr tabs |
+  | `tmux` | New ticket windows open as tmux windows |
+
+  Say this under both: a manager's children open where that manager runs, whatever is
+  answered here. Then store the answer and read the fresh `windows` it prints:
+
+  ```
+  bun --env-file=/dev/null "${CLAUDE_PLUGIN_ROOT}/scripts/orch-config.ts" multiplexer --set <herdr or tmux>
+  ```
+
+  Exit 1 from `--set`: report its message once and carry on. A `note` in its output: tell the
+  user. No answer given: carry on and store nothing; the start uses `windows.mux` as printed.
+
+`/orchestrator:start-ticket` needs nothing else: the launcher reads the same stored answer.
+
 ## Project knowledge
 
 Find the tracker as the "Tracker" section of `three-levels.md` says: the product repo's

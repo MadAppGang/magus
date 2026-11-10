@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { readFileSync, writeFileSync, existsSync, utimesSync, rmSync, openSync, closeSync, fstatSync, statSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, utimesSync, rmSync, openSync, closeSync, fstatSync, statSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
 import {
@@ -25,6 +25,32 @@ const ownIdentity = (s: Sandbox) => {
 };
 const idPath = (s: Sandbox, key = MANAGER) => join(s.ctx.stateDir, "sessions", key + ".json");
 const progPath = (s: Sandbox, key = MANAGER) => join(s.ctx.stateDir, "progress", key + ".json");
+
+test("[REQ-433] TEST-2901 prune distinguishes owned panes, orphan panes, old tmp and prompt files and permanent config", () => {
+  const s = space(), now = Date.now(), hour = 3600_000, day = 24 * hour;
+  ownIdentity(s);
+  for (const dir of ["panes", "prompts"]) mkdirSync(join(s.ctx.stateDir, dir), { recursive: true });
+  const keep = join(s.ctx.stateDir, "panes", MANAGER + ".json");
+  const orphan = join(s.ctx.stateDir, "panes", "l-000000000099.json");
+  const temp = join(s.ctx.stateDir, "panes", "orphan.tmp");
+  const freshTemp = join(s.ctx.stateDir, "panes", "fresh.tmp");
+  const oldPrompt = join(s.ctx.stateDir, "prompts", "old.txt"), freshPrompt = join(s.ctx.stateDir, "prompts", "fresh.txt");
+  const config = join(s.ctx.stateDir, "config.json");
+  for (const path of [keep, orphan, temp, freshTemp, oldPrompt, freshPrompt, config]) writeFileSync(path, "original");
+  for (const [path, age] of [[temp, hour + 1000], [oldPrompt, day + 1000], [config, 10 * day], [freshTemp, hour - 1000], [freshPrompt, day - 1000]] as const)
+    utimesSync(path, new Date(now - age), new Date(now - age));
+  const r = prune(s.ctx, { days: 7, now });
+  expect(r).toEqual({ records: [], aliases: 0, claims: 0, temps: 1, panes: 1, prompts: 1 });
+  for (const path of [keep, freshTemp, freshPrompt, config]) expect(readFileSync(path, "utf8")).toBe("original");
+  for (const path of [orphan, temp, oldPrompt]) expect(existsSync(path)).toBe(false);
+});
+test("[REQ-432] TEST-2901 rebinding in tmux clears old herdr ids", () => {
+  const s = space(), i = ownIdentity(s);
+  s.identity({ ...i, herdr: { pane: "old-pane", tab: "old-tab", workspace: "old-workspace" } });
+  const r = bindSession(s.ctx, input(s, { herdr: null, self: { pid: i.pid!, procStart: i.procStart }, now: NOW + 1 }));
+  expect(r).toMatchObject({ ok: true, identity: { herdr: null } });
+  expect(readIdentity(s.ctx, MANAGER)?.herdr).toBeNull();
+});
 
 describe("store ownership and bind routes [R1.4, R3.4; record-store contract]", () => {
   test("[REQ-4, REQ-8, REQ-16] TEST-601 index aliases locate records but never grant ownership", async () => {
@@ -311,7 +337,7 @@ describe("atomic storage and command protocol [R1.4, R1.8; §6 Store]", () => {
     writeFileSync(oldTemp, "partial"); writeFileSync(newTemp, "partial");
     utimesSync(oldTemp, new Date(now - 3600_001), new Date(now - 3600_001));
     const r = prune(s.ctx, { days: 7, now });
-    expect(r).toEqual({ records: [CHILD], aliases: 2, claims: 1, temps: 1 });
+    expect(r).toEqual({ records: [CHILD], aliases: 2, claims: 1, temps: 1, panes: 0, prompts: 0 });
     expect(existsSync(idPath(s))).toBe(true);
     expect(existsSync(progPath(s))).toBe(true);
     expect(existsSync(idPath(s, CHILD))).toBe(false);

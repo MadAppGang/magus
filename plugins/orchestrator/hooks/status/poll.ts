@@ -62,9 +62,11 @@ export async function envOf(host: Host): Promise<OrchestratorEnv> {
   return envCache
 }
 
-/** The multiplexer this session runs in. */
+/** The multiplexer this session runs in, from its own row; none before the first tick. */
 export async function ownMux(host: Host): Promise<OwnMux> {
-  return ownMuxOf(await envOf(host))
+  const { selfKey, rows } = await host.store.rows.read()
+  const self = selfKey === null ? undefined : rows.find(r => r.key === selfKey)
+  return ownMuxOf(self ?? null, await envOf(host))
 }
 
 // ── the loop ──────────────────────────────────────────────────────────────────

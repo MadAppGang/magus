@@ -4,6 +4,36 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [orchestrator 0.4.0] - 2026-11-10
+
+### Added
+
+- **Under herdr, a manager's children open as panes in its own tab, laid out for you.** After
+  every child opens or closes, the tab is re-laid: the manager full height on the left, the
+  children in columns of two, with focus left where you had it. A manager under tmux keeps
+  its terminal slots exactly as before.
+- **`scripts/child-pane.ts` runs a herdr child from open to close.** A manager opens, waits
+  on, prompts, reads, lists and closes its children through it, and watches them by herdr's
+  own agent state. Each input is checked against the pane's terminal first, so nothing is
+  typed into a pane that a herdr restart gave to something else.
+- **A tab holding panes the orchestrator did not open is left alone.** The layout refuses and
+  says which panes, and the child still opens. Terminal slots the manager opened itself join
+  the layout.
+- **Triage asks once where new ticket windows open** when that is unclear: herdr inside tmux,
+  or tmux with herdr installed. `scripts/orch-config.ts` stores your answer in `config.json`,
+  and a manager never asks. `ORCHESTRATOR_MULTIPLEXER` overrides both detection and the
+  stored answer.
+
+### Changed
+
+- **The multiplexer a session runs in is now checked against its process tree.** herdr
+  variables inherited by a tmux running inside herdr no longer make that session count as
+  herdr.
+- **The launcher, the status band and the sidebar find herdr at `~/.local/bin/herdr`** when it
+  is not on `PATH`, and every herdr call has a timeout.
+
+---
+
 ## [setup 1.9.0] - 2026-11-10
 
 ### Changed

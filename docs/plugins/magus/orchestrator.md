@@ -3,11 +3,11 @@
 
 # orchestrator
 
-Runs ticket work as three levels of Claude Code sessions: triage owns tickets and the plan, a manager per ticket works in its own tmux window or herdr tab and worktree, children in slots beside it. A status band lists them; a guard keeps ticket changes with triage. Needs bun, git, tmux or herdr.
+Runs ticket work as three levels of Claude Code sessions: triage owns tickets and the plan, a manager per ticket works in its own tmux window or herdr tab and worktree, children in panes beside it. A status band lists them; a guard keeps ticket changes with triage. Needs bun, git, tmux or herdr.
 
 | | |
 |---|---|
-| Version | `0.3.0` |
+| Version | `0.4.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 1 |
 | Subagents | 0 |

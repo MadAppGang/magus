@@ -67,8 +67,9 @@ The tracker, its four actions and the script below are specified in the "Tracker
    Inside tmux it opens a window in the current session; inside herdr, a tab in the current
    workspace that does not take focus. Either way it sits at the main checkout of the current
    repo; pass `--dir <main checkout>` when the ticket's repo is another one. `--session` is
-   tmux only. When herdr runs inside tmux the launcher picks herdr; set
-   `ORCHESTRATOR_MULTIPLEXER=tmux` (or `herdr`) only when the user asks for the other one.
+   tmux only. When both are in play (herdr inside tmux, or tmux with herdr installed) the
+   launcher follows the answer triage stored. Set `ORCHESTRATOR_MULTIPLEXER=tmux` (or `herdr`)
+   only when the user asks for the other one.
 
    The window runs `git pull --ff-only`, then `magus update` when magus is installed, then
    starts Claude Code in a new worktree. The call first waits, up to 16 minutes, while another

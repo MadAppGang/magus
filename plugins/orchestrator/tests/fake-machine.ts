@@ -8,7 +8,7 @@ import { ENGINE_DRAWING, type Surface } from "./ui";
 const ok = (stdout = "", exitCode = 0, stderr = ""): ProcessRunResult => ({
   exitCode, stdout, stderr, isStdoutTruncated: false, isStderrTruncated: false,
 });
-export function machine(on: On, options: { selfId?: string; mux?: "tmux" | "herdr"; placed?: boolean } = {}) {
+export function machine(on: On, options: { selfId?: string; mux?: "tmux" | "herdr"; placed?: boolean; herdrAtFallback?: boolean; herdrUnavailable?: boolean } = {}) {
   const effects: string[] = [];
   const clock = mock.clock(on, { now: NOW });
   const stateDir = ROOT + "/state", sessionsDir = ROOT + "/config/sessions";
@@ -22,6 +22,7 @@ export function machine(on: On, options: { selfId?: string; mux?: "tmux" | "herd
     clock, stateDir, sessionsDir, files, starts, fsCalls, commands, effects, toasts, fills, opens, closes,
     panes: [] as UiPane[], placed: options.placed !== false, fillAllowed: true,
     denyPs: false, denyReads: false, captureExit: 0, captureText: "live screen\ntrailing spaces   ",
+    herdrAtFallback: options.herdrAtFallback ?? false, herdrUnavailable: options.herdrUnavailable ?? false,
     openerExits: [0], client: "/dev/tty-test\tproduct\n",
     seed(r: OrchestratorRecord) {
       const { rev, tasks, deps, blocked, holds, state, doneAt, ...i } = r;
@@ -73,15 +74,17 @@ export function machine(on: On, options: { selfId?: string; mux?: "tmux" | "herd
   on("process.run", ($, e) => {
     effects.push("process.run");
     const argv = [...e.argv]; commands.push(argv);
+    const herdr = argv[0] === "herdr" || argv[0] === ROOT + "/.local/bin/herdr";
+    if (herdr && (h.herdrUnavailable || (argv[0] === "herdr" && h.herdrAtFallback))) return { deny: "herdr executable unavailable" };
     if (argv[0] === "env" && argv.includes("ps")) {
       if (h.denyPs) return { deny: "ps unavailable" };
       const pids = argv[argv.indexOf("-p") + 1]!.split(",").map(Number);
       return { value: ok(pids.filter(pid => starts.has(pid)).map(pid => pid + " " + starts.get(pid)).join("\n")) };
     }
-    if ((argv[0] === "tmux" && argv[1] === "capture-pane") || (argv[0] === "herdr" && argv[1] === "pane" && argv[2] === "read"))
+    if ((argv[0] === "tmux" && argv[1] === "capture-pane") || (herdr && argv[1] === "pane" && argv[2] === "read"))
       return { value: ok(h.captureText, h.captureExit, h.captureExit ? "pane missing" : "") };
     if (argv[0] === "tmux" && argv[1] === "display-message") return { value: ok(h.client) };
-    if ((argv[0] === "tmux" && ["switch-client", "select-window", "select-pane"].includes(argv[1]!)) || (argv[0] === "herdr" && argv[1] === "agent" && argv[2] === "focus")) return { value: ok() };
+    if ((argv[0] === "tmux" && ["switch-client", "select-window", "select-pane"].includes(argv[1]!)) || (herdr && argv[1] === "agent" && argv[2] === "focus")) return { value: ok() };
     if (argv[0] === "open" || argv[0] === "xdg-open") {
       const code = h.openerExits.shift() ?? 1;
       return { value: ok("", code, code ? "opener unavailable" : "") };
@@ -128,4 +131,4 @@ export async function start($: Engine, h: Machine, surface: Surface) {
   await $.session.start({ cwd: PRODUCT, surface, isInteractive: true });
   await h.clock.advance(2000);
 }
-export const captures = (h: Machine) => h.commands.filter(argv => argv.includes("capture-pane") || (argv[0] === "herdr" && argv[2] === "read"));
+export const captures = (h: Machine) => h.commands.filter(argv => argv.includes("capture-pane") || ((argv[0] === "herdr" || argv[0]?.endsWith("/herdr")) && argv[2] === "read"));

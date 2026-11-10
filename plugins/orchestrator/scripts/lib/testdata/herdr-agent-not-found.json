@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "agent_not_found",
+    "message": "agent target w1:p4 not found"
+  },
+  "id": "cli:agent:get"
+}

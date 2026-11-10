@@ -60,8 +60,10 @@ export type StoreContext = {
 export type Incarnation = { pid: number; procStart: string | null };
 
 const CLAIM_MAX_AGE_MS = 24 * 3_600_000;
+const PROMPT_MAX_AGE_MS = 24 * 3_600_000;
 const TMP_MAX_AGE_MS = 3_600_000;
 const OWN_PID_MAX_STEPS = 4;
+const LOCK_HAND_OVER_POLL_MS = 25;
 
 /** Claude Code's config dir: `CLAUDE_CONFIG_DIR` when set and non-empty, else `<home>/.claude`. */
 export function claudeConfigDirOf(env: Readonly<Record<string, string | undefined>>, home: string): string {
@@ -99,9 +101,8 @@ function tempPathFor(path: string): string {
   return `${path}.${process.pid}.${randomBytes(6).toString("hex")}.tmp`;
 }
 
-/** Writes `text` to a temp file beside `path` and renames it over `path`. Throws on failure. */
-function writeAtomic(path: string, text: string): void {
-  mkdirSync(join(path, ".."), { recursive: true });
+/** Replaces `path` through a temp file beside it, in a directory that must exist. Throws on failure. */
+function replaceFile(path: string, text: string): void {
   const temp = tempPathFor(path);
   try {
     writeFileSync(temp, text);
@@ -109,6 +110,56 @@ function writeAtomic(path: string, text: string): void {
   } catch (err) {
     rmSync(temp, { force: true });
     throw err;
+  }
+}
+
+/** Writes `text` to a temp file beside `path` and renames it over `path`. Throws on failure. */
+export function writeAtomic(path: string, text: string): void {
+  mkdirSync(join(path, ".."), { recursive: true });
+  replaceFile(path, text);
+}
+
+/** The pid a lock directory names; null when its `info.json` is missing, half-written or names none. */
+function lockHolderPid(lock: string): number | null {
+  const text = readText(join(lock, "info.json"));
+  if (text === null) return null;
+  try {
+    const { pid } = JSON.parse(text) as { pid?: unknown };
+    return typeof pid === "number" ? pid : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Names `holder` in a lock directory this process is handing to a process it
+ * just started. The holder frees the lock only once it is named here
+ * (`awaitLockHandOver`), so while this runs no later start can hold the lock,
+ * and the file is replaced whole. A lock that names another process, or is
+ * unreadable or gone, is left as it is. Throws on a failure other than the
+ * lock being gone.
+ */
+export function handLockTo(lock: string, holder: number, name: string): void {
+  if (lockHolderPid(lock) !== process.pid) return;
+  try {
+    replaceFile(join(lock, "info.json"), JSON.stringify({ pid: holder, name, since: Date.now() }));
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
+  }
+}
+
+/**
+ * For the process a lock is handed to: waits up to `waitMs` until the lock
+ * names this process, and says whether it does. False means the lock is not
+ * this process's to free: the hand-off never finished, and the lock goes stale
+ * with the process it names, or a later start holds it.
+ */
+export function awaitLockHandOver(lock: string, waitMs: number): boolean {
+  const deadline = Date.now() + waitMs;
+  for (;;) {
+    if (lockHolderPid(lock) === process.pid) return true;
+    if (Date.now() >= deadline) return false;
+    Bun.sleepSync(LOCK_HAND_OVER_POLL_MS);
   }
 }
 
@@ -236,6 +287,16 @@ function spawnText(argv: string[]): string | null {
     return p.exitCode === 0 ? p.stdout.toString() : null;
   } catch {
     return null;
+  }
+}
+
+/** Whether a process with this pid exists, including one that belongs to another user. */
+export function pidAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (err) {
+    return (err as NodeJS.ErrnoException).code === "EPERM";
   }
 }
 
@@ -522,7 +583,7 @@ export function fillTicket(ctx: StoreContext, identity: OrchestratorIdentity, ti
 
 // --- prune ------------------------------------------------------------------------
 
-export type PruneResult = { records: string[]; aliases: number; claims: number; temps: number };
+export type PruneResult = { records: string[]; aliases: number; claims: number; temps: number; panes: number; prompts: number };
 
 function mtimeMs(path: string): number | null {
   try {
@@ -555,12 +616,14 @@ function listDir(path: string): string[] {
  * - records (both files) whose session is not live and that were not updated
  *   for `days` days, with the aliases that name them;
  * - claims older than 24 h;
+ * - child pane registries whose session record is gone;
+ * - prompt files older than 24 h;
  * - `*.tmp` leftovers older than 1 h.
  *
  * A record whose session is live is never deleted, whatever its age.
  */
 export function prune(ctx: StoreContext, opts: { days: number; now: number }): PruneResult {
-  const result: PruneResult = { records: [], aliases: 0, claims: 0, temps: 0 };
+  const result: PruneResult = { records: [], aliases: 0, claims: 0, temps: 0, panes: 0, prompts: 0 };
   const cutoff = opts.now - opts.days * 86_400_000;
 
   for (const identity of listIdentities(ctx)) {
@@ -590,7 +653,20 @@ export function prune(ctx: StoreContext, opts: { days: number; now: number }): P
     if (created !== null && opts.now - created > CLAIM_MAX_AGE_MS && remove(path)) result.claims++;
   }
 
-  for (const sub of ["sessions", "progress", "by-session", "claims"]) {
+  const panesDir = join(ctx.stateDir, "panes");
+  for (const name of listDir(panesDir)) {
+    if (!name.endsWith(".json")) continue;
+    if (!existsSync(identityPath(ctx, name.slice(0, -".json".length))) && remove(join(panesDir, name))) result.panes++;
+  }
+
+  const promptDir = join(ctx.stateDir, "prompts");
+  for (const name of listDir(promptDir)) {
+    const path = join(promptDir, name);
+    const m = mtimeMs(path);
+    if (m !== null && opts.now - m > PROMPT_MAX_AGE_MS && remove(path)) result.prompts++;
+  }
+
+  for (const sub of ["sessions", "progress", "by-session", "claims", "panes"]) {
     const dir = join(ctx.stateDir, sub);
     for (const name of listDir(dir)) {
       if (!name.endsWith(".tmp")) continue;

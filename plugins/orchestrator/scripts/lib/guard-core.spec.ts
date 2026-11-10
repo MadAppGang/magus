@@ -21,6 +21,71 @@ function deny(d: GuardDecision, why: RegExp = /triage|manager/i) {
   return d.reason;
 }
 
+describe("child pane guard form and heredoc boundaries", () => {
+  const cp = 'bun --env-file=/dev/null "${CLAUDE_PLUGIN_ROOT}/scripts/child-pane.ts"';
+  const literal = "bun --env-file=/dev/null ./scripts/child-pane.ts";
+  test("[REQ-430] TEST-3001 G1 manager may open in the documented plain form", () => {
+    allow(bash(cp + " open --dir /r --name a-b --colour green --ticket 'A-1'"));
+  });
+  test("[REQ-430] TEST-3002 G2 a quoted prompt heredoc is data even when it names tracker writes", () => {
+    allow(bash(cp + " prompt --pane w1:p2 --prompt-file - <<'PROMPT'\n/orchestrator:child gh issue edit 5 --add-label x\nPROMPT"));
+  });
+  for (const command of ["list", "close --pane w1:p2", "layout", "retype --pane w1:p2", "trust --pane w1:p2"])
+    test("[REQ-430, REQ-435] TEST-3003 G3 manager may " + command, () => allow(bash(cp + " " + command)));
+  test("[REQ-430] TEST-3004 G4 an assignment before the runtime is not the permitted child-pane form", () => {
+    expect(bash("X=1 " + cp + " list")).toEqual({ kind: "deny", reason: "Run child-pane.ts as bun --env-file=/dev/null \"${CLAUDE_PLUGIN_ROOT}/scripts/child-pane.ts\" <command> …, with no assignment in front and no $(…) or backtick." });
+  });
+  test("[REQ-430] TEST-3005 G5 command substitution is code, not a pane parameter", () => { deny(bash(cp + ' read --pane "$(cat f)"'), /./); });
+  test("[REQ-430] TEST-3006 G6 piping lifecycle output to a shell is refused", () => { deny(bash(cp + " list | sh"), /./); });
+  for (const cmd of ["list", "open --name a-b --colour green"])
+    test("[REQ-430, REQ-435] TEST-3007 G7 child may not run the same lifecycle command: " + cmd, () => {
+      expect(bash(cp + " " + cmd, "child")).toEqual({ kind: "deny", reason: "A child opens no panes and starts no sessions. Send the need to your manager by SendMessage." });
+    });
+  test("[REQ-430] TEST-3008 G8 literal reader mentions pass, expanded reader paths do not", () => {
+    allow(bash("cat plugins/orchestrator/scripts/child-pane.ts", "child"));
+    deny(bash('cat "${CLAUDE_PLUGIN_ROOT}/scripts/child-pane.ts"', "child"), /./);
+    deny(bash('cat "$(echo child-pane.ts)"', "child"), /./);
+  });
+  for (const role of ["triage", null] as const) test("[REQ-430] TEST-3009 G9 " + role + " is left to script authorisation", () => allow(bash(cp + " open --name a-b --colour green", role)));
+  test("[REQ-430] TEST-3010 G10 direct ticket-window delivery stays denied to managers", () => {
+    deny(bash('bun --env-file=/dev/null "${CLAUDE_PLUGIN_ROOT}/scripts/ticket-window.ts" --deliver-to w1:p2 --mux herdr --prompt x'), /./);
+  });
+  test("[REQ-430] TEST-3011 G11 config does not reach the tracker guard; its CLI enforces role", () => {
+    allow(bash('bun --env-file=/dev/null "${CLAUDE_PLUGIN_ROOT}/scripts/orch-config.ts" multiplexer --set herdr'));
+  });
+  test("[REQ-430, REQ-435] TEST-3012 G12 literal parameter expansions are allowed in arguments", () => {
+    allow(bash(cp + ' wait --pane "$PANE" --until up --timeout-ms 100000'));
+    allow(bash(cp + ' open --dir "$HOME/r" --name a-b --colour green'));
+    allow(bash(cp + ' open --dir "${DIR}" --name a-b --colour green'));
+  });
+  test("[REQ-430, REQ-435] TEST-3013 G13 backticks are denied unlike plain parameters", () => {
+    deny(bash(cp + " read --pane " + String.fromCharCode(96) + "cat f" + String.fromCharCode(96)), /./);
+  });
+  test("[REQ-430] TEST-3014 G14 a quoted send-data heredoc may mention the launcher", () => {
+    allow(bash(cp + " send --pane w1:p2 --text-file - <<'X'\nbun ticket-window.ts --deliver-to w1:p3\nX"));
+  });
+  test("[REQ-430] TEST-3015 G15 the reaching basename is exact, not child-pane-core or a spec file", () => {
+    allow(bash('bun "${CLAUDE_PLUGIN_ROOT}/scripts/lib/child-pane-core.ts"'));
+    allow(bash("bun test scripts/child-pane.spec.ts", "child"));
+  });
+  test("[REQ-430] TEST-3016 G16 a child is refused even with plain parameter expansions", () => {
+    expect(bash(cp + ' send --pane "$P" --text hi', "child")).toEqual({ kind: "deny", reason: "A child opens no panes and starts no sessions. Send the need to your manager by SendMessage." });
+  });
+  for (const path of ["'child-pane.ts'", '"child-pane.ts"', "$'child-pane.ts'", "child\\-pane.ts"])
+    test("[REQ-431] TEST-3017 a quoted written filename " + path + " cannot use a reaching word as an exemption", () => {
+      deny(bash("cat >" + path + " <<'P'\ngh issue create --title unexpected\nP\n" + literal + " list; bun " + path + " list"), /./);
+    });
+  test("[REQ-431] TEST-3018 >&file writes a file, whereas 2>&1 and >&- are descriptor operations", () => {
+    deny(bash("cat <<'P' >&script.sh\ngh issue create --title unexpected\nP\n" + literal + " list; sh script.sh"), /./);
+    allow(bash(literal + " prompt --pane w1:p2 --prompt-file - <<'P' 2>&1\ngh issue create --title data\nP"));
+    allow(bash(literal + " prompt --pane w1:p2 --prompt-file - <<'P' >&-\ngh issue create --title data\nP"));
+  });
+  test("[REQ-431] TEST-3019 a file-writing heredoc is refused when the same line reaches through a tracker reader", () => {
+    deny(bash("cat >script.sh <<'P'\ngh issue create --title unexpected\nP\ngh issue view 7; sh script.sh"), /./);
+    deny(bash("cat >script.sh <<'P'\ngh issue create --title unexpected\nP\n" + literal + " list; sh script.sh"), /./);
+  });
+});
+
 describe("qualified ticket identity [R3.3; §4.3]", () => {
   test("[REQ-13, REQ-15, REQ-16] TEST-301 derives own tickets without IO and rejects unsupported identifiers", () => {
     expect(ownTicketOf({ id: "Example/Product#7", url: null })).toEqual({ ...github, label: expect.any(String) });

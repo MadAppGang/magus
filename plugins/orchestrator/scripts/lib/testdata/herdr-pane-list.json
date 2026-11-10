@@ -1,0 +1,74 @@
+{
+  "id": "cli:pane:list",
+  "result": {
+    "panes": [
+      {
+        "agent_status": "unknown",
+        "cwd": "/tmp/repo",
+        "focused": true,
+        "foreground_cwd": "/tmp/repo",
+        "pane_id": "w1:p1",
+        "revision": 1,
+        "scroll": {
+          "max_offset_from_bottom": 0,
+          "offset_from_bottom": 0,
+          "viewport_rows": 47
+        },
+        "tab_id": "w1:t1",
+        "terminal_id": "term_65fe04a4e9c161",
+        "terminal_title": "user@host:/tmp/repo",
+        "terminal_title_stripped": "user@host:/tmp/repo",
+        "workspace_id": "w1"
+      },
+      {
+        "agent_status": "unknown",
+        "cwd": "/tmp/repo",
+        "focused": false,
+        "foreground_cwd": "/tmp/repo",
+        "pane_id": "w1:p3",
+        "revision": 0,
+        "scroll": {
+          "max_offset_from_bottom": 0,
+          "offset_from_bottom": 0,
+          "viewport_rows": 47
+        },
+        "tab_id": "w1:t1",
+        "terminal_id": "term_65fe05005b8e83",
+        "workspace_id": "w1"
+      },
+      {
+        "agent_status": "unknown",
+        "cwd": "/tmp/repo",
+        "focused": false,
+        "foreground_cwd": "/tmp/repo",
+        "pane_id": "w1:p4",
+        "revision": 0,
+        "scroll": {
+          "max_offset_from_bottom": 0,
+          "offset_from_bottom": 0,
+          "viewport_rows": 47
+        },
+        "tab_id": "w1:t1",
+        "terminal_id": "term_65fe05005ec684",
+        "workspace_id": "w1"
+      },
+      {
+        "agent_status": "unknown",
+        "cwd": "/tmp/repo",
+        "focused": false,
+        "foreground_cwd": "/tmp/repo",
+        "pane_id": "w1:p2",
+        "revision": 0,
+        "scroll": {
+          "max_offset_from_bottom": 0,
+          "offset_from_bottom": 0,
+          "viewport_rows": 47
+        },
+        "tab_id": "w1:t2",
+        "terminal_id": "term_65fe05005794f2",
+        "workspace_id": "w1"
+      }
+    ],
+    "type": "pane_list"
+  }
+}
