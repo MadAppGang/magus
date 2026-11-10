@@ -363,7 +363,7 @@ describe("Database: schema, CRUD, retention, queries", () => {
 
   test("getRecentSessions returns sessions ordered by date DESC", () => {
     const db = openDb(dbPath);
-    const dates = ["2026-03-22", "2026-03-24", "2026-03-26", "2026-03-21", "2026-03-25"];
+    const dates = [today(5), today(3), today(1), today(6), today(2)];
 
     for (let i = 0; i < dates.length; i++) {
       insertSession(db, makeSession(`s${i}`, "/test/project", dates[i]));
@@ -785,7 +785,7 @@ describe("Aggregator: staging file → SQLite integration", () => {
 
     // Write the parsed records to DB and verify counts
     const db = openDb(dbPath);
-    const metrics = makeSession("s-integ", "/test/project", "2026-03-26", {
+    const metrics = makeSession("s-integ", "/test/project", today(), {
       tool_calls: toolCallRecords,
     });
     insertSession(db, metrics);
