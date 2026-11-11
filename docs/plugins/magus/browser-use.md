@@ -3,11 +3,11 @@
 
 # browser-use
 
-Full-platform browser automation: live-page JS eval, keyboard and focus primitives, file screenshots, preflight and a configurable agent LLM, on local or cloud browsers. Runs Playwright's own Chromium, never your real Chrome. Adds Magus tools and 6 skills to the upstream Browser Use MCP set.
+Full-platform browser automation through its own MCP server: navigation, clicks and typing, live-page JS eval, keyboard and focus, file screenshots, session export and a configurable agent LLM, on local or cloud browsers. Runs Playwright's own Chromium, never your real Chrome. Ships 6 skills.
 
 | | |
 |---|---|
-| Version | `1.10.0` |
+| Version | `2.0.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 0 |
 | Subagents | 0 |
@@ -32,19 +32,20 @@ Prefer to do it by hand? [Installing Magus](../../guides/install.md) has the man
 
 ## When to reach for it
 
-- Use when choosing a model for retry_with_browser_use_agent or a cloud session, or the user mentions a cheap, slow, or smart model — `agent-model`
+- Use when choosing the browser-use agent model, or the user mentions a cheap, slow, or smart model — `agent-model`
 - Use when navigating, clicking, typing, evaluating JS, or extracting page content — `core-api`
 - Use when investigating console errors or network requests — `hybrid-debugging`
+- Use when opening or switching tabs, managing browser sessions, or reusing a login — `navigation-patterns`
 
 ## Skills
 
 | Skill | What it covers |
 |---|---|
-| `browser-use:agent-model` | Picks the browser-use agent brain LLM per task. Use when choosing a model for retry_with_browser_use_agent or a cloud session, or the user mentions a cheap, slow, or smart model. |
+| `browser-use:agent-model` | Picks the LLM retry_with_browser_use_agent and browser_extract_content use. Use when choosing the browser-use agent model, or the user mentions a cheap, slow, or smart model. |
 | `browser-use:core-api` | Reference for the Browser Use MCP tools — parameters, returns, session lifecycle. Use when navigating, clicking, typing, evaluating JS, or extracting page content. |
 | `browser-use:debug-ui` | Visual UI debugging — screenshot capture and analysis, responsive layout checking at multiple viewport sizes, CSS validation via DOM state, visual regression detection, before/after state co… |
 | `browser-use:hybrid-debugging` | Combines Browser Use (DOM, clicks, screenshots) with claude-in-chrome (console, network, JS) for full-spectrum debugging. Use when investigating console errors or network requests. |
-| `browser-use:navigation-patterns` | URL navigation, multi-tab orchestration, session creation and management, back/forward navigation, browser profile persistence, session export/import for authentication reuse. |
+| `browser-use:navigation-patterns` | Browser Use tab, session and back-navigation patterns, and login reuse via export/import. Use when opening or switching tabs, managing browser sessions, or reusing a login. |
 | `browser-use:web-scraping` | Structured data extraction from web pages — pagination patterns, dynamic SPAs, authenticated scraping, rate limiting, anti-bot handling, JSON/CSV output. |
 
 ## MCP server

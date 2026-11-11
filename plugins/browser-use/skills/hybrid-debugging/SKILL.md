@@ -32,7 +32,7 @@ Patterns for combining Browser Use MCP tools with claude-in-chrome to achieve fu
 | Autonomous agent mode | `retry_with_browser_use_agent` | Not available |
 | Multi-tab session | `browser_navigate(new_tab=True)` | Tab enumeration only |
 | Export/import session cookies | `browser_export/import_session` | Not available |
-| Work on headless browser | Yes (Chromium) | No (requires headed Chrome) |
+| Work on headless browser | Yes (Chromium, with `BROWSER_USE_HEADLESS=true`) | No (requires headed Chrome) |
 | Work on developer's Chrome | No | Yes (attaches to running Chrome) |
 
 ---
@@ -82,7 +82,7 @@ Use this table when deciding which tool to reach for:
 
 ## 4. Hybrid Workflow Patterns
 
-**Two browsers, not one.** Browser Use drives its own headless Chromium; claude-in-chrome
+**Two browsers, not one.** Browser Use drives its own Playwright Chromium; claude-in-chrome
 reads the user's Chrome. Console and network reads from claude-in-chrome describe the
 Chrome tab, never Browser Use's session. For the patterns below to observe the same page,
 open the URL in the user's Chrome too (`mcp__claude-in-chrome__navigate`) and reproduce
@@ -156,7 +156,7 @@ This needs no second browser: `browser_evaluate` reads state in the page Browser
 `gif_creator` records the user's Chrome, so the whole reproduction runs there:
 `gif_creator(action="start_recording", tabId=T)`, drive the page with claude-in-chrome
 (`navigate`, `find`, `computer`), then `stop_recording` and `export` with `download=true`. Browser Use cannot appear in that recording: its
-Chromium is headless and separate.
+Chromium is a separate browser.
 
 ---
 

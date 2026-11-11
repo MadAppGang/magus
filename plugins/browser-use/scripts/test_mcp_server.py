@@ -1,1522 +1,1574 @@
 """
-Unit tests for mcp-server.py — validates the 3 bug fixes from browser-use#4548.
+Unit tests for mcp-server.py, the browser-use MCP server on browser-use 1.0.
 
-BUG 1 (TCC / downloads_path):
-    The upstream BrowserUseServer uses ~/Downloads/browser-use-mcp as the
-    downloads directory.  On macOS the ~/Downloads folder is protected by
-    Transparency, Consent and Control (TCC); writing there without an explicit
-    grant raises PermissionError.  Our fix redirects to
-    ~/.config/browseruse/downloads.
+The server is loaded against the browser_use package that is actually
+installed; nothing is stubbed at import. No test here launches a browser,
+starts a browser-harness daemon, or reaches a model or a paid service:
 
-BUG 2 (SingletonLock / user_data_dir):
-    The upstream server uses a fixed user_data_dir, so two Claude Code sessions
-    share the same Chrome profile directory.  Chrome writes a SingletonLock file
-    there; the second session cannot start Chrome because the lock is held.  Our
-    fix appends the process PID (session-<pid>) so every session gets its own
-    profile directory.
+  - every CDP command goes through a recording fake of the server's daemon
+    channel (`_cdp` / `_meta`), patched per test;
+  - a Browser that a tool would start is a fake, or a real browser_use.Browser
+    whose start and stop are patched;
+  - browser_use.Agent and every model call are replaced;
+  - the whole module runs under a temp HOME and a short BH_HOME with every
+    API-key variable cleared, so neither the developer's ~/.claude/settings.json
+    nor ~/.config/browseruse can reach a test.
 
-BUG 3 (custom tools registration):
-    The server must expose browser_export_session, browser_import_session,
-    browser_run_script, browser_start_cloud_session, and
-    browser_set_agent_model on top of the built-in tools.  Tests verify the
-    list_tools handler returns them and that the total count is >= 21.
+Real Chromium is exercised by the e2e job, not here.
 
-EXTRA (graceful shutdown):
-    _install_shutdown_handlers() must register atexit and POSIX signal handlers.
-
-v1.2.0 (dual local/cloud + lifecycle fixes):
-    - _shutdown_sync must use session.kill() / _local_browser_watchdog._subprocess
-      (under keep_alive=True only kill() terminates Chrome; the old
-      session._browser/._process probing was dead code on browser-use 0.13.1).
-    - _reap_orphaned_profiles() must remove PID-scoped profile dirs of dead PIDs
-      (and only those) on startup.
-    - Local sessions must launch Playwright's bundled Chromium, never the user's
-      real Chrome.app (see the REGRESSION note below for why channel='chromium'
-      is not enough on its own).
-    - BROWSER_USE_CLOUD=true must build a use_cloud profile without local paths.
-
-REGRESSION (dev-fix-20260822-browser-chrome-hijack):
-    channel='chromium' is only a SOFT preference upstream: when its stale macOS
-    globs miss Playwright's renamed bundle, _find_installed_browser_path falls
-    through to the user's real /Applications/Google Chrome.app, hijacking the
-    macOS single-instance slot for com.google.Chrome.  The server must resolve
-    the binary itself (_resolve_chromium_binary) and pass executable_path, which
-    upstream honours before any glob runs.  Setting executable_path in turn trips
-    upstream's _copy_profile is_chrome check, so the profile-directory convention
-    must embed the 'browser-use-user-data-dir-' marker to keep user_data_dir out
-    of a temp dir and visible to the reaper.
-
-Automatic self-cleanup (dev-fix-20260822-browser-chrome-hijack, follow-up):
-    Every cleanup path used to fire at a PROCESS boundary — _shutdown_sync at
-    exit, _reap_orphaned_profiles at startup — while an MCP server lives for
-    days.  The server must instead maintain itself on upstream's 120s cleanup
-    cadence: free the PID-scoped profile dir whenever the LAST browser dies
-    (never while one is live), reap orphans of dead servers every cycle, and
-    exit when the parent `claude` is SIGKILLed.  And main() must START that
-    cadence — upstream spawns it only from BrowserUseServer.run(), which main()
-    bypasses to own the stdio wiring.
-
-Shutdown ordering (Linux-only profile leak, found by the E2E lifecycle suite):
-    _kill_session_sync returned as soon as the BROWSER process was gone, and
-    _shutdown_sync removed the profile directory immediately afterwards.  On
-    Linux Chrome's network service is forked from the zygote, outlives the
-    browser, and is still flushing SQLite stores inside that directory — so the
-    removal raced a live writer, rmtree hit ENOTEMPTY, ignore_errors=True
-    swallowed it, and os._exit(0) meant nothing ever retried.  Shutdown must now
-    wait (bounded) for the whole browser TREE, and the removal must verify it
-    worked instead of assuming it did.
-
-Configurable agent LLM (profiles-inference-redirect):
-    - _build_llm() dispatches to the right Chat* class per provider, forwarding
-      temperature/base_url/api_key by the provider's rules.
-    - _resolve_configured_llm() layers settings.json (user < project < local)
-      over the legacy BROWSER_USE_API_KEY shim, then _DEFAULT_LLM (anthropic).
-    - browser_set_agent_model sets a per-session override and never leaks secrets.
+Run under CI with CI=true: a test that would otherwise skip because browser_use
+or uv is absent fails instead.
 """
 
-import atexit
 import asyncio
+import base64
+import contextlib
 import importlib.util
+import io
 import json
 import os
+import re
+import shutil as _shutil
 import signal
+import subprocess
 import sys
-import threading
+import tempfile as _tempfile
+import textwrap
 import time
+import tomllib
+import types as _pytypes
 import unittest
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
-# ---------------------------------------------------------------------------
-# Module loader — import mcp-server.py (hyphen in name, use importlib)
-# ---------------------------------------------------------------------------
+_SERVER_FILE = Path(__file__).parent / "mcp-server.py"
 
-_STUB_NAMES = [
-    "browser_use",
-    "browser_use.mcp",
-    "browser_use.mcp.server",
-    "browser_use.browser",
-    "browser_use.config",
-    "browser_use.utils",
-    "browser_use.tools",
-    "browser_use.tools.service",
-    "browser_use.filesystem",
-    "browser_use.filesystem.file_system",
-    "browser_use.llm",
-    "browser_use.llm.openai",
-    "browser_use.llm.openai.chat",
-    "browser_use.llm.anthropic",
-    "browser_use.llm.anthropic.chat",
-    "browser_use.llm.browser_use",
-    "browser_use.llm.browser_use.chat",
-    "mcp",
-    "mcp.server",
-    "mcp.server.stdio",
-    "mcp.server.models",
-    "mcp.types",
-]
+# The server module under test, loaded once in setUpModule.
+_mod = None
+_module_env = None
+_module_dirs: list = []
 
 
-def _make_stub(name: str) -> MagicMock:
-    stub = MagicMock()
-    stub.__name__ = name
-    stub.__package__ = name
-    stub.__path__ = []
-    stub.__spec__ = importlib.util.spec_from_loader(name, loader=None)
-    return stub
-
-
-# ---------------------------------------------------------------------------
-# Fake MCP lowlevel Server — one SDK major's surface at a time
-#
-# mcp-server.py must run on mcp 1.x (existing installs) AND mcp 2.x (fresh
-# installs: browser-use >= 0.13.10 pins mcp==2.1.1). The two majors expose
-# different handler-registration surfaces, and the wrapper picks its branch with
-# hasattr(server, "add_request_handler"). These are the attribute names
-# mcp-server.py touches on each; `spec=` makes hasattr() honest, because a name
-# outside the list raises AttributeError instead of conjuring a child mock.
-# ---------------------------------------------------------------------------
-
-# mcp 1.x: public `request_handlers` dict + `@list_tools()` decorator.
-_MCP1_SURFACE = ("request_handlers", "list_tools", "run", "get_capabilities")
-# mcp 2.x: `add_request_handler` / `get_request_handler`; no decorator, no dict.
-_MCP2_SURFACE = ("add_request_handler", "get_request_handler", "run", "get_capabilities")
-
-
-def _make_fake_mcp_server(mcp_api: str) -> MagicMock:
-    """A stand-in for `mcp.server.lowlevel.Server` exposing ONE major's API."""
-    if mcp_api == "1.x":
-        fake = MagicMock(spec=list(_MCP1_SURFACE))
-        fake.request_handlers = {}
-        fake.list_tools.return_value = lambda fn: fn
-    elif mcp_api == "2.x":
-        fake = MagicMock(spec=list(_MCP2_SURFACE))
-        # No parent registered unless a test installs one.
-        fake.get_request_handler.return_value = None
-    else:
-        raise ValueError(f"unknown mcp_api {mcp_api!r}; expected '1.x' or '2.x'")
-    # main() awaits server.server.run(...) — a bare MagicMock is not awaitable.
-    fake.run = AsyncMock(return_value=None)
-    return fake
-
-
-# ---------------------------------------------------------------------------
-# Real stub base class — must be a genuine Python class so that:
-#   class MagusBrowserServer(BrowserUseServer): ...
-# creates a real class hierarchy that patch.object can modify.
-# ---------------------------------------------------------------------------
-
-class _StubBrowserUseServer:
-    """
-    Minimal stand-in for browser_use.mcp.server.BrowserUseServer.
-
-    The real class does heavy MCP/asyncio setup in __init__. We replace it with
-    a no-op that sets just the attributes MagusBrowserServer expects.
-    """
-
-    # Upstream's default idle timeout (browser_use/mcp/server.py:190).
-    session_timeout_minutes = 10
-
-    def __init__(self, *args, **kwargs):
-        self.config = {}
-        self.browser_session = None
-        self.active_sessions = {}
-        self.tools = None
-        self.llm = None
-        self.file_system = None
-        self._telemetry = MagicMock()
-        self._start_time = time.time()
-        self._cleanup_task = None
-        self.cleanup_task_starts = 0
-        # MagusBrowserServer._extend_list_tools() branches on the installed MCP
-        # SDK's capability: `add_request_handler` present means the 2.x API,
-        # absent means 1.x. The fake exposes exactly ONE of those surfaces so
-        # the branch under test is the one the fake models — a bare MagicMock
-        # answers hasattr() for every name and would always look like 2.x.
-        self.server = _make_fake_mcp_server(self.mcp_api)
-
-    # Which MCP SDK major the fake `self.server` models. Tests that need the
-    # other one patch this on the class (see TestCustomToolsRegistered).
-    mcp_api = "1.x"
-
-    async def _execute_tool(self, tool_name, arguments):
-        """Default parent implementation (never reached in tests)."""
-        return f"(stub) {tool_name}"
-
-    def _track_session(self, session):
-        """No-op session tracker."""
-        pass
-
-    # ------------------------------------------------------------------
-    # Session lifecycle — faithful transcription of upstream's semantics
-    # (browser_use/mcp/server.py:1143-1229, browser-use 0.13.x).  The Magus
-    # subclass overrides these, so the stub must behave like the real parent
-    # or the overrides would be tested against a fiction.  A static check
-    # (TestAutoCleanupStaticChecks) asserts the overrides still delegate.
-    # ------------------------------------------------------------------
-
-    async def _close_session(self, session_id):
-        if session_id not in self.active_sessions:
-            return f"Session {session_id} not found"
-
-        session_data = self.active_sessions[session_id]
-        session = session_data["session"]
-        try:
-            if hasattr(session, "kill"):
-                await session.kill()
-            elif hasattr(session, "close"):
-                await session.close()
-
-            del self.active_sessions[session_id]
-
-            if self.browser_session and self.browser_session.id == session_id:
-                self.browser_session = None
-                self.tools = None
-
-            return f"Successfully closed session {session_id}"
-        except Exception as exc:
-            return f"Error closing session {session_id}: {exc}"
-
-    async def _close_all_sessions(self):
-        if not self.active_sessions:
-            return "No active sessions to close"
-
-        closed_count = 0
-        for session_id in list(self.active_sessions.keys()):
-            result = await self._close_session(session_id)
-            if "Successfully closed" in result:
-                closed_count += 1
-
-        self.browser_session = None
-        self.tools = None
-        return f"Closed {closed_count} sessions"
-
-    async def _cleanup_expired_sessions(self):
-        current_time = time.time()
-        timeout_seconds = self.session_timeout_minutes * 60
-
-        expired = [
-            session_id
-            for session_id, session_data in self.active_sessions.items()
-            if current_time - session_data["last_activity"] > timeout_seconds
-        ]
-        for session_id in expired:
-            await self._close_session(session_id)
-
-    async def _start_cleanup_task(self):
-        """Upstream spawns cleanup_loop() here; the stub just records the call."""
-        self.cleanup_task_starts += 1
-        self._cleanup_task = "started"
-
-
-def _install_stubs() -> dict:
-    """Inject lightweight module stubs so mcp-server.py can be imported."""
-    saved = {}
-    for name in _STUB_NAMES:
-        saved[name] = sys.modules.get(name)
-        sys.modules[name] = _make_stub(name)
-
-    # browser_use.mcp.server: expose our real stub class as BrowserUseServer
-    mcp_server_bu_stub = sys.modules["browser_use.mcp.server"]
-    mcp_server_bu_stub.BrowserUseServer = _StubBrowserUseServer
-
-    # browser_use.browser: realistic class stubs
-    browser_stub = sys.modules["browser_use.browser"]
-    browser_stub.BrowserProfile = MagicMock(name="BrowserProfile")
-    browser_stub.BrowserSession = MagicMock(name="BrowserSession")
-
-    # browser_use.config: helper functions
-    config_stub = sys.modules["browser_use.config"]
-    config_stub.get_default_llm = MagicMock(return_value={})
-    config_stub.get_default_profile = MagicMock(return_value={})
-    config_stub.load_browser_use_config = MagicMock(return_value={})
-
-    # browser_use.utils
-    utils_stub = sys.modules["browser_use.utils"]
-    utils_stub.get_browser_use_version = MagicMock(return_value="0.0.0-test")
-    # The recording chat classes _build_llm needs at RUNTIME are installed in
-    # setUpModule() (see _install_chat_stub_modules) — not here, because these
-    # load-time stubs get torn down by _restore_stubs() before tests run.
-
-    # mcp.server: Server class + NotificationOptions
-    mcp_server_stub = sys.modules["mcp.server"]
-    mcp_server_stub.NotificationOptions = MagicMock(name="NotificationOptions")
-    mcp_server_stub.Server = MagicMock(name="Server")
-
-    # mcp.server.models: InitializationOptions
-    mcp_models_stub = sys.modules["mcp.server.models"]
-    mcp_models_stub.InitializationOptions = MagicMock(name="InitializationOptions")
-
-    # mcp.types: Tool, TextContent, ImageContent, ListToolsRequest
-    types_stub = sys.modules["mcp.types"]
-
-    # Minimal Tool class that behaves like a real dataclass for our purposes
-    class _FakeTool:
-        def __init__(self, name, description="", inputSchema=None):
-            self.name = name
-            self.description = description
-            self.inputSchema = inputSchema or {}
-
-    class _FakeListToolsRequest:
-        def __init__(self, method="tools/list", params=None):
-            self.method = method
-            self.params = params
-
-    # mcp 2.x handlers return the result model itself (no ServerResult
-    # envelope); the wrapper builds one of these from parent + custom tools.
-    class _FakeListToolsResult:
-        def __init__(self, tools):
-            self.tools = list(tools)
-
-    types_stub.Tool = _FakeTool
-    types_stub.ListToolsRequest = _FakeListToolsRequest
-    types_stub.ListToolsResult = _FakeListToolsResult
-    types_stub.TextContent = MagicMock(name="TextContent")
-    types_stub.ImageContent = MagicMock(name="ImageContent")
-
-    # Ensure parent packages resolve submodule attributes to the same objects
-    # we put in sys.modules.  When Python does `import mcp.types as types` it
-    # calls getattr(mcp_pkg, 'types') — which on a MagicMock returns a freshly
-    # auto-created MagicMock, NOT sys.modules['mcp.types'].  We must wire them
-    # up explicitly so the import sees our stubs.
-    sys.modules["mcp"].types = sys.modules["mcp.types"]
-    sys.modules["mcp"].server = sys.modules["mcp.server"]
-    sys.modules["mcp.server"].stdio = sys.modules["mcp.server.stdio"]
-    sys.modules["mcp.server"].models = sys.modules["mcp.server.models"]
-
-    sys.modules["browser_use"].mcp = sys.modules["browser_use.mcp"]
-    sys.modules["browser_use.mcp"].server = sys.modules["browser_use.mcp.server"]
-    sys.modules["browser_use"].browser = sys.modules["browser_use.browser"]
-    sys.modules["browser_use"].config = sys.modules["browser_use.config"]
-    sys.modules["browser_use"].utils = sys.modules["browser_use.utils"]
-
-    return saved
-
-
-def _restore_stubs(saved: dict) -> None:
-    for name, orig in saved.items():
-        if orig is None:
-            sys.modules.pop(name, None)
-        else:
-            sys.modules[name] = orig
-
-
-
-def _load_module() -> object:
-    """Load mcp-server.py as a module (importlib, because of the hyphen)."""
-    server_path = Path(__file__).parent / "mcp-server.py"
-    spec = importlib.util.spec_from_file_location("_mcp_server_under_test", server_path)
+def _load_server_module():
+    """Load mcp-server.py against the installed browser_use, or explain why not."""
+    if importlib.util.find_spec("browser_use") is None:
+        if os.environ.get("CI"):
+            raise RuntimeError("browser_use must be installed under CI")
+        raise unittest.SkipTest("browser_use is not installed")
+    spec = importlib.util.spec_from_file_location("_mcp_server_under_test", _SERVER_FILE)
     mod = importlib.util.module_from_spec(spec)
-    # Prevent the asyncio.run(main()) block from firing
+    saved_argv = sys.argv
     sys.argv = ["mcp-server.py"]
-    spec.loader.exec_module(mod)
+    err = io.StringIO()
+    try:
+        with contextlib.redirect_stderr(err):
+            spec.loader.exec_module(mod)
+    except SystemExit as exc:
+        raise RuntimeError(
+            f"mcp-server.py exited at import (code {exc.code}): {err.getvalue().strip()}"
+        ) from None
+    finally:
+        sys.argv = saved_argv
     return mod
 
 
-# Load the module once for the entire test session.
-_saved = _install_stubs()
-try:
-    _mod = _load_module()
-except Exception as _load_err:
-    _mod = None
-    print(f"WARNING: failed to load mcp-server module: {_load_err}", file=sys.stderr)
-finally:
-    _restore_stubs(_saved)
-
-
-# ---------------------------------------------------------------------------
-# Fake chat provider modules (used by _build_llm at RUNTIME, not just load time)
-#
-# _build_llm() does `importlib.import_module(module_path)` + getattr(class) each
-# time it runs, so the three chat modules must be present in sys.modules while
-# tests execute — not only during the one-shot _load_module() above. We install
-# persistent recording stubs in setUpModule() and remove them in tearDownModule().
-# ---------------------------------------------------------------------------
-
-class _RecordingChat:
-    """Fake Chat model that captures the kwargs _build_llm forwarded to it."""
-
-    provider_label = "recording"
-
-    def __init__(self, **kwargs):
-        self.init_kwargs = dict(kwargs)
-
-
-class FakeChatAnthropic(_RecordingChat):
-    provider_label = "anthropic"
-
-
-class FakeChatOpenAI(_RecordingChat):
-    provider_label = "openai"
-
-
-class FakeChatBrowserUse(_RecordingChat):
-    provider_label = "browser_use"
-
-
-# Only the three leaf .chat modules need stubbing: importlib.import_module()
-# returns a fully-qualified module straight from sys.modules without re-importing
-# its parents, so we must NOT clobber the real 'browser_use' package chain.
-_CHAT_MODULE_SPECS = {
-    "browser_use.llm.anthropic.chat": [("ChatAnthropic", FakeChatAnthropic)],
-    "browser_use.llm.openai.chat": [("ChatOpenAI", FakeChatOpenAI)],
-    "browser_use.llm.browser_use.chat": [("ChatBrowserUse", FakeChatBrowserUse)],
-}
-
-_saved_chat_modules: dict = {}
-
-
-def _install_chat_stub_modules():
-    """Install recording chat-provider modules into sys.modules (persistent)."""
-    import types as _pytypes
-
-    for name, attrs in _CHAT_MODULE_SPECS.items():
-        _saved_chat_modules[name] = sys.modules.get(name)
-        module = _pytypes.ModuleType(name)
-        for attr_name, attr_val in attrs:
-            setattr(module, attr_name, attr_val)
-        sys.modules[name] = module
-
-
-def _restore_chat_stub_modules():
-    for name, orig in _saved_chat_modules.items():
-        if orig is None:
-            sys.modules.pop(name, None)
-        else:
-            sys.modules[name] = orig
-    _saved_chat_modules.clear()
-
-
-# ---------------------------------------------------------------------------
-# Env scrub — the server's behavior branches on BROWSER_USE_* env vars; tests
-# must be deterministic regardless of the developer's shell environment.
-# ---------------------------------------------------------------------------
-
-_ENV_KEYS = (
-    "BROWSER_USE_CLOUD",
-    "BROWSER_USE_API_KEY",
-    "BROWSER_USE_AGENT_MODEL",
-    "BROWSER_USE_HEADLESS",
-)
-_saved_env: dict = {}
-
-
 def setUpModule():
-    for key in _ENV_KEYS:
-        _saved_env[key] = os.environ.pop(key, None)
-    _install_chat_stub_modules()
+    global _mod, _module_env
+    _module_env = patch.dict(os.environ, {})
+    _module_env.start()
+    for key in _REAL_ENV_SCRUB:
+        os.environ.pop(key, None)
+    home = Path(_tempfile.mkdtemp(prefix="magus-bu-home-")).resolve()
+    # The harness daemon socket path is capped near 104 bytes on macOS.
+    bh_home = Path(_tempfile.mkdtemp(prefix="bh", dir="/tmp"))
+    _module_dirs.extend([home, bh_home])
+    os.environ["HOME"] = str(home)
+    os.environ["BH_HOME"] = str(bh_home)
+    _mod = _load_server_module()
 
 
 def tearDownModule():
-    for key, value in _saved_env.items():
-        if value is not None:
-            os.environ[key] = value
-    _restore_chat_stub_modules()
+    if _module_env is not None:
+        _module_env.stop()
+    for path in _module_dirs:
+        _shutil.rmtree(path, ignore_errors=True)
+    _module_dirs.clear()
 
-
-# ---------------------------------------------------------------------------
-# Helper: build a MagusBrowserServer instance without touching real Chrome
-# ---------------------------------------------------------------------------
 
 def _make_server():
-    """
-    Instantiate MagusBrowserServer with all heavy dependencies stubbed.
-
-    Because MagusBrowserServer inherits from _StubBrowserUseServer (our no-op
-    base class), constructing it is safe: no Chrome, no MCP transport, no I/O.
-    """
-    if _mod is None:
-        raise RuntimeError("mcp-server module did not load")
+    """A MagusBrowserServer with no session. Constructing one starts nothing."""
     return _mod.MagusBrowserServer()
 
 
 # ---------------------------------------------------------------------------
-# Test 1: downloads_path avoids TCC-protected ~/Downloads directory
+# Fakes: the daemon channel, Browser, AxHelpers
 # ---------------------------------------------------------------------------
 
-class TestDownloadsPathAvoidsTCC(unittest.TestCase):
+class _FakeDaemon:
     """
-    BUG 1 (TCC): The upstream server writes to ~/Downloads/browser-use-mcp
-    which is TCC-protected on macOS.  MagusBrowserServer._init_browser_session()
-    must use ~/.config/browseruse/downloads instead.
-    """
+    Answers the server's daemon channel from a table and records every call.
 
-    def setUp(self):
-        self.server = _make_server()
-
-    def test_downloads_path_does_not_contain_user_downloads(self):
-        """downloads_path must NOT point into ~/Downloads (TCC-blocked)."""
-        captured = {}
-
-        class CapturingProfile:
-            def __init__(self, **kwargs):
-                captured.update(kwargs)
-
-        mock_session = MagicMock()
-        mock_session.start = AsyncMock(return_value=None)
-
-        with (
-            _hermetic_chromium_cache(),
-            patch.object(_mod, "BrowserProfile", CapturingProfile),
-            patch.object(_mod, "BrowserSession", MagicMock(return_value=mock_session)),
-            patch.object(_mod, "get_default_profile", return_value={}),
-            patch.object(_mod, "get_default_llm", return_value={}),
-        ):
-            # Patch _track_session to avoid AttributeError (not set up in stub)
-            self.server._track_session = MagicMock()
-            asyncio.run(self.server._init_browser_session())
-
-        dp = captured.get("downloads_path", "")
-        self.assertNotIn(
-            "/Downloads/",
-            dp,
-            f"downloads_path must not include /Downloads/ (TCC-protected). Got: {dp!r}",
-        )
-
-    def test_downloads_path_uses_config_browseruse_downloads(self):
-        """downloads_path must resolve to ~/.config/browseruse/downloads."""
-        captured = {}
-
-        class CapturingProfile:
-            def __init__(self, **kwargs):
-                captured.update(kwargs)
-
-        mock_session = MagicMock()
-        mock_session.start = AsyncMock(return_value=None)
-
-        with (
-            _hermetic_chromium_cache(),
-            patch.object(_mod, "BrowserProfile", CapturingProfile),
-            patch.object(_mod, "BrowserSession", MagicMock(return_value=mock_session)),
-            patch.object(_mod, "get_default_profile", return_value={}),
-            patch.object(_mod, "get_default_llm", return_value={}),
-        ):
-            self.server._track_session = MagicMock()
-            asyncio.run(self.server._init_browser_session())
-
-        dp = captured.get("downloads_path", "")
-        self.assertIn(
-            ".config/browseruse/downloads",
-            dp,
-            f"downloads_path must contain .config/browseruse/downloads. Got: {dp!r}",
-        )
-
-
-# ---------------------------------------------------------------------------
-# Test 2: user_data_dir includes PID for session isolation
-# ---------------------------------------------------------------------------
-
-class TestUserDataDirIncludesPid(unittest.TestCase):
-    """
-    BUG 2 (SingletonLock): The upstream server uses a fixed user_data_dir
-    shared by all sessions.  MagusBrowserServer must embed the PID so each
-    Claude Code process gets its own Chrome profile directory.
+    An answer is a dict, a callable taking the call's params, or an exception
+    to raise. Runtime.evaluate answers "complete" unless a test says otherwise,
+    which is what the server's document.readyState poll waits for.
     """
 
-    def setUp(self):
-        self.server = _make_server()
-
-    def test_user_data_dir_contains_current_pid(self):
-        """user_data_dir must contain str(os.getpid())."""
-        captured = {}
-
-        class CapturingProfile:
-            def __init__(self, **kwargs):
-                captured.update(kwargs)
-
-        mock_session = MagicMock()
-        mock_session.start = AsyncMock(return_value=None)
-
-        with (
-            _hermetic_chromium_cache(),
-            patch.object(_mod, "BrowserProfile", CapturingProfile),
-            patch.object(_mod, "BrowserSession", MagicMock(return_value=mock_session)),
-            patch.object(_mod, "get_default_profile", return_value={}),
-            patch.object(_mod, "get_default_llm", return_value={}),
-        ):
-            self.server._track_session = MagicMock()
-            asyncio.run(self.server._init_browser_session())
-
-        udd = captured.get("user_data_dir", "")
-        self.assertIn(
-            str(os.getpid()),
-            udd,
-            f"user_data_dir must contain the current PID ({os.getpid()}). Got: {udd!r}",
-        )
-
-    def test_user_data_dir_contains_session_prefix(self):
-        """user_data_dir must contain 'session-' to identify PID-scoped profiles."""
-        captured = {}
-
-        class CapturingProfile:
-            def __init__(self, **kwargs):
-                captured.update(kwargs)
-
-        mock_session = MagicMock()
-        mock_session.start = AsyncMock(return_value=None)
-
-        with (
-            _hermetic_chromium_cache(),
-            patch.object(_mod, "BrowserProfile", CapturingProfile),
-            patch.object(_mod, "BrowserSession", MagicMock(return_value=mock_session)),
-            patch.object(_mod, "get_default_profile", return_value={}),
-            patch.object(_mod, "get_default_llm", return_value={}),
-        ):
-            self.server._track_session = MagicMock()
-            asyncio.run(self.server._init_browser_session())
-
-        udd = captured.get("user_data_dir", "")
-        self.assertIn(
-            "session-",
-            udd,
-            f"user_data_dir must contain 'session-'. Got: {udd!r}",
-        )
-
-
-# ---------------------------------------------------------------------------
-# Test 3: Two concurrent servers get different user_data_dirs
-# ---------------------------------------------------------------------------
-
-class TestConcurrentServersGetDifferentUserDataDirs(unittest.TestCase):
-    """
-    BUG 2 (SingletonLock): When two MagusBrowserServer instances are created in
-    different processes (different PIDs), they must use different user_data_dir
-    values so Chrome doesn't encounter a SingletonLock conflict.
-    """
-
-    def test_different_pids_produce_different_user_data_dirs(self):
-        """Patching os.getpid to different values yields different user_data_dir."""
-        results = {}
-
-        def run_with_pid(pid, label):
-            server = _make_server()
-            captured = {}
-
-            class CapturingProfile:
-                def __init__(self, **kwargs):
-                    captured.update(kwargs)
-
-            mock_session = MagicMock()
-            mock_session.start = AsyncMock(return_value=None)
-
-            with (
-                _hermetic_chromium_cache(),
-                patch.object(_mod, "BrowserProfile", CapturingProfile),
-                patch.object(_mod, "BrowserSession", MagicMock(return_value=mock_session)),
-                patch.object(_mod, "get_default_profile", return_value={}),
-                patch.object(_mod, "get_default_llm", return_value={}),
-                patch("os.getpid", return_value=pid),
-            ):
-                server._track_session = MagicMock()
-                asyncio.run(server._init_browser_session())
-
-            results[label] = captured.get("user_data_dir", "")
-
-        run_with_pid(1000, "server_a")
-        run_with_pid(2000, "server_b")
-
-        self.assertNotEqual(
-            results["server_a"],
-            results["server_b"],
-            (
-                f"Two servers with different PIDs must use different user_data_dirs.\n"
-                f"  server_a (pid=1000): {results['server_a']!r}\n"
-                f"  server_b (pid=2000): {results['server_b']!r}"
-            ),
-        )
-        self.assertIn("1000", results["server_a"], "PID 1000 must appear in server_a's path")
-        self.assertIn("2000", results["server_b"], "PID 2000 must appear in server_b's path")
-
-
-# ---------------------------------------------------------------------------
-# Test 4: Custom tools are registered
-# ---------------------------------------------------------------------------
-
-class TestCustomToolsRegistered(unittest.TestCase):
-    """
-    BUG 3 (custom tools): MagusBrowserServer must expose 5 extra tools
-    (browser_export_session, browser_import_session, browser_run_script,
-    browser_start_cloud_session, browser_set_agent_model) beyond the 16
-    built-in BrowserUseServer tools.
-
-    Every tool-list test runs against BOTH MCP SDK majors (`MCP_APIS`), because
-    mcp-server.py ships one file for both and each has its own registration
-    surface. The 2.x branch is the one a fresh install hits: browser-use
-    >= 0.13.10 pins mcp==2.1.1, and before this branch existed the server
-    crashed in __init__ on `Server.request_handlers`.
-    """
-
-    MCP_APIS = ("1.x", "2.x")
-
-    def _make_server_for(self, mcp_api):
-        """A MagusBrowserServer whose fake MCP server exposes `mcp_api`'s surface."""
-        with patch.object(_StubBrowserUseServer, "mcp_api", mcp_api):
-            return _make_server()
-
-    def _get_tool_list(self, parent_tools=None, mcp_api="1.x"):
-        """
-        Invoke the tools/list handler registered by _extend_list_tools() against
-        a fake MCP server exposing ONE SDK major's surface; return the tools it
-        advertises.
-
-        1.x: the parent handler lives in `request_handlers[ListToolsRequest]`,
-        takes the request model and returns a ServerResult whose `.root.tools`
-        is the list; our wrapper is registered through `@list_tools()`, so we
-        capture it by intercepting the decorator.
-        2.x: `get_request_handler("tools/list")` returns a HandlerEntry of
-        (params_type, handler); the handler is `(ctx, params) -> ListToolsResult`
-        and our wrapper is registered through `add_request_handler`, which we
-        replace with a recorder.
-        """
-        if parent_tools is None:
-            parent_tools = []
-        server = self._make_server_for(mcp_api)
-        captured = {}
-
-        if mcp_api == "1.x":
-            def capturing_decorator():
-                def registrar(fn):
-                    captured["fn"] = fn
-                    return fn
-                return registrar
-
-            server.server.list_tools = capturing_decorator
-            mock_result = MagicMock()
-            mock_result.root.tools = parent_tools
-            parent_handler = AsyncMock(return_value=mock_result)
-            server.server.request_handlers = {
-                _mod.types.ListToolsRequest: parent_handler
-            }
-
-            server._extend_list_tools()
-
-            handler = captured.get("fn")
-            self.assertIsNotNone(handler, "_extend_list_tools did not register a handler")
-            return asyncio.run(handler())
-
-        # 2.x
-        parent_handler = AsyncMock(
-            return_value=_mod.types.ListToolsResult(tools=parent_tools)
-        )
-        entry = MagicMock(name="HandlerEntry")
-        entry.params_type = object()  # opaque; must be handed back verbatim
-        entry.handler = parent_handler
-        server.server.get_request_handler.return_value = entry
-
-        def add_request_handler(method, params_type, handler):
-            captured.update(method=method, params_type=params_type, fn=handler)
-
-        server.server.add_request_handler = add_request_handler
-
-        server._extend_list_tools()
-
-        self.assertEqual(captured.get("method"), "tools/list")
-        self.assertIs(
-            captured.get("params_type"), entry.params_type,
-            "2.x wrapper must re-register with the parent's own params type",
-        )
-        handler = captured.get("fn")
-        self.assertIsNotNone(handler, "_extend_list_tools did not register a handler")
-        ctx, params = object(), object()
-        result = asyncio.run(handler(ctx, params))
-        parent_handler.assert_awaited_once_with(ctx, params)
-        return result.tools
-
-    def test_branch_is_chosen_by_capability_not_version(self):
-        """The wrapper must pick the registration surface the server actually
-        has. A 1.x fake has no `add_request_handler`, so the decorator path
-        runs; a 2.x fake has no `list_tools`, so `add_request_handler` runs."""
-        one = self._make_server_for("1.x")
-        self.assertFalse(hasattr(one.server, "add_request_handler"))
-        self.assertTrue(one.server.list_tools.called, "1.x: @list_tools() not used")
-
-        two = self._make_server_for("2.x")
-        self.assertFalse(hasattr(two.server, "list_tools"))
-        two.server.add_request_handler.assert_called_once()
-        method, params_type, handler = two.server.add_request_handler.call_args.args
-        self.assertEqual(method, "tools/list")
-        self.assertTrue(asyncio.iscoroutinefunction(handler))
-
-    def test_mcp2_without_parent_handler_still_advertises_custom_tools(self):
-        """2.x with nothing registered for tools/list (get_request_handler ->
-        None) must still register our tools under the SDK's PaginatedRequestParams."""
-        server = self._make_server_for("2.x")
-        method, params_type, handler = server.server.add_request_handler.call_args.args
-        self.assertEqual(method, "tools/list")
-        self.assertIs(params_type, _mod.types.PaginatedRequestParams)
-        result = asyncio.run(handler(object(), object()))
-        names = [t.name for t in result.tools]
-        for expected in self.CUSTOM_TOOL_NAMES:
-            self.assertIn(expected, names)
-
-    # The custom tools this wrapper adds on top of upstream's built-ins.
-    CUSTOM_TOOL_NAMES = (
-        "browser_export_session",
-        "browser_import_session",
-        "browser_run_script",
-        "browser_evaluate",
-        "browser_press_key",
-        "browser_keyboard",
-        "browser_focus",
-        "browser_save_screenshot",
-        "browser_doctor",
-        "browser_start_cloud_session",
-        "browser_set_agent_model",
-    )
-
-    def test_custom_tool_names_present(self):
-        """list_tools must include all custom tool names."""
-        for mcp_api in self.MCP_APIS:
-            with self.subTest(mcp_api=mcp_api):
-                tools = self._get_tool_list(parent_tools=[], mcp_api=mcp_api)
-                names = [t.name for t in tools]
-                for expected in self.CUSTOM_TOOL_NAMES:
-                    self.assertIn(
-                        expected,
-                        names,
-                        f"Tool {expected!r} missing from list_tools. Got: {names}",
-                    )
-
-    def test_total_tool_count_with_parent_tools(self):
-        """Total tool count must be 16 built-in + all custom tools."""
-        FakeTool = _mod.types.Tool
-        expected = 16 + len(self.CUSTOM_TOOL_NAMES)
-        for mcp_api in self.MCP_APIS:
-            with self.subTest(mcp_api=mcp_api):
-                # Simulate 16 built-in parent tools
-                parent_tools = [FakeTool(name=f"builtin_{i}") for i in range(16)]
-                tools = self._get_tool_list(parent_tools=parent_tools, mcp_api=mcp_api)
-                self.assertGreaterEqual(
-                    len(tools),
-                    expected,
-                    f"Expected >= {expected} tools (16 built-in + "
-                    f"{len(self.CUSTOM_TOOL_NAMES)} custom). Got: {len(tools)}",
-                )
-
-    def test_custom_tools_appended_after_parent(self):
-        """Custom tools must be appended after built-in tools, not prepended."""
-        FakeTool = _mod.types.Tool
-        custom_names = set(self.CUSTOM_TOOL_NAMES)
-        for mcp_api in self.MCP_APIS:
-            with self.subTest(mcp_api=mcp_api):
-                parent_tools = [FakeTool(name="builtin_0")]
-                tools = self._get_tool_list(parent_tools=parent_tools, mcp_api=mcp_api)
-                last_custom_idx = max(
-                    i for i, t in enumerate(tools) if t.name in custom_names
-                )
-                first_builtin_idx = next(
-                    i for i, t in enumerate(tools) if t.name == "builtin_0"
-                )
-                self.assertLess(
-                    first_builtin_idx,
-                    last_custom_idx,
-                    "Built-in tools must appear before custom tools in the list",
-                )
-
-    _BROWSER_CLICK_ONEOF_SCHEMA = {
-        "type": "object",
-        "properties": {"index": {"type": "integer"}},
-        "oneOf": [
-            {"required": ["index"]},
-            {"required": ["coordinate_x", "coordinate_y"]},
-        ],
-    }
-
-    def _assert_sanitized(self, schema):
-        self.assertNotIn("oneOf", schema, "sanitizer failed to strip oneOf")
-        for forbidden in ("allOf", "anyOf"):
-            self.assertNotIn(forbidden, schema)
-        # The rest of the schema must survive — we strip only the forbidden keys.
-        self.assertEqual(schema.get("type"), "object")
-        self.assertIn("index", schema.get("properties", {}))
-
-    def test_sanitizer_strips_oneOf_regardless_of_version(self):
-        """VERSION-INDEPENDENT proof the oneOf sanitizer works: inject a parent
-        tool carrying the exact upstream browser_click oneOf and assert it is
-        stripped. This holds even on browser-use 0.12.6+ (where upstream no
-        longer emits it) because we inject the offending schema ourselves —
-        so the test proves OUR code, not the installed version's cleanliness.
-        Guards against someone deleting the sanitizer assuming '#4211 is fixed'
-        while the plugin still installs browser-use unpinned (0.12.5 ships it)."""
-        FakeTool = _mod.types.Tool
-        for mcp_api in self.MCP_APIS:
-            with self.subTest(mcp_api=mcp_api):
-                offending = FakeTool(
-                    name="browser_click",
-                    inputSchema=dict(self._BROWSER_CLICK_ONEOF_SCHEMA),
-                )
-                tools = self._get_tool_list(parent_tools=[offending], mcp_api=mcp_api)
-                click = next(t for t in tools if t.name == "browser_click")
-                self._assert_sanitized(click.inputSchema)
-
-    def test_sanitizer_handles_mcp2_input_schema_attribute(self):
-        """mcp 2.x renamed the Tool field to `input_schema`; the camelCase
-        `inputSchema` survives only as the wire alias and is NOT an attribute
-        (pydantic does not expose aliases as attributes). A tool shaped like
-        2.x's must still be sanitized, or the oneOf ships on every fresh install."""
-
-        class _Mcp2ShapedTool:
-            def __init__(self, name, input_schema):
-                self.name = name
-                self.input_schema = input_schema
-
-        offending = _Mcp2ShapedTool("browser_click", dict(self._BROWSER_CLICK_ONEOF_SCHEMA))
-        self.assertFalse(hasattr(offending, "inputSchema"))
-        tools = self._get_tool_list(parent_tools=[offending], mcp_api="2.x")
-        click = next(t for t in tools if t.name == "browser_click")
-        self._assert_sanitized(click.input_schema)
-
-
-# ---------------------------------------------------------------------------
-# Test 5: Shutdown handlers are installed
-# ---------------------------------------------------------------------------
-
-class TestShutdownHandlers(unittest.TestCase):
-    """
-    _install_shutdown_handlers(server) must register:
-    - atexit.register(server._shutdown_sync)
-    - signal.signal(SIGTERM, ...)
-    - signal.signal(SIGINT, ...)
-    """
-
-    def test_atexit_registered_with_shutdown_sync(self):
-        """atexit.register must be called with server._shutdown_sync."""
-        server = _make_server()
-
-        with (
-            patch("atexit.register") as mock_atexit,
-            patch("signal.signal"),
-        ):
-            _mod._install_shutdown_handlers(server)
-
-        mock_atexit.assert_called_once_with(server._shutdown_sync)
-
-    def test_signal_registered_for_sigterm(self):
-        """signal.signal must be called for SIGTERM."""
-        server = _make_server()
-
-        with (
-            patch("atexit.register"),
-            patch("signal.signal") as mock_signal,
-        ):
-            _mod._install_shutdown_handlers(server)
-
-        registered_sigs = [c.args[0] for c in mock_signal.call_args_list]
-        self.assertIn(
-            signal.SIGTERM,
-            registered_sigs,
-            f"SIGTERM not registered. Registered signals: {registered_sigs}",
-        )
-
-    def test_signal_registered_for_sigint(self):
-        """signal.signal must be called for SIGINT."""
-        server = _make_server()
-
-        with (
-            patch("atexit.register"),
-            patch("signal.signal") as mock_signal,
-        ):
-            _mod._install_shutdown_handlers(server)
-
-        registered_sigs = [c.args[0] for c in mock_signal.call_args_list]
-        self.assertIn(
-            signal.SIGINT,
-            registered_sigs,
-            f"SIGINT not registered. Registered signals: {registered_sigs}",
-        )
-
-
-# ---------------------------------------------------------------------------
-# Test 6: Shutdown cleans up profile directory (not just SingletonLock)
-# ---------------------------------------------------------------------------
-
-class TestShutdownCleansProfileDir(unittest.TestCase):
-    """
-    BUG FIX: _shutdown_sync must remove the entire PID-scoped profile
-    directory, not just SingletonLock.  Without this, stale Chrome profiles
-    (~50MB each) accumulate indefinitely in ~/.config/browseruse/profiles/.
-    """
-
-    def test_shutdown_removes_profile_directory(self):
-        """_shutdown_sync must call shutil.rmtree on the PID-scoped profile dir."""
-        server = _make_server()
-
-        import tempfile
-        tmp = Path(tempfile.mkdtemp())
-        pid = os.getpid()
-        # _shutdown_sync builds Path.home()/".config"/"browseruse"/"profiles"/
-        # f"{_NEW_SESSION_PREFIX}{pid}" — create the matching structure under tmp.
-        profile_dir = tmp / ".config" / "browseruse" / "profiles" / f"{_NEW_SESSION_PREFIX}{pid}"
-        profile_dir.mkdir(parents=True)
-        # Create some files to simulate a Chrome profile
-        (profile_dir / "SingletonLock").write_text("dummy")
-        (profile_dir / "Cookies").write_text("dummy")
-        (profile_dir / "Default").mkdir()
-
-        original_home = Path.home
-
-        def fake_home():
-            return tmp
-
-        try:
-            Path.home = staticmethod(fake_home)
-            server.browser_session = None  # no Chrome to terminate
-            server._shutdown_sync()
-        finally:
-            Path.home = original_home
-
-        self.assertFalse(
-            profile_dir.exists(),
-            f"Profile directory {profile_dir} should be removed by _shutdown_sync, but still exists",
-        )
-
-        import shutil
-        shutil.rmtree(tmp, ignore_errors=True)
-
-    def test_shutdown_tolerates_missing_profile_dir(self):
-        """_shutdown_sync must not crash when the profile dir doesn't exist."""
-        server = _make_server()
-        server.browser_session = None
-
-        import tempfile
-        # tmp exists but holds no .config/browseruse/profiles/<prefix>{pid} inside
-        tmp = Path(tempfile.mkdtemp())
-        original_home = Path.home
-
-        def fake_home():
-            return tmp
-
-        try:
-            Path.home = staticmethod(fake_home)
-            # Should not raise even though the profile dir doesn't exist
-            server._shutdown_sync()
-        finally:
-            Path.home = original_home
-
-        import shutil
-        shutil.rmtree(tmp, ignore_errors=True)
-
-
-# ---------------------------------------------------------------------------
-# Test 6b: shutdown must not overtake a browser that is still dying
-#
-# BUG (Linux-only, ~1 run in 6): the E2E lifecycle suite failed with
-# "…/browser-use-user-data-dir-session-<pid> survived SIGTERM of its server",
-# and the directory was still there 45s later.
-#
-# Root cause, measured against real Chrome on Linux: _kill_session_sync returned
-# as soon as the BROWSER process was gone, but Chrome's network service
-# ('--type=utility --utility-sub-type=network.mojom.NetworkService') is forked
-# from the zygote — a grandchild of the browser — and outlives it, flushing
-# SQLite stores that live inside the profile directory ('Trust Tokens',
-# 'Shared Dictionary/db', 'Network/Cookies').  Removing the directory in that
-# window loses the race: rmtree walks bottom-up, the flush puts a file back into
-# a directory it already scanned, the closing rmdir fails ENOTEMPTY, and
-# ignore_errors=True swallows it.  os._exit(0) follows immediately, so nothing
-# ever retries.  On macOS the whole tree was already dead every time, which is
-# why it only ever failed in Linux CI.
-#
-# Two independent guarantees, tested separately below:
-#   1. ordering  — the removal waits for the browser TREE, not just the browser
-#   2. verifying — the removal checks it actually worked, and retries if not
-# ---------------------------------------------------------------------------
-
-class _FakeChromeProcess:
-    """
-    psutil.Process stand-in for one Chrome process, with a real lifetime.
-
-    `lifetime` is how long the process stays alive after terminate() — the
-    helper-outlives-the-browser window that the real bug happens inside.
-    `writes_to` makes it behave like Chrome's network service: while it is
-    alive it keeps putting a file back into the profile directory, which is what
-    turns a premature rmtree into a permanent leak.
-    """
-
-    def __init__(self, pid, lifetime=0.0, writes_to=None, children=()):
-        self.pid = pid
-        self.lifetime = lifetime
-        self.writes_to = writes_to
-        self._children = list(children)
-        self._death = None  # monotonic deadline, set by terminate()/kill()
-        self._writer = None
-        self.terminated = False
-        self.killed = False
-
-    # -- psutil surface -------------------------------------------------
-    def children(self, recursive=False):
-        return list(self._children)
-
-    def is_running(self):
-        return self._death is None or time.monotonic() < self._death
-
-    def status(self):
-        return "running"
-
-    def terminate(self):
-        self.terminated = True
-        for child in self._children:
-            child.terminate()
-        if self._death is None:
-            self._death = time.monotonic() + self.lifetime
-            self._start_writing()
-
-    def kill(self):
-        self.killed = True
-        for child in self._children:
-            child.kill()
-        self._death = time.monotonic()
-
-    def wait(self, timeout=None):
-        deadline = time.monotonic() + (timeout if timeout is not None else 0)
-        while self.is_running():
-            if time.monotonic() >= deadline:
-                raise TimeoutError(f"pid {self.pid} still running")
-            time.sleep(0.01)
-        return 0
-
-    # -- the profile-directory writer -----------------------------------
-    #
-    # A real helper flushes on its own schedule, so this runs on its own thread
-    # rather than piggybacking on somebody polling is_running(). That is the
-    # whole point: the writer is invisible to code that only watches the browser
-    # process.
-    def _start_writing(self):
-        if self.writes_to is None:
-            return
-
-        def flush_until_dead():
-            while self.is_running():
-                try:
-                    target = Path(self.writes_to) / "Default"
-                    target.mkdir(parents=True, exist_ok=True)
-                    (target / "Trust Tokens-journal").write_text("flush")
-                except Exception:
-                    pass
-                time.sleep(0.01)
-
-        self._writer = threading.Thread(target=flush_until_dead, daemon=True)
-        self._writer.start()
-
-    def join(self, timeout=5.0):
-        """Stop the writer and wait for it, so no test leaks a live thread."""
-        self.kill()
-        if self._writer is not None:
-            self._writer.join(timeout=timeout)
-
-
-def _session_with_browser_tree(proc):
-    """A BrowserSession stand-in whose watchdog exposes `proc` as its browser."""
-    session = MagicMock(name="session")
-    session.kill = AsyncMock(return_value=None)
-    session._local_browser_watchdog._subprocess = proc
-    return session
-
-
-class TestShutdownWaitsForTheBrowserTree(unittest.TestCase):
-    """
-    _shutdown_sync must not remove the profile directory until every process
-    that could still write into it is gone.
-    """
-
-    def _home_with_profile(self):
-        """A throwaway HOME holding this PID's profile dir. Returns that dir."""
-        import shutil
-        import tempfile
-
-        tmp = Path(tempfile.mkdtemp(prefix="magus-shutdown-order-"))
-        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
-        profile_dir = (
-            tmp / ".config" / "browseruse" / "profiles"
-            / f"{_NEW_SESSION_PREFIX}{os.getpid()}"
-        )
-        (profile_dir / "Default").mkdir(parents=True)
-        (profile_dir / "Local State").write_text("dummy")
-
-        original_home = Path.home
-        Path.home = staticmethod(lambda: tmp)
-        self.addCleanup(lambda: setattr(Path, "home", original_home))
-        return profile_dir
-
-    def test_profile_dir_is_removed_even_when_a_helper_outlives_the_browser(self):
-        """
-        The exact Linux failure: the browser exits immediately, one helper keeps
-        writing into the profile directory for a moment longer.  Shutdown must
-        still end with the directory gone.
-        """
-        profile_dir = self._home_with_profile()
-
-        # The network service: still alive, still flushing, after the browser
-        # process it was forked from has gone.
-        helper = _FakeChromeProcess(
-            pid=424242, lifetime=0.4, writes_to=profile_dir
-        )
-        self.addCleanup(helper.join)
-        browser = _FakeChromeProcess(pid=424241, lifetime=0.0, children=[helper])
-
-        server = _make_server()
-        server.browser_session = _session_with_browser_tree(browser)
-
-        server._shutdown_sync()
-        helper_still_writing = helper.is_running()
-
-        # Observe the way the E2E suite does: once the whole browser tree is
-        # really gone. A directory that looks removed for a millisecond and is
-        # then written back is exactly what "survived SIGTERM" means on CI.
-        deadline = time.monotonic() + 5.0
-        while helper.is_running() and time.monotonic() < deadline:
-            time.sleep(0.01)
-        helper.join()
-
-        self.assertTrue(browser.terminated, "the browser process must be terminated")
-        self.assertFalse(
-            profile_dir.exists(),
-            f"{profile_dir} survived shutdown. The helper wrote back into it "
-            "after the removal ran, so the removal lost the race — exactly the "
-            "Linux CI failure.",
-        )
-        self.assertFalse(
-            helper_still_writing,
-            "_shutdown_sync returned while a Chrome helper was still alive and "
-            "still flushing into the profile directory. The removal must wait "
-            "for the whole browser tree, not just the browser process.",
-        )
-
-    def test_shutdown_is_bounded_when_the_browser_never_dies(self):
-        """
-        A browser that ignores SIGTERM must not hang the signal handler.  Every
-        wait is a ceiling, so shutdown finishes and the process still exits.
-        """
-        profile_dir = self._home_with_profile()
-
-        immortal = _FakeChromeProcess(pid=424243, lifetime=3600.0)
-        server = _make_server()
-        server.browser_session = _session_with_browser_tree(immortal)
-
-        started = time.monotonic()
-        server._shutdown_sync()
-        elapsed = time.monotonic() - started
-
-        self.assertTrue(immortal.killed, "SIGTERM grace expired: it must be killed")
-        ceiling = (
-            _mod._KILL_TERM_TIMEOUT + _mod._KILL_TREE_TIMEOUT
-            + _mod._PROFILE_REMOVE_TIMEOUT + 2.0
-        )
-        self.assertLess(
-            elapsed,
-            ceiling,
-            f"_shutdown_sync took {elapsed:.1f}s. It runs inside a signal "
-            "handler — every wait on this path must be bounded.",
-        )
-
-    def test_one_unkillable_session_does_not_block_the_others(self):
-        """Cleanup stays best-effort: a session that explodes is not fatal."""
-        profile_dir = self._home_with_profile()
-
-        exploding = MagicMock(name="exploding-session")
-        exploding.kill = AsyncMock(side_effect=RuntimeError("boom"))
-        type(exploding)._local_browser_watchdog = property(
-            lambda self: (_ for _ in ()).throw(RuntimeError("no watchdog"))
-        )
-
-        healthy_proc = _FakeChromeProcess(pid=424244, lifetime=0.0)
-        healthy = _session_with_browser_tree(healthy_proc)
-
-        server = _make_server()
-        server.browser_session = exploding
-        server.active_sessions = {
-            "bad": {"session": exploding},
-            "good": {"session": healthy},
+    def __init__(self):
+        self.calls: list = []  # (daemon name, method, session_id, params)
+        self.meta_calls: list = []  # (daemon name, meta, fields)
+        self.answers: dict = {
+            "Runtime.evaluate": {"result": {"value": "complete"}},
+            "Target.attachToBrowserTarget": {"sessionId": "browser-target-session"},
+        }
+        self.meta_answers: dict = {
+            "current_tab": {"targetId": "TARGETAAAA", "url": "https://example.com/", "title": "Example"},
+            "set_session": {"ok": True},
         }
 
-        server._shutdown_sync()  # must not raise
+    # Positional-only like the server's own _cdp: CDP params may be called `name`.
+    def cdp(self, name, method, session_id=None, /, **params):
+        self.calls.append((name, method, session_id, params))
+        answer = self.answers.get(method, {})
+        if callable(answer):
+            answer = answer(params)
+        if isinstance(answer, BaseException):
+            raise answer
+        return answer
 
+    def meta(self, name, meta, /, **fields):
+        self.meta_calls.append((name, meta, fields))
+        answer = self.meta_answers.get(meta, {})
+        return answer(fields) if callable(answer) else answer
+
+    def methods(self) -> list:
+        return [call[1] for call in self.calls]
+
+    def params_of(self, method: str) -> list:
+        return [call[3] for call in self.calls if call[1] == method]
+
+    def evaluate(self, by_expression: dict, default="complete"):
+        """Answer Runtime.evaluate by its expression."""
+        def answer(params):
+            return {"result": {"value": by_expression.get(params.get("expression"), default)}}
+        self.answers["Runtime.evaluate"] = answer
+
+    @contextlib.contextmanager
+    def installed(self):
+        with patch.object(_mod, "_cdp", self.cdp), patch.object(_mod, "_meta", self.meta):
+            yield self
+
+
+class _FakeBrowser:
+    """Stands in for browser_use.Browser: records its options, starts nothing."""
+
+    created: list = []
+    start_error: BaseException | None = None
+
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+        self.name = None
+        self.started = False
+        self.stopped = False
+        self.stop_error: BaseException | None = None
+        self.live_url = "https://live.browser-use.example/abc" if kwargs.get("use_cloud") else None
+        self.cloud_cdp_url = "wss://cdp.browser-use.example/abc" if kwargs.get("use_cloud") else None
+        _FakeBrowser.created.append(self)
+
+    async def start(self):
+        if _FakeBrowser.start_error is not None:
+            raise _FakeBrowser.start_error
+        self.started = True
+        self.name = f"bufake{len(_FakeBrowser.created):04d}"
+        return self
+
+    async def stop(self):
+        if self.stop_error is not None:
+            raise self.stop_error
+        self.stopped = True
+        self.name = None
+
+
+@contextlib.contextmanager
+def _fake_browsers(options=None):
+    """browser_use.Browser replaced by _FakeBrowser, with fixed local options."""
+    import browser_use
+
+    _FakeBrowser.created = []
+    _FakeBrowser.start_error = None
+    local = options or {"kind": "chromium", "executable_path": "/fake/chromium", "headless": True}
+    with patch.object(browser_use, "Browser", _FakeBrowser), \
+            patch.object(_mod, "_local_browser_options", lambda: dict(local)), \
+            patch.object(_mod, "_browser_options", lambda: dict(local)):
+        yield _FakeBrowser.created
+    _FakeBrowser.start_error = None
+
+
+class _FakeAx:
+    """Stands in for browser_use.ax.AxHelpers: records clicks and typing."""
+
+    def __init__(self, cdp=None):
+        self.cdp = cdp
+        self.clicks: list = []
+        self.typed: list = []
+
+    def click(self, element_id):
+        self.clicks.append(element_id)
+
+    def type(self, element_id, text):
+        self.typed.append((element_id, text))
+
+
+# A real 1x1 PNG: the signature, then an IHDR chunk carrying width=1, height=1.
+_PNG_1x1 = (
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+)
+
+
+class _ToolTestCase(unittest.IsolatedAsyncioTestCase):
+    """
+    A server with one live primary session (daemon "budaemon01") on a fake
+    daemon, and a fake AxHelpers. Tests call tools through _execute_tool, the
+    same entry point the MCP call_tool handler uses.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.daemon = _FakeDaemon()
+        self.enterContext(self.daemon.installed())
+        self.enterContext(patch.object(_mod, "_LOAD_POLL_SECONDS", 0))
+        self.ax = _FakeAx()
+        self.ax_builds = 0
+
+        def make_ax(cdp):
+            self.ax_builds += 1
+            self.ax.cdp = cdp
+            return self.ax
+
+        self.harness = _pytypes.SimpleNamespace(NAME="default")
+        self.enterContext(patch.object(_mod, "_make_ax_helpers", make_ax))
+        self.enterContext(patch.object(_mod, "_import_harness_helpers", lambda: self.harness))
+        self.server = _make_server()
+        self.browser = _FakeBrowser()
+        self.browser.name = "budaemon01"
+        self.session_id = self.server._register(self.browser, "local", url="https://example.com/")
+        self.server._primary = self.session_id
+
+    async def call(self, name, **arguments):
+        return await self.server._execute_tool(name, arguments)
+
+
+class TestHermeticEnvironment(unittest.TestCase):
+    """The guard every other test leans on: no real home, no real keys."""
+
+    def test_home_and_keys_are_isolated(self):
         self.assertTrue(
-            healthy_proc.terminated,
-            "a session that failed to kill must not stop the next one",
+            any(os.environ["HOME"] == str(path) for path in _module_dirs),
+            f"HOME is not this module's temp dir: {os.environ['HOME']}",
         )
-        self.assertFalse(profile_dir.exists(), "the profile dir must still be freed")
+        self.assertEqual(Path.home(), Path(os.environ["HOME"]))
+        for key in ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "BROWSER_USE_API_KEY", "XDG_CONFIG_HOME"):
+            self.assertNotIn(key, os.environ)
 
 
-class TestProfileDirRemovalIsVerified(unittest.TestCase):
-    """
-    _remove_session_profile_dir must confirm the directory is gone, not assume
-    it.  shutil.rmtree(ignore_errors=True) returns the same None whether it
-    removed everything or hit ENOTEMPTY and gave up half way.
-    """
+class TestDaemonChannel(unittest.TestCase):
+    """_cdp / _meta: the request each sends to the daemon, and their errors."""
 
-    def _home_with_profile(self):
-        import shutil
-        import tempfile
+    def setUp(self):
+        self.requests: list = []
+        self.reply: dict = {"result": {"ok": 1}}
 
-        tmp = Path(tempfile.mkdtemp(prefix="magus-remove-verify-"))
-        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
-        profile_dir = (
-            tmp / ".config" / "browseruse" / "profiles"
-            / f"{_NEW_SESSION_PREFIX}{os.getpid()}"
-        )
-        profile_dir.mkdir(parents=True)
-        (profile_dir / "Local State").write_text("dummy")
+        def fake_request(name, request, timeout=30.0):
+            self.requests.append((name, request, timeout))
+            return self.reply
 
-        original_home = Path.home
-        Path.home = staticmethod(lambda: tmp)
-        self.addCleanup(lambda: setattr(Path, "home", original_home))
-        return profile_dir
+        self.enterContext(patch.object(_mod, "_daemon_request", fake_request))
 
-    def test_a_swallowed_rmtree_failure_is_retried(self):
-        """
-        First attempt silently leaves the directory (what ignore_errors=True does
-        on ENOTEMPTY). The removal must notice and try again.
-        """
-        import shutil
+    def test_cdp_request_shape(self):
+        self.assertEqual(_mod._cdp("bu1", "Page.navigate", None, url="https://a.test/"), {"ok": 1})
+        self.assertEqual(self.requests, [(
+            "bu1", {"method": "Page.navigate", "params": {"url": "https://a.test/"}, "session_id": None}, 30.0,
+        )])
 
-        profile_dir = self._home_with_profile()
-        real_rmtree = shutil.rmtree
-        attempts = []
+    def test_a_param_called_name_is_a_cdp_param(self):
+        _mod._cdp("bu1", "Network.setCookie", None, name="sid", value="1")
+        self.assertEqual(self.requests[0][1]["params"], {"name": "sid", "value": "1"})
 
-        def flaky_rmtree(path, *args, **kwargs):
-            attempts.append(str(path))
-            if len(attempts) == 1:
-                return  # swallowed failure: nothing removed, nothing raised
-            return real_rmtree(path, *args, **kwargs)
+    def test_response_timeout_is_not_sent_to_chrome(self):
+        _mod._cdp("bu1", "Page.handleJavaScriptDialog", "s1", accept=True, _response_timeout=5)
+        name, request, timeout = self.requests[0]
+        self.assertEqual(request["params"], {"accept": True})
+        self.assertEqual(request["session_id"], "s1")
+        self.assertEqual(timeout, 5.0)
 
-        with patch.object(shutil, "rmtree", flaky_rmtree):
-            removed = _mod._remove_session_profile_dir(os.getpid())
+    def test_cdp_error(self):
+        self.reply = {"error": "{'code': -32000, 'message': 'No node'}"}
+        with self.assertRaises(RuntimeError) as cm:
+            _mod._cdp("bu1", "DOM.resolveNode", None, backendNodeId=1)
+        self.assertEqual(str(cm.exception), "DOM.resolveNode failed: {'code': -32000, 'message': 'No node'}")
 
-        self.assertGreater(
-            len(attempts),
-            1,
-            "the first rmtree removed nothing and reported nothing; a "
-            "single-shot removal leaks the profile permanently",
-        )
-        self.assertTrue(removed, "_remove_session_profile_dir must report success")
-        self.assertFalse(profile_dir.exists(), f"{profile_dir} must be gone")
+    def test_meta_request_and_error(self):
+        self.reply = {"targetId": "T1"}
+        self.assertEqual(_mod._meta("bu1", "current_tab"), {"targetId": "T1"})
+        self.assertEqual(self.requests[-1][1], {"meta": "current_tab"})
+        self.reply = {"error": "no tab"}
+        with self.assertRaises(RuntimeError):
+            _mod._meta("bu1", "set_session", session_id="s", target_id="t")
+        self.assertEqual(self.requests[-1][1], {"meta": "set_session", "session_id": "s", "target_id": "t"})
 
-    def test_removal_gives_up_within_its_budget(self):
-        """A directory that can never be removed must not block shutdown."""
-        import shutil
-
-        profile_dir = self._home_with_profile()
-
-        with patch.object(shutil, "rmtree", lambda *a, **k: None):
-            started = time.monotonic()
-            removed = _mod._remove_session_profile_dir(os.getpid(), timeout=0.3)
-            elapsed = time.monotonic() - started
-
-        self.assertFalse(removed, "it must report the directory is still there")
-        self.assertTrue(profile_dir.exists())
-        self.assertLess(
-            elapsed, 3.0, f"the retry loop ran for {elapsed:.1f}s — it must be bounded"
-        )
-
-    def test_missing_directory_reports_success_immediately(self):
-        """Nothing to remove is the successful case, not a retry loop."""
-        import shutil
-        import tempfile
-
-        tmp = Path(tempfile.mkdtemp(prefix="magus-remove-missing-"))
-        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
-        original_home = Path.home
-        Path.home = staticmethod(lambda: tmp)
-        self.addCleanup(lambda: setattr(Path, "home", original_home))
-
-        started = time.monotonic()
-        removed = _mod._remove_session_profile_dir(os.getpid())
-        elapsed = time.monotonic() - started
-
-        self.assertTrue(removed)
-        self.assertLess(elapsed, 1.0, "an absent directory must return at once")
-
-
-# ---------------------------------------------------------------------------
-# Test 7: New live-page tools — evaluate / keyboard / focus
-# ---------------------------------------------------------------------------
-
-class _FakeCDPClient:
-    """Records every CDP send.<Domain>.<method>(params, session_id) call.
-
-    Returns canned values keyed by 'Domain.method' so handlers can assert on
-    both the params they sent and the result-shape parsing.
-    """
-
-    def __init__(self, returns=None):
-        self.calls = []  # list of (path, params)
-        self._returns = returns or {}
-
-        class _Domain:
-            def __init__(self, client, domain):
-                self._client = client
-                self._domain = domain
-
-            def __getattr__(self, method):
-                async def _call(params=None, session_id=None):
-                    path = f"{self._domain}.{method}"
-                    self._client.calls.append((path, params or {}))
-                    return self._client._returns.get(path, {})
-                return _call
-
-        class _Send:
-            def __init__(self, client):
-                self._client = client
-
-            def __getattr__(self, domain):
-                return _Domain(self._client, domain)
-
-        self.send = _Send(self)
-
-
-class _FakeCDPSession:
-    def __init__(self, returns=None):
-        self.session_id = "cdp-sess-1"
-        self.cdp_client = _FakeCDPClient(returns=returns)
-
-
-def _server_with_cdp(returns=None):
-    """A server whose browser_session yields a recording CDP session."""
-    server = _make_server()
-    fake_cdp = _FakeCDPSession(returns=returns)
-
-    bs = MagicMock()
-    bs.id = "live-session"
-    bs.get_or_create_cdp_session = AsyncMock(return_value=fake_cdp)
-    server.browser_session = bs
-    server._update_session_activity = MagicMock()
-    return server, fake_cdp
-
-
-class TestEvaluateTool(unittest.IsolatedAsyncioTestCase):
-    """browser_evaluate runs JS in the LIVE page (self.browser_session) via
-    Runtime.evaluate with returnByValue + awaitPromise, IIFE-wrapping `return`."""
-
-    async def test_no_session_errors_cleanly(self):
+    def test_ax_helpers_get_the_daemon_error_text_alone(self):
         server = _make_server()
-        server.browser_session = None
-        out = await server._handle_evaluate({"script": "document.title"})
-        self.assertIn("No browser session", out)
+        server._ax_name = "bu1"
+        self.reply = {"error": "{'code': -32000, 'message': 'No node'}"}
+        with self.assertRaises(RuntimeError) as cm:
+            server._ax_cdp("DOM.resolveNode", None, backendNodeId=1)
+        self.assertEqual(str(cm.exception), "{'code': -32000, 'message': 'No node'}")
+        self.assertEqual(self.requests[0][0], "bu1")
 
-    async def test_plain_expression_passed_through(self):
-        server, cdp = _server_with_cdp(
-            returns={"Runtime.evaluate": {"result": {"value": "Hello"}}}
+
+# ---------------------------------------------------------------------------
+# The MCP surface: tool list and call_tool error handling
+# ---------------------------------------------------------------------------
+
+class TestToolList(unittest.IsolatedAsyncioTestCase):
+    """The full contract is frozen in test_mcp_protocol.py; this checks the shape."""
+
+    async def test_lists_27_unique_tools_with_object_schemas(self):
+        result = await _make_server()._handle_list_tools(None, None)
+        names = [tool.name for tool in result.tools]
+        self.assertEqual(len(names), 27)
+        self.assertEqual(len(set(names)), 27)
+        for tool in result.tools:
+            self.assertEqual(tool.input_schema.get("type"), "object", tool.name)
+
+    async def test_custom_tools_are_listed(self):
+        names = {tool.name for tool in (await _make_server()._handle_list_tools(None, None)).tools}
+        for custom in (
+            "browser_export_session", "browser_import_session", "browser_run_script",
+            "browser_evaluate", "browser_press_key", "browser_keyboard", "browser_focus",
+            "browser_save_screenshot", "browser_doctor", "browser_start_cloud_session",
+            "browser_set_agent_model",
+        ):
+            self.assertIn(custom, names)
+
+    async def test_read_only_tools_are_annotated(self):
+        tools = {tool.name: tool for tool in (await _make_server()._handle_list_tools(None, None)).tools}
+        for name in ("browser_get_state", "browser_get_html", "browser_screenshot",
+                     "browser_list_tabs", "browser_list_sessions"):
+            self.assertTrue(tools[name].annotations and tools[name].annotations.read_only_hint, name)
+        self.assertIsNone(tools["browser_navigate"].annotations)
+
+
+class TestCallToolErrors(_ToolTestCase):
+    async def test_unknown_tool_raises_in_execute(self):
+        with self.assertRaises(ValueError) as cm:
+            await self.server._execute_tool("browser_nope", {})
+        self.assertIn("Unknown tool: browser_nope", str(cm.exception))
+
+    async def test_unknown_tool_is_an_error_result(self):
+        import mcp.types as mcp_types
+
+        result = await self.server._handle_call_tool(
+            None, mcp_types.CallToolRequestParams(name="browser_nope", arguments={})
         )
-        out = await server._handle_evaluate({"script": "document.title"})
-        path, params = cdp.cdp_client.calls[-1]
-        self.assertEqual(path, "Runtime.evaluate")
+        self.assertTrue(result.is_error)
+        self.assertEqual(result.content[0].text, "Error: Unknown tool: browser_nope")
+
+    async def test_a_cdp_failure_is_an_error_result_not_a_crash(self):
+        import mcp.types as mcp_types
+
+        self.daemon.answers["Runtime.evaluate"] = RuntimeError("Runtime.evaluate failed: boom")
+        result = await self.server._handle_call_tool(
+            None, mcp_types.CallToolRequestParams(name="browser_get_html", arguments={})
+        )
+        self.assertTrue(result.is_error)
+        self.assertIn("boom", result.content[0].text)
+
+    async def test_string_results_become_text_content(self):
+        import mcp.types as mcp_types
+
+        self.daemon.evaluate({"document.documentElement.outerHTML": "<html></html>"})
+        result = await self.server._handle_call_tool(
+            None, mcp_types.CallToolRequestParams(name="browser_get_html", arguments={})
+        )
+        self.assertFalse(result.is_error)
+        self.assertEqual(result.content[0].text, "<html></html>")
+
+
+# ---------------------------------------------------------------------------
+# The primary session: started on demand, downloads redirected
+# ---------------------------------------------------------------------------
+
+class TestPrimarySessionStart(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        self.daemon = _FakeDaemon()
+        self.enterContext(self.daemon.installed())
+        self.daemon.evaluate({"document.documentElement.outerHTML": "<html></html>"})
+
+    async def test_page_tool_starts_one_local_browser_and_reuses_it(self):
+        with _fake_browsers() as created:
+            server = _make_server()
+            await server._execute_tool("browser_get_html", {})
+            await server._execute_tool("browser_get_html", {})
+        self.assertEqual(len(created), 1)
+        self.assertEqual(
+            created[0].kwargs,
+            {"kind": "chromium", "executable_path": "/fake/chromium", "headless": True},
+        )
+        self.assertTrue(created[0].started)
+        self.assertEqual(server._sessions[server._primary].kind, "local")
+
+    async def test_local_start_sends_downloads_to_the_config_dir(self):
+        with _fake_browsers():
+            server = _make_server()
+            await server._execute_tool("browser_get_html", {})
+        params = self.daemon.params_of("Browser.setDownloadBehavior")
+        self.assertEqual(len(params), 1)
+        self.assertEqual(params[0]["downloadPath"], str(Path.home() / ".config" / "browseruse" / "downloads"))
+        self.assertTrue((Path.home() / ".config" / "browseruse" / "downloads").is_dir())
+
+    async def test_cloud_start_sets_no_downloads(self):
+        with _fake_browsers(), patch.object(_mod, "_browser_options", lambda: {"use_cloud": True}):
+            server = _make_server()
+            await server._execute_tool("browser_get_html", {})
+        self.assertEqual(server._sessions[server._primary].kind, "cloud")
+        self.assertNotIn("Browser.setDownloadBehavior", self.daemon.methods())
+
+    async def test_custom_tools_never_start_a_browser(self):
+        with _fake_browsers() as created:
+            server = _make_server()
+            for name, args in (
+                ("browser_evaluate", {"script": "1"}),
+                ("browser_focus", {"selector": "input"}),
+                ("browser_press_key", {"key": "Enter"}),
+                ("browser_keyboard", {"text": "x"}),
+                ("browser_save_screenshot", {"output_path": "/tmp/never-written.png"}),
+            ):
+                with self.subTest(name):
+                    text = await server._execute_tool(name, args)
+                    self.assertEqual(text, "Error: No browser session active. Navigate first (browser_navigate).")
+        self.assertEqual(created, [])
+
+    async def test_session_tools_never_start_a_browser(self):
+        with _fake_browsers() as created:
+            server = _make_server()
+            self.assertEqual(await server._execute_tool("browser_list_sessions", {}), "No active browser sessions")
+            self.assertEqual(await server._execute_tool("browser_close_all", {}), "No active sessions to close")
+        self.assertEqual(created, [])
+
+    async def test_a_failed_start_is_an_error_result(self):
+        import mcp.types as mcp_types
+
+        with _fake_browsers():
+            _FakeBrowser.start_error = RuntimeError("chromium would not launch")
+            server = _make_server()
+            result = await server._handle_call_tool(
+                None, mcp_types.CallToolRequestParams(name="browser_navigate", arguments={"url": "https://a.test/"})
+            )
+        self.assertTrue(result.is_error)
+        self.assertIn("chromium would not launch", result.content[0].text)
+        self.assertIsNone(server._primary)
+
+
+# ---------------------------------------------------------------------------
+# Page tools
+# ---------------------------------------------------------------------------
+
+class TestNavigateTool(_ToolTestCase):
+    async def test_navigates_the_attached_tab_and_waits_for_load(self):
+        text = await self.call("browser_navigate", url="https://a.test/")
+        self.assertEqual(text, "Navigated to: https://a.test/")
+        self.assertEqual(self.daemon.params_of("Page.navigate"), [{"url": "https://a.test/"}])
+        navigate = self.daemon.methods().index("Page.navigate")
+        self.assertIn("Runtime.evaluate", self.daemon.methods()[navigate:])
+        self.assertEqual(self.daemon.calls[navigate][0], "budaemon01")
+        self.assertIsNone(self.daemon.calls[navigate][2])
+        self.assertEqual(self.server._sessions[self.session_id].url, "https://a.test/")
+
+    async def test_waits_until_the_document_is_complete(self):
+        states = iter(["loading", "interactive", "complete"])
+        self.daemon.answers["Runtime.evaluate"] = lambda params: {"result": {"value": next(states)}}
+        await self.call("browser_navigate", url="https://a.test/")
+        self.assertEqual(self.daemon.methods().count("Runtime.evaluate"), 3)
+
+    async def test_a_load_timeout_is_reported(self):
+        self.daemon.answers["Runtime.evaluate"] = {"result": {"value": "loading"}}
+        with patch.object(_mod, "_LOAD_TIMEOUT_SECONDS", 0.05):
+            text = await self.call("browser_navigate", url="https://slow.test/")
+        self.assertTrue(text.startswith("Navigated to: https://slow.test/"), text)
+        self.assertIn("still loading", text)
+
+    async def test_a_new_tab_load_timeout_is_reported(self):
+        self.daemon.answers["Runtime.evaluate"] = {"result": {"value": "loading"}}
+        self.daemon.answers["Target.createTarget"] = {"targetId": "NEWTAB0003"}
+        self.daemon.answers["Target.attachToTarget"] = {"sessionId": "s3"}
+        with patch.object(_mod, "_LOAD_TIMEOUT_SECONDS", 0.05):
+            text = await self.call("browser_navigate", url="https://slow.test/", new_tab=True)
+        self.assertTrue(text.startswith("Opened new tab with URL: https://slow.test/"), text)
+        self.assertIn("still loading", text)
+
+    async def test_waits_for_the_new_document_before_reading_ready_state(self):
+        """The old document still reads 'complete' right after Page.navigate."""
+        self.daemon.answers["Page.navigate"] = {"frameId": "MAIN", "loaderId": "NEWLOADER"}
+        loaders = iter(["OLDLOADER", "OLDLOADER", "NEWLOADER"])
+        self.daemon.answers["Page.getFrameTree"] = lambda params: {
+            "frameTree": {"frame": {"id": "MAIN", "loaderId": next(loaders, "NEWLOADER")}}
+        }
+        text = await self.call("browser_navigate", url="https://a.test/")
+        self.assertEqual(text, "Navigated to: https://a.test/")
+        methods = self.daemon.methods()
+        after = methods[methods.index("Page.navigate") + 1:]
+        self.assertIn("Runtime.evaluate", after)
+        self.assertEqual(
+            after[:after.index("Runtime.evaluate")].count("Page.getFrameTree"), 3,
+            f"readyState was read before the new document committed: {after}",
+        )
+
+    async def test_navigation_error_is_reported(self):
+        self.daemon.answers["Page.navigate"] = {"errorText": "net::ERR_NAME_NOT_RESOLVED"}
+        text = await self.call("browser_navigate", url="https://nowhere.invalid/")
+        self.assertTrue(text.startswith("Error"), text)
+        self.assertIn("ERR_NAME_NOT_RESOLVED", text)
+
+    async def test_new_tab_creates_attaches_then_navigates(self):
+        self.daemon.answers["Target.createTarget"] = {"targetId": "NEWTAB0001"}
+        self.daemon.answers["Target.attachToTarget"] = {"sessionId": "new-tab-session"}
+        text = await self.call("browser_navigate", url="https://b.test/", new_tab=True)
+        self.assertEqual(text, "Opened new tab with URL: https://b.test/")
+        methods = self.daemon.methods()
+        self.assertLess(methods.index("Target.createTarget"), methods.index("Target.attachToTarget"))
+        self.assertLess(methods.index("Target.attachToTarget"), methods.index("Page.navigate"))
+        self.assertEqual(self.daemon.params_of("Target.createTarget"), [{"url": "about:blank", "background": True}])
+        self.assertEqual(
+            self.daemon.params_of("Target.attachToTarget"), [{"targetId": "NEWTAB0001", "flatten": True}]
+        )
+        self.assertIn(
+            ("budaemon01", "set_session", {"session_id": "new-tab-session", "target_id": "NEWTAB0001"}),
+            self.daemon.meta_calls,
+        )
+
+    async def test_url_is_required(self):
+        self.assertEqual(await self.call("browser_navigate"), "Error: url is required.")
+        self.assertNotIn("Page.navigate", self.daemon.methods())
+
+
+class TestClickTool(_ToolTestCase):
+    async def test_click_by_index_goes_through_ax_helpers(self):
+        text = await self.call("browser_click", index=42)
+        self.assertEqual(text, "Clicked element 42")
+        self.assertEqual(self.ax.clicks, [42])
+        self.assertEqual(self.harness.NAME, "budaemon01")
+
+    async def test_ax_helpers_follow_the_primary_session(self):
+        await self.call("browser_click", index=1)
+        other = _FakeBrowser()
+        other.name = "budaemon02"
+        self.server._primary = self.server._register(other, "local")
+        await self.call("browser_click", index=2)
+        self.assertEqual(self.ax_builds, 1, "one AxHelpers serves every session")
+        self.assertEqual(self.harness.NAME, "budaemon02")
+        self.ax.cdp("DOM.getDocument")
+        self.assertEqual(self.daemon.calls[-1][0], "budaemon02")
+
+    async def test_click_at_coordinates_presses_and_releases(self):
+        text = await self.call("browser_click", coordinate_x=10, coordinate_y=20)
+        self.assertEqual(text, "Clicked at coordinates (10, 20)")
+        events = self.daemon.params_of("Input.dispatchMouseEvent")
+        self.assertEqual([e["type"] for e in events], ["mousePressed", "mouseReleased"])
+        for event in events:
+            self.assertEqual((event["x"], event["y"], event["button"], event["clickCount"]), (10, 20, "left", 1))
+        self.assertEqual(self.ax.clicks, [])
+
+    async def test_click_needs_index_or_both_coordinates(self):
+        for args in ({}, {"coordinate_x": 5}):
+            with self.subTest(args):
+                text = await self.call("browser_click", **args)
+                self.assertEqual(text, "Error: Provide either index or both coordinate_x and coordinate_y")
+        self.assertEqual(self.ax.clicks, [])
+
+    async def test_new_tab_on_a_link_opens_its_href(self):
+        self.daemon.answers["DOM.resolveNode"] = {"object": {"objectId": "obj-1"}}
+        self.daemon.answers["Runtime.callFunctionOn"] = {"result": {"value": "https://example.com/next/page"}}
+        self.daemon.answers["Target.createTarget"] = {"targetId": "NEWTAB0002"}
+        self.daemon.answers["Target.attachToTarget"] = {"sessionId": "s2"}
+        text = await self.call("browser_click", index=7, new_tab=True)
+        self.assertEqual(text, "Clicked element 7 and opened in new tab https://example.com/...")
+        self.assertEqual(self.daemon.params_of("DOM.resolveNode"), [{"backendNodeId": 7}])
+        self.assertEqual(self.daemon.params_of("Page.navigate"), [{"url": "https://example.com/next/page"}])
+        self.assertIn("Runtime.releaseObject", self.daemon.methods())
+        self.assertEqual(self.ax.clicks, [])
+
+    async def test_new_tab_on_a_non_link_just_clicks(self):
+        self.daemon.answers["DOM.resolveNode"] = {"object": {"objectId": "obj-1"}}
+        self.daemon.answers["Runtime.callFunctionOn"] = {"result": {"value": None}}
+        text = await self.call("browser_click", index=7, new_tab=True)
+        self.assertEqual(text, "Clicked element 7 (new tab not supported for non-link elements)")
+        self.assertEqual(self.ax.clicks, [7])
+
+    async def test_new_tab_on_a_missing_element(self):
+        self.daemon.answers["DOM.resolveNode"] = {}
+        text = await self.call("browser_click", index=99, new_tab=True)
+        self.assertEqual(text, "Element with index 99 not found")
+
+
+class TestTypeTool(_ToolTestCase):
+    async def test_types_through_ax_helpers(self):
+        text = await self.call("browser_type", index=5, text="hello")
+        self.assertEqual(text, "Typed 'hello' into element 5")
+        self.assertEqual(self.ax.typed, [(5, "hello")])
+
+    async def test_empty_text_clears(self):
+        text = await self.call("browser_type", index=5, text="")
+        self.assertEqual(text, "Typed '' into element 5")
+        self.assertEqual(self.ax.typed, [(5, "")])
+
+    async def test_an_email_is_masked_in_the_result(self):
+        text = await self.call("browser_type", index=5, text="person@example.com")
+        self.assertEqual(text, "Typed <email> into element 5")
+        self.assertEqual(self.ax.typed, [(5, "person@example.com")])
+
+    async def test_a_credential_is_masked_in_the_result(self):
+        secret = "sk_live_abc123def456ghi"
+        text = await self.call("browser_type", index=5, text=secret)
+        self.assertEqual(text, "Typed <credential> into element 5")
+        self.assertNotIn(secret, text)
+
+    async def test_index_and_text_are_required(self):
+        self.assertEqual(await self.call("browser_type", index=5), "Error: index and text are required.")
+        self.assertEqual(self.ax.typed, [])
+
+
+class TestGetStateTool(_ToolTestCase):
+    def setUp(self):
+        super().setUp()
+        self.daemon.evaluate({_mod._PAGE_INFO_JS: {
+            "url": "https://a.test/form", "title": "Form", "w": 800, "h": 600,
+            "sx": 0, "sy": 120, "pw": 800, "ph": 2400,
+        }})
+        self.daemon.answers["Target.getTargets"] = {"targetInfos": [
+            {"targetId": "TARGETAAAA", "type": "page", "url": "https://a.test/form", "title": "Form"},
+            {"targetId": "TARGETBBBB", "type": "page", "url": "https://b.test/", "title": "B"},
+            {"targetId": "WORKER0001", "type": "service_worker", "url": "https://a.test/sw.js", "title": ""},
+        ]}
+        self.daemon.answers["Accessibility.getFullAXTree"] = {"nodes": [
+            {"nodeId": "1", "ignored": False, "role": {"value": "RootWebArea"}, "backendDOMNodeId": 1},
+            {"nodeId": "2", "ignored": False, "role": {"value": "button"}, "name": {"value": "Go"},
+             "backendDOMNodeId": 11},
+            {"nodeId": "3", "ignored": True, "role": {"value": "button"}, "backendDOMNodeId": 12},
+            {"nodeId": "4", "ignored": False, "role": {"value": "link"}, "name": {"value": "Docs " + "x" * 200},
+             "backendDOMNodeId": 13},
+            {"nodeId": "5", "ignored": False, "role": {"value": "textbox"}, "name": {"value": ""},
+             "backendDOMNodeId": 14},
+            {"nodeId": "6", "ignored": False, "role": {"value": "StaticText"}, "name": {"value": "hi"},
+             "backendDOMNodeId": 15},
+            {"nodeId": "7", "ignored": False, "role": {"value": "button"}, "name": {"value": "no dom"}},
+        ]}
+        nodes = {
+            11: {"nodeName": "BUTTON", "attributes": ["type", "submit"]},
+            13: {"nodeName": "A", "attributes": ["href", "/docs", "class", "nav"]},
+            14: {"nodeName": "INPUT", "attributes": ["placeholder", "Search"]},
+        }
+        self.daemon.answers["DOM.describeNode"] = lambda params: {"node": nodes[params["backendNodeId"]]}
+
+    async def test_reports_page_facts_and_controls(self):
+        content = await self.call("browser_get_state")
+        self.assertEqual(len(content), 1)
+        state = json.loads(content[0].text)
+        self.assertEqual(state["url"], "https://a.test/form")
+        self.assertEqual(state["title"], "Form")
+        self.assertEqual(state["tabs"], [
+            {"url": "https://a.test/form", "title": "Form"}, {"url": "https://b.test/", "title": "B"},
+        ])
+        self.assertEqual(state["viewport"], {"width": 800, "height": 600})
+        self.assertEqual(state["page"], {"width": 800, "height": 2400})
+        self.assertEqual(state["scroll"], {"x": 0, "y": 120})
+        self.assertNotIn("screenshot_dimensions", state)
+        self.assertEqual(state["interactive_elements"], [
+            {"index": 11, "tag": "button", "text": "Go"},
+            {"index": 13, "tag": "a", "text": ("Docs " + "x" * 200)[:100], "href": "/docs"},
+            {"index": 14, "tag": "input", "text": "", "placeholder": "Search"},
+        ])
+        self.assertEqual(self.server._sessions[self.session_id].url, "https://a.test/form")
+
+    async def test_controls_in_child_frames_are_listed(self):
+        main_tree = self.daemon.answers["Accessibility.getFullAXTree"]
+        frame_trees = {
+            "CHILD1": {"nodes": [
+                {"nodeId": "1", "ignored": False, "role": {"value": "RootWebArea"}, "backendDOMNodeId": 30},
+                {"nodeId": "2", "ignored": False, "role": {"value": "button"}, "name": {"value": "In frame"},
+                 "backendDOMNodeId": 31},
+            ]},
+            "GRANDCHILD": {"nodes": [
+                {"nodeId": "1", "ignored": False, "role": {"value": "textbox"}, "name": {"value": "Deep"},
+                 "backendDOMNodeId": 41},
+            ]},
+            "CROSSSITE": RuntimeError("Accessibility.getFullAXTree failed: Frame with the given id was not found"),
+        }
+        self.daemon.answers["Accessibility.getFullAXTree"] = (
+            lambda params: frame_trees[params["frameId"]] if "frameId" in params else main_tree
+        )
+        self.daemon.answers["Page.getFrameTree"] = {"frameTree": {
+            "frame": {"id": "MAIN", "loaderId": "L1", "url": "https://a.test/form"},
+            "childFrames": [
+                {"frame": {"id": "CHILD1", "url": "about:srcdoc"},
+                 "childFrames": [{"frame": {"id": "GRANDCHILD", "url": "about:srcdoc"}}]},
+                {"frame": {"id": "CROSSSITE", "url": "https://other.test/"}},
+            ],
+        }}
+        nodes = {
+            11: {"nodeName": "BUTTON", "attributes": []},
+            13: {"nodeName": "A", "attributes": ["href", "/docs"]},
+            14: {"nodeName": "INPUT", "attributes": ["placeholder", "Search"]},
+            31: {"nodeName": "BUTTON", "attributes": []},
+            41: {"nodeName": "INPUT", "attributes": []},
+        }
+        self.daemon.answers["DOM.describeNode"] = lambda params: {"node": nodes[params["backendNodeId"]]}
+        state = json.loads((await self.call("browser_get_state"))[0].text)
+        self.assertEqual(
+            [e["index"] for e in state["interactive_elements"]], [11, 13, 14, 31, 41],
+            state["interactive_elements"],
+        )
+        self.assertEqual(state["interactive_elements"][3], {"index": 31, "tag": "button", "text": "In frame"})
+
+    async def test_include_screenshot_adds_an_image(self):
+        self.daemon.answers["Page.getLayoutMetrics"] = {
+            "cssVisualViewport": {"pageX": 0, "pageY": 120, "clientWidth": 800, "clientHeight": 600},
+        }
+        self.daemon.answers["Page.captureScreenshot"] = {"data": _PNG_1x1}
+        content = await self.call("browser_get_state", include_screenshot=True)
+        self.assertEqual(len(content), 2)
+        self.assertEqual(json.loads(content[0].text)["screenshot_dimensions"], {"width": 800, "height": 600})
+        self.assertEqual(content[1].type, "image")
+        self.assertEqual(content[1].mime_type, "image/png")
+        self.assertEqual(content[1].data, _PNG_1x1)
+
+
+class TestExtractContentTool(_ToolTestCase):
+    def setUp(self):
+        super().setUp()
+        self.prompts: list = []
+        self.daemon.answers["Runtime.evaluate"] = lambda params: {"result": {"value": {
+            "url": "https://shop.test/item", "title": "Item", "text": "Price: 42 EUR",
+            "links": [["Docs", "https://shop.test/docs"]],
+        }}}
+
+    def _model(self, reply="42 EUR", error=None):
+        from pydantic_ai.messages import ModelResponse, TextPart
+        from pydantic_ai.models.function import FunctionModel
+
+        def respond(messages, info):
+            self.prompts.append(repr(messages))
+            if error is not None:
+                raise error
+            return ModelResponse(parts=[TextPart(reply)])
+
+        model = FunctionModel(respond)
+        return _pytypes.SimpleNamespace(pydantic_model=lambda: model, model_settings=lambda: {})
+
+    async def test_without_a_key_it_says_which_one_and_calls_nothing(self):
+        build = MagicMock()
+        with patch.object(_mod, "_build_llm", build):
+            text = await self.call("browser_extract_content", query="price?")
+        self.assertIn("ANTHROPIC_API_KEY", text)
+        self.assertIn("browser_set_agent_model", text)
+        build.assert_not_called()
+        self.assertNotIn("Runtime.evaluate", self.daemon.methods())
+
+    async def test_answers_from_the_page_text(self):
+        with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"}), \
+                patch.object(_mod, "_build_llm", lambda choice: self._model()):
+            text = await self.call("browser_extract_content", query="What is the price?")
+        self.assertEqual(text, "42 EUR")
+        self.assertEqual(len(self.prompts), 1)
+        self.assertIn("Price: 42 EUR", self.prompts[0])
+        self.assertIn("What is the price?", self.prompts[0])
+        self.assertNotIn("https://shop.test/docs", self.prompts[0])
+
+    async def test_extract_links_adds_the_links(self):
+        with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"}), \
+                patch.object(_mod, "_build_llm", lambda choice: self._model()):
+            await self.call("browser_extract_content", query="links?", extract_links=True)
+        self.assertIn("https://shop.test/docs", self.prompts[0])
+
+    async def test_a_model_failure_is_reported(self):
+        with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"}), \
+                patch.object(_mod, "_build_llm", lambda choice: self._model(error=RuntimeError("rate limited"))):
+            text = await self.call("browser_extract_content", query="q")
+        self.assertTrue(text.startswith("Error: the agent model failed"), text)
+        self.assertIn("rate limited", text)
+
+    async def test_an_empty_answer(self):
+        with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"}), \
+                patch.object(_mod, "_build_llm", lambda choice: self._model(reply="  ")):
+            self.assertEqual(await self.call("browser_extract_content", query="q"), "No content extracted")
+
+    async def test_query_is_required(self):
+        self.assertEqual(await self.call("browser_extract_content", query=" "), "Error: query is required.")
+
+    async def test_with_no_session_it_starts_no_browser(self):
+        build = MagicMock(side_effect=lambda choice: self._model())
+        with _fake_browsers() as created, patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"}), \
+                patch.object(_mod, "_build_llm", build):
+            server = _make_server()
+            text = await server._execute_tool("browser_extract_content", {"query": "price?"})
+        self.assertEqual(text, _mod._NO_SESSION)
+        self.assertEqual(created, [])
+        self.assertEqual(self.prompts, [])
+
+
+def _js_brackets_balanced(expression: str) -> bool:
+    """
+    Whether every (, [ and { in a JavaScript expression closes in order,
+    outside string literals. A fake Runtime.evaluate uses it to answer an
+    unbalanced expression the way Chrome does, with a SyntaxError, instead of
+    pretending the script ran.
+    """
+    pairs = {")": "(", "]": "[", "}": "{"}
+    stack: list = []
+    quote = None
+    escaped = False
+    for ch in expression:
+        if quote:
+            if escaped:
+                escaped = False
+            elif ch == "\\":
+                escaped = True
+            elif ch == quote:
+                quote = None
+            continue
+        if ch in "'\"`":
+            quote = ch
+        elif ch in "([{":
+            stack.append(ch)
+        elif ch in pairs:
+            if not stack or stack.pop() != pairs[ch]:
+                return False
+    return not stack and quote is None
+
+
+def _syntax_error(description: str) -> dict:
+    return {
+        "result": {"type": "object", "subtype": "error", "description": description},
+        "exceptionDetails": {"text": "Uncaught", "exception": {"description": description}},
+    }
+
+
+class TestGetHtmlTool(_ToolTestCase):
+    async def test_full_page(self):
+        self.daemon.evaluate({"document.documentElement.outerHTML": "<html><body>x</body></html>"})
+        self.assertEqual(await self.call("browser_get_html"), "<html><body>x</body></html>")
+
+    async def test_selector(self):
+        def answer(params):
+            expression = params["expression"]
+            if not _js_brackets_balanced(expression):
+                return _syntax_error("SyntaxError: Unexpected token '}'")
+            return {"result": {"value": "<div id=\"main\"></div>" if '"#main"' in expression else None}}
+
+        self.daemon.answers["Runtime.evaluate"] = answer
+        self.assertEqual(await self.call("browser_get_html", selector="#main"), '<div id="main"></div>')
+
+    async def test_a_javascript_exception_is_an_error_not_a_missing_element(self):
+        import mcp.types as mcp_types
+
+        self.daemon.answers["Runtime.evaluate"] = _syntax_error(
+            "SyntaxError: Failed to execute 'querySelector' on 'Document': '[[' is not a valid selector."
+        )
+        result = await self.server._handle_call_tool(
+            None, mcp_types.CallToolRequestParams(name="browser_get_html", arguments={"selector": "[["})
+        )
+        self.assertTrue(result.is_error, result.content[0].text)
+        self.assertIn("is not a valid selector", result.content[0].text)
+        self.assertNotIn("No element found", result.content[0].text)
+
+    def test_the_bracket_check_can_fail(self):
+        self.assertTrue(_js_brackets_balanced('(function(){ return "}}"; })()'))
+        self.assertFalse(_js_brackets_balanced("(function(){ return 1; }})()"))
+
+    async def test_selector_with_no_match(self):
+        self.daemon.evaluate({}, default=None)
+        self.assertEqual(await self.call("browser_get_html", selector="#nope"), "No element found for selector: #nope")
+
+    async def test_no_html(self):
+        self.daemon.evaluate({}, default=None)
+        self.assertEqual(await self.call("browser_get_html"), "Error: Could not get page HTML")
+
+
+class TestScreenshotTool(_ToolTestCase):
+    def setUp(self):
+        super().setUp()
+        self.daemon.answers["Page.getLayoutMetrics"] = {
+            "cssVisualViewport": {"pageX": 0, "pageY": 10, "clientWidth": 800, "clientHeight": 600},
+            "cssContentSize": {"width": 800, "height": 2000},
+        }
+        self.daemon.answers["Page.captureScreenshot"] = {"data": _PNG_1x1}
+
+    async def test_viewport_capture_with_an_explicit_clip(self):
+        content = await self.call("browser_screenshot")
+        capture = self.daemon.params_of("Page.captureScreenshot")[0]
+        self.assertEqual(capture["clip"], {"x": 0, "y": 10, "width": 800, "height": 600, "scale": 1})
+        self.assertNotIn("captureBeyondViewport", capture)
+        self.assertEqual(
+            json.loads(content[0].text),
+            {"size_bytes": len(base64.b64decode(_PNG_1x1)), "viewport": {"width": 800, "height": 600}},
+        )
+        self.assertEqual((content[1].type, content[1].data), ("image", _PNG_1x1))
+
+    async def test_brings_the_attached_tab_to_the_front_first(self):
+        await self.call("browser_screenshot")
+        methods = self.daemon.methods()
+        self.assertEqual(self.daemon.params_of("Target.activateTarget"), [{"targetId": "TARGETAAAA"}])
+        self.assertLess(methods.index("Target.activateTarget"), methods.index("Page.captureScreenshot"))
+
+    async def test_full_page(self):
+        await self.call("browser_screenshot", full_page=True)
+        capture = self.daemon.params_of("Page.captureScreenshot")[0]
+        self.assertEqual(capture["clip"], {"x": 0, "y": 0, "width": 800, "height": 2000, "scale": 1})
+        self.assertIs(capture["captureBeyondViewport"], True)
+
+    async def test_no_page_size(self):
+        self.daemon.answers["Page.getLayoutMetrics"] = {}
+        text = await self.call("browser_screenshot")
+        self.assertEqual(text, "Error: the browser reported no page size to capture.")
+        self.assertNotIn("Page.captureScreenshot", self.daemon.methods())
+
+
+class TestScrollTool(_ToolTestCase):
+    def setUp(self):
+        super().setUp()
+        self.daemon.evaluate({"({w: innerWidth, h: innerHeight})": {"w": 800, "h": 600}})
+
+    async def test_down_by_default_at_the_viewport_centre(self):
+        self.assertEqual(await self.call("browser_scroll"), "Scrolled down")
+        wheel = self.daemon.params_of("Input.dispatchMouseEvent")[0]
+        self.assertEqual(wheel, {"type": "mouseWheel", "x": 400, "y": 300, "deltaX": 0, "deltaY": 500})
+
+    async def test_up(self):
+        self.assertEqual(await self.call("browser_scroll", direction="up"), "Scrolled up")
+        self.assertEqual(self.daemon.params_of("Input.dispatchMouseEvent")[0]["deltaY"], -500)
+
+    async def test_bad_direction(self):
+        self.assertEqual(
+            await self.call("browser_scroll", direction="sideways"), "Error: direction must be 'up' or 'down'."
+        )
+        self.assertNotIn("Input.dispatchMouseEvent", self.daemon.methods())
+
+
+class TestGoBackTool(_ToolTestCase):
+    async def test_goes_to_the_previous_entry(self):
+        self.daemon.answers["Page.getNavigationHistory"] = {"currentIndex": 1, "entries": [
+            {"id": 101, "url": "https://a.test/"}, {"id": 102, "url": "https://a.test/next"},
+        ]}
+        self.assertEqual(await self.call("browser_go_back"), "Navigated back")
+        self.assertEqual(self.daemon.params_of("Page.navigateToHistoryEntry"), [{"entryId": 101}])
+        self.assertEqual(self.server._sessions[self.session_id].url, "https://a.test/")
+
+    async def test_no_previous_entry(self):
+        self.daemon.answers["Page.getNavigationHistory"] = {"currentIndex": 0, "entries": [
+            {"id": 101, "url": "https://a.test/"},
+        ]}
+        text = await self.call("browser_go_back")
+        self.assertTrue(text.startswith("Error"), text)
+        self.assertNotIn("Page.navigateToHistoryEntry", self.daemon.methods())
+
+
+class TestTabTools(_ToolTestCase):
+    def setUp(self):
+        super().setUp()
+        self.targets = [
+            {"targetId": "AAAAAAAA1111", "type": "page", "url": "https://a.test/", "title": "A"},
+            {"targetId": "BBBBBBBB2222", "type": "page", "url": "https://b.test/", "title": "B"},
+            {"targetId": "CCCCCCCC2222", "type": "service_worker", "url": "https://b.test/sw.js", "title": ""},
+        ]
+        self.daemon.answers["Target.getTargets"] = lambda params: {"targetInfos": list(self.targets)}
+        self.daemon.answers["Target.attachToTarget"] = {"sessionId": "attached-session"}
+        self.daemon.meta_answers["current_tab"] = {"targetId": "AAAAAAAA1111", "url": "https://a.test/"}
+
+    async def test_list_tabs_shows_pages_with_4_char_ids(self):
+        self.assertEqual(json.loads(await self.call("browser_list_tabs")), [
+            {"tab_id": "1111", "url": "https://a.test/", "title": "A"},
+            {"tab_id": "2222", "url": "https://b.test/", "title": "B"},
+        ])
+
+    async def test_switch_tab_activates_and_attaches(self):
+        text = await self.call("browser_switch_tab", tab_id="2222")
+        self.assertEqual(text, "Switched to tab 2222: https://b.test/")
+        self.assertEqual(self.daemon.params_of("Target.activateTarget"), [{"targetId": "BBBBBBBB2222"}])
+        self.assertEqual(
+            self.daemon.params_of("Target.attachToTarget"), [{"targetId": "BBBBBBBB2222", "flatten": True}]
+        )
+        self.assertIn(
+            ("budaemon01", "set_session", {"session_id": "attached-session", "target_id": "BBBBBBBB2222"}),
+            self.daemon.meta_calls,
+        )
+
+    async def test_an_ambiguous_tab_id_is_an_error(self):
+        self.targets.append({"targetId": "DDDDDDDD1111", "type": "page", "url": "https://d.test/", "title": "D"})
+        text = await self.call("browser_switch_tab", tab_id="1111")
+        self.assertIn("matches 2 tabs", text)
+        self.assertNotIn("Target.attachToTarget", self.daemon.methods())
+
+    async def test_a_longer_id_disambiguates(self):
+        self.targets.append({"targetId": "DDDDDDDD1111", "type": "page", "url": "https://d.test/", "title": "D"})
+        text = await self.call("browser_switch_tab", tab_id="DD1111")
+        self.assertEqual(text, "Switched to tab DD1111: https://d.test/")
+
+    async def test_an_unknown_tab_id_is_an_error(self):
+        text = await self.call("browser_switch_tab", tab_id="zzzz")
+        self.assertIn("no tab with id 'zzzz'", text)
+
+    async def test_close_another_tab_keeps_the_attached_one(self):
+        text = await self.call("browser_close_tab", tab_id="2222")
+        self.assertEqual(text, "Closed tab # 2222, now on https://a.test/")
+        self.assertEqual(self.daemon.params_of("Target.closeTarget"), [{"targetId": "BBBBBBBB2222"}])
+        self.assertNotIn("Target.attachToTarget", self.daemon.methods())
+
+    async def test_closing_the_attached_tab_attaches_another(self):
+        text = await self.call("browser_close_tab", tab_id="1111")
+        self.assertEqual(text, "Closed tab # 1111, now on https://b.test/")
+        self.assertEqual(
+            self.daemon.params_of("Target.attachToTarget"), [{"targetId": "BBBBBBBB2222", "flatten": True}]
+        )
+
+    async def test_closing_the_last_tab_opens_a_blank_one(self):
+        self.targets[:] = [self.targets[0]]
+        self.daemon.answers["Target.createTarget"] = {"targetId": "BLANK0000001"}
+        text = await self.call("browser_close_tab", tab_id="1111")
+        self.assertEqual(text, "Closed tab # 1111, now on about:blank")
+        self.assertEqual(self.daemon.params_of("Target.createTarget"), [{"url": "about:blank"}])
+        self.assertEqual(
+            self.daemon.params_of("Target.attachToTarget"), [{"targetId": "BLANK0000001", "flatten": True}]
+        )
+
+
+# ---------------------------------------------------------------------------
+# Session tools
+# ---------------------------------------------------------------------------
+
+class TestSessionTools(_ToolTestCase):
+    async def test_list_sessions(self):
+        rows = json.loads(await self.call("browser_list_sessions"))
+        self.assertEqual(len(rows), 1)
+        row = rows[0]
+        self.assertEqual(row["session_id"], self.session_id)
+        self.assertEqual(row["current_url"], "https://example.com/")
+        self.assertIs(row["active"], True)
+        for key in ("created_at", "last_activity", "age_minutes"):
+            self.assertIn(key, row)
+        time.strptime(row["created_at"], "%Y-%m-%d %H:%M:%S")
+
+    async def test_close_session(self):
+        text = await self.call("browser_close_session", session_id=self.session_id)
+        self.assertEqual(text, f"Successfully closed session {self.session_id}")
+        self.assertTrue(self.browser.stopped)
+        self.assertEqual(self.server._sessions, {})
+        self.assertIsNone(self.server._primary)
+
+    async def test_close_an_unknown_session(self):
+        self.assertEqual(await self.call("browser_close_session", session_id="nope"), "Session nope not found")
+        self.assertFalse(self.browser.stopped)
+
+    async def test_a_failed_close_keeps_the_session(self):
+        self.browser.stop_error = RuntimeError("daemon gone")
+        text = await self.call("browser_close_session", session_id=self.session_id)
+        self.assertEqual(text, f"Error closing session {self.session_id}: daemon gone")
+        self.assertIn(self.session_id, self.server._sessions)
+
+    async def test_close_all(self):
+        broken = _FakeBrowser()
+        broken.name = "budaemon02"
+        broken.stop_error = RuntimeError("stuck")
+        broken_id = self.server._register(broken, "local")
+        text = await self.call("browser_close_all")
+        self.assertTrue(text.startswith("Closed 1 sessions. Errors: "), text)
+        self.assertIn(broken_id, text)
+        self.assertTrue(self.browser.stopped)
+        self.assertIsNone(self.server._primary)
+
+    async def test_close_all_keeps_a_primary_that_failed_to_stop(self):
+        self.browser.stop_error = RuntimeError("stuck")
+        text = await self.call("browser_close_all")
+        self.assertTrue(text.startswith("Closed 0 sessions. Errors: "), text)
+        self.assertEqual(self.server._primary, self.session_id)
+        self.assertIn(self.session_id, self.server._sessions)
+
+
+class _CloudStopFails(_FakeBrowser):
+    """A cloud browser whose stop returns normally but leaves it running, as 1.0 does."""
+
+    def __init__(self, **kwargs):
+        super().__init__(use_cloud=True, **kwargs)
+        self.id = "cloud-browser-0001"
+
+    async def stop(self):
+        self.name = None
+
+
+class _CloudStopWorks(_CloudStopFails):
+    async def stop(self):
+        self.stopped = True
+        self.name = None
+        self.id = None
+
+
+class TestCloudStopFailure(_ToolTestCase):
+    def setUp(self):
+        super().setUp()
+        self.cloud = _CloudStopFails()
+        self.cloud.name = "bucloud01"
+        self.cloud_id = self.server._register(self.cloud, "cloud")
+        self.server._primary = self.cloud_id
+
+    def listed(self, rows_json):
+        return [row["session_id"] for row in json.loads(rows_json)]
+
+    async def test_a_cloud_browser_still_running_after_stop_keeps_its_session(self):
+        text = await self.call("browser_close_session", session_id=self.cloud_id)
+        self.assertTrue(text.startswith(f"Error closing session {self.cloud_id}:"), text)
+        self.assertIn("still running", text)
+        self.assertIn(self.cloud_id, self.listed(await self.call("browser_list_sessions")))
+        self.assertEqual(self.server._primary, self.cloud_id)
+
+    async def test_close_all_reports_a_cloud_browser_still_running(self):
+        text = await self.call("browser_close_all")
+        self.assertTrue(text.startswith("Closed 1 sessions. Errors: "), text)
+        self.assertIn(f"{self.cloud_id}: Error closing session {self.cloud_id}:", text)
+        self.assertEqual(list(self.server._sessions), [self.cloud_id])
+        self.assertEqual(self.server._primary, self.cloud_id)
+
+    async def test_a_cloud_browser_whose_stop_clears_its_id_closes(self):
+        ok = _CloudStopWorks()
+        ok.name = "bucloud02"
+        ok_id = self.server._register(ok, "cloud")
+        text = await self.call("browser_close_session", session_id=ok_id)
+        self.assertEqual(text, f"Successfully closed session {ok_id}")
+        self.assertNotIn(ok_id, self.server._sessions)
+
+
+class TestRealCloudStopFailure(unittest.IsolatedAsyncioTestCase):
+    """
+    The pinned browser_use.Browser, never started: its cloud stop request
+    fails, so 1.0's stop() returns normally with the cloud browser still
+    registered under its id. Nothing reaches the network: the request
+    function is replaced and so is the retry back-off.
+    """
+
+    async def test_the_session_is_kept_when_the_real_cloud_stop_fails(self):
+        import browser_use
+        from browser_use.browser import browser as bu_browser
+
+        requests: list = []
+
+        def cloud_down(path, method="GET", body=None):
+            requests.append((path, method, body))
+            raise RuntimeError("Browser Use Cloud unreachable")
+
+        self.enterContext(patch.object(bu_browser, "_cloud", cloud_down))
+        self.enterContext(patch.object(bu_browser.time, "sleep", lambda _seconds: None))
+
+        browser = browser_use.Browser(use_cloud=True)
+        self.assertTrue(browser.use_cloud)
+        browser.id = "cloud-browser-real-0001"
+        self.addCleanup(setattr, browser, "id", None)
+        self.assertNotIn(browser, bu_browser._LIVE)
+
+        server = _make_server()
+        session_id = server._register(browser, "cloud")
+        server._primary = session_id
+
+        text = await server._close_session(session_id)
+
+        self.assertEqual(
+            requests,
+            [("/browsers/cloud-browser-real-0001", "PATCH", {"action": "stop"})] * 3,
+        )
+        self.assertEqual(browser.id, "cloud-browser-real-0001")
+        self.assertFalse(browser.stopped)
+        self.assertTrue(text.startswith(f"Error closing session {session_id}:"), text)
+        self.assertIn(session_id, server._sessions)
+        self.assertEqual(server._primary, session_id)
+
+
+class TestExportSessionTool(_ToolTestCase):
+    async def test_writes_cookies_and_url(self):
+        cookies = [{"name": "sid", "value": "1", "domain": "a.test"}, {"name": "t", "value": "2", "domain": "b.test"}]
+        self.daemon.answers["Storage.getCookies"] = {"cookies": cookies}
+        self.daemon.answers["Network.getCookies"] = {"cookies": cookies[:1]}
+        out = Path(_tempfile.mkdtemp(prefix="magus-export-")) / "nested" / "session.json"
+        self.addCleanup(_shutil.rmtree, out.parent.parent, ignore_errors=True)
+        result = json.loads(await self.call("browser_export_session", session_id=self.session_id, output_path=str(out)))
+        self.assertEqual(result, {"success": True, "path": str(out), "cookies_count": 2, "url": "https://example.com/"})
+        saved = json.loads(out.read_text())
+        self.assertEqual(saved["cookies"], cookies)
+        self.assertEqual(saved["url"], "https://example.com/")
+        self.assertEqual(saved["session_id"], self.session_id)
+        self.assertNotIn("Network.getCookies", self.daemon.methods(), "Network.getCookies is scoped to one page")
+
+    async def test_unknown_session(self):
+        text = await self.call("browser_export_session", session_id="nope", output_path="/tmp/x.json")
+        self.assertIn("'nope' not found", text)
+
+
+class TestImportSessionTool(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        self.daemon = _FakeDaemon()
+        self.enterContext(self.daemon.installed())
+        self.created = self.enterContext(_fake_browsers())
+        self.dir = Path(_tempfile.mkdtemp(prefix="magus-import-"))
+        self.addCleanup(_shutil.rmtree, self.dir, ignore_errors=True)
+        self.file = self.dir / "session.json"
+        self.file.write_text(json.dumps({"url": "https://a.test/home", "cookies": [
+            {"name": "sid", "value": "1", "domain": "a.test", "path": "/", "size": 4, "expires": 2000000000},
+            "not a cookie",
+            {"name": "tmp", "value": "2", "domain": "a.test", "session": True, "expires": -1},
+        ]}))
+
+    async def test_imports_into_a_new_primary_session(self):
+        server = _make_server()
+        result = json.loads(await server._execute_tool(
+            "browser_import_session", {"import_path": str(self.file), "navigate_to": "https://a.test/app"}
+        ))
+        self.assertEqual(len(self.created), 1)
+        self.assertEqual(self.created[0].kwargs["kind"], "chromium")
+        self.assertIs(result["is_primary"], True)
+        self.assertEqual(server._primary, result["session_id"])
+        self.assertEqual(result["cookies_imported"], 3)
+        self.assertEqual(result["original_url"], "https://a.test/home")
+        self.assertEqual(self.daemon.params_of("Network.setCookie"), [
+            {"name": "sid", "value": "1", "domain": "a.test", "path": "/", "expires": 2000000000},
+            {"name": "tmp", "value": "2", "domain": "a.test"},
+        ])
+        self.assertEqual(self.daemon.params_of("Page.navigate"), [{"url": "https://a.test/app"}])
+        self.assertIn("Browser.setDownloadBehavior", self.daemon.methods())
+
+    async def test_an_existing_primary_stays_primary(self):
+        server = _make_server()
+        existing = _FakeBrowser()
+        existing.name = "budaemon01"
+        server._primary = server._register(existing, "local")
+        primary = server._primary
+        result = json.loads(await server._execute_tool("browser_import_session", {"import_path": str(self.file)}))
+        self.assertIs(result["is_primary"], False)
+        self.assertEqual(server._primary, primary)
+        self.assertIn(result["session_id"], server._sessions)
+
+    async def test_a_non_primary_import_also_downloads_to_the_config_dir(self):
+        server = _make_server()
+        existing = _FakeBrowser()
+        existing.name = "budaemon01"
+        server._primary = server._register(existing, "local")
+        result = json.loads(await server._execute_tool("browser_import_session", {"import_path": str(self.file)}))
+        imported = server._sessions[result["session_id"]].name
+        targets = [c[0] for c in self.daemon.calls if c[1] == "Browser.setDownloadBehavior"]
+        self.assertEqual(targets, [imported])
+        self.assertEqual(
+            self.daemon.params_of("Browser.setDownloadBehavior")[0]["downloadPath"],
+            str(Path.home() / ".config" / "browseruse" / "downloads"),
+        )
+
+    async def test_a_missing_file(self):
+        text = await _make_server()._execute_tool("browser_import_session", {"import_path": str(self.dir / "no.json")})
+        self.assertTrue(text.startswith("Error: File not found"), text)
+        self.assertEqual(self.created, [])
+
+    async def test_a_failure_stops_the_new_browser(self):
+        self.daemon.answers["Page.navigate"] = {"errorText": "net::ERR_FAILED"}
+        server = _make_server()
+        text = await server._execute_tool(
+            "browser_import_session", {"import_path": str(self.file), "navigate_to": "https://a.test/app"}
+        )
+        self.assertTrue(text.startswith("import_session failed"), text)
+        self.assertTrue(self.created[0].stopped)
+        self.assertEqual(server._sessions, {})
+
+
+class TestStartCloudSessionTool(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        self.daemon = _FakeDaemon()
+        self.enterContext(self.daemon.installed())
+        self.created = self.enterContext(_fake_browsers())
+
+    async def test_requires_browser_use_api_key(self):
+        text = await _make_server()._execute_tool("browser_start_cloud_session", {})
+        self.assertIn("BROWSER_USE_API_KEY is not set", text)
+        self.assertEqual(self.created, [])
+
+    async def test_starts_a_cloud_browser_and_becomes_primary(self):
+        server = _make_server()
+        with patch.dict(os.environ, {"BROWSER_USE_API_KEY": "bu-test-key"}):
+            first = json.loads(await server._execute_tool("browser_start_cloud_session", {}))
+            second = json.loads(await server._execute_tool(
+                "browser_start_cloud_session", {"navigate_to": "https://a.test/"}
+            ))
+        self.assertEqual([b.kwargs for b in self.created], [{"use_cloud": True}, {"use_cloud": True}])
+        self.assertIs(first["is_primary"], True)
+        self.assertEqual(server._primary, first["session_id"])
+        self.assertEqual(first["cdp_url"], "wss://cdp.browser-use.example/abc")
+        self.assertEqual(first["live_url"], "https://live.browser-use.example/abc")
+        self.assertIs(second["is_primary"], False)
+        self.assertEqual(second["navigated_to"], "https://a.test/")
+        navigate = [c for c in self.daemon.calls if c[1] == "Page.navigate"]
+        self.assertEqual(navigate[0][0], self.created[1].name)
+        self.assertNotIn("Browser.setDownloadBehavior", self.daemon.methods())
+
+    async def test_a_failed_start_registers_nothing(self):
+        _FakeBrowser.start_error = RuntimeError("no cloud quota")
+        server = _make_server()
+        with patch.dict(os.environ, {"BROWSER_USE_API_KEY": "bu-test-key"}):
+            text = await server._execute_tool("browser_start_cloud_session", {})
+        self.assertEqual(text, "start_cloud_session failed: no cloud quota")
+        self.assertEqual(server._sessions, {})
+
+
+# ---------------------------------------------------------------------------
+# retry_with_browser_use_agent (the RED class above covers the browser it gets)
+# ---------------------------------------------------------------------------
+
+class TestRetryAgentResults(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        import browser_use
+
+        self.created = self.enterContext(_fake_browsers())
+        self.agents: list = []
+        self.run_error = None
+        test = self
+
+        class _History:
+            def number_of_steps(self):
+                return 3
+
+            def is_successful(self):
+                return False
+
+            def final_result(self):
+                return None
+
+            def errors(self):
+                return ["step 2: element not found"]
+
+        class _Agent:
+            def __init__(self, task=None, llm=None, **kwargs):
+                self.task, self.llm, self.kwargs = task, llm, kwargs
+                self.closed = False
+                test.agents.append(self)
+
+            async def run(self, max_steps=100, **_kwargs):
+                if test.run_error is not None:
+                    raise test.run_error
+                self.kwargs["browser"].name = "buagent0001"
+                return _History()
+
+            async def close(self):
+                self.closed = True
+
+        self.enterContext(patch.object(browser_use, "Agent", _Agent))
+        self.enterContext(patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"}))
+
+    async def test_reports_failure_and_errors(self):
+        text = await _make_server()._execute_tool("retry_with_browser_use_agent", {"task": "t"})
+        self.assertIn("Task completed in 3 steps", text)
+        self.assertIn("Success: False", text)
+        self.assertIn("element not found", text)
+        self.assertNotIn("Final result", text)
+        self.assertTrue(self.agents[0].closed)
+        self.assertTrue(self.created[0].stopped)
+
+    async def test_an_agent_failure_is_reported_and_cleaned_up(self):
+        self.run_error = RuntimeError("model refused")
+        text = await _make_server()._execute_tool("retry_with_browser_use_agent", {"task": "t"})
+        self.assertEqual(text, "Agent task failed: model refused")
+        self.assertTrue(self.agents[0].closed)
+        self.assertFalse(self.created[0].stopped, "a browser that never started is not stopped")
+
+    async def test_model_argument_replaces_the_configured_model(self):
+        await _make_server()._execute_tool("retry_with_browser_use_agent", {"task": "t", "model": "claude-other"})
+        self.assertEqual(self.agents[0].llm.model, "claude-other")
+
+    async def test_task_is_required(self):
+        self.assertEqual(
+            await _make_server()._execute_tool("retry_with_browser_use_agent", {"task": ""}),
+            "Error: task is required.",
+        )
+        self.assertEqual(self.agents, [])
+
+    async def test_without_a_key_it_says_which_one_and_starts_nothing(self):
+        build = MagicMock()
+        with patch.dict(os.environ), patch.object(_mod, "_build_llm", build):
+            os.environ.pop("ANTHROPIC_API_KEY", None)
+            text = await _make_server()._execute_tool("retry_with_browser_use_agent", {"task": "t"})
+        self.assertTrue(text.startswith("Error"), text)
+        self.assertIn("ANTHROPIC_API_KEY", text)
+        self.assertIn("browser_set_agent_model", text)
+        build.assert_not_called()
+        self.assertEqual(self.created, [], "a browser was built for a run that cannot call a model")
+        self.assertEqual(self.agents, [])
+
+    async def test_runs_beside_page_tools_without_their_lock(self):
+        server = _make_server()
+        async with server._lock:
+            text = await asyncio.wait_for(
+                server._execute_tool("retry_with_browser_use_agent", {"task": "t"}), timeout=5
+            )
+        self.assertIn("Task completed", text)
+
+
+# ---------------------------------------------------------------------------
+# Live-page custom tools: evaluate, focus, keyboard, save_screenshot
+# ---------------------------------------------------------------------------
+
+class TestEvaluateTool(_ToolTestCase):
+    async def test_expression_result(self):
+        self.daemon.answers["Runtime.evaluate"] = {"result": {"value": "Example Domain"}}
+        self.assertEqual(json.loads(await self.call("browser_evaluate", script="document.title")),
+                         {"result": "Example Domain"})
+        params = self.daemon.params_of("Runtime.evaluate")[0]
         self.assertEqual(params["expression"], "document.title")
-        self.assertTrue(params["returnByValue"])
-        self.assertTrue(params["awaitPromise"])
-        self.assertEqual(json.loads(out), {"result": "Hello"})
+        self.assertIs(params["returnByValue"], True)
+        self.assertIs(params["awaitPromise"], True)
 
-    async def test_return_statement_is_iife_wrapped(self):
-        """The report's `return monaco...setValue()` must not SyntaxError."""
-        server, cdp = _server_with_cdp(
-            returns={"Runtime.evaluate": {"result": {"value": None}}}
-        )
-        await server._handle_evaluate(
-            {"script": "return monaco.editor.getModels()[0].setValue('x')"}
-        )
-        _, params = cdp.cdp_client.calls[-1]
-        self.assertTrue(
-            params["expression"].startswith("(function(){"),
-            f"return-bearing script must be IIFE-wrapped, got: {params['expression']!r}",
-        )
+    async def test_a_return_statement_is_wrapped(self):
+        await self.call("browser_evaluate", script="return 1 + 1")
+        self.assertTrue(self.daemon.params_of("Runtime.evaluate")[0]["expression"].startswith("(function(){"))
 
-    async def test_expression_containing_return_substring_not_wrapped(self):
-        """REGRESSION: an expression that merely CONTAINS 'return' must pass
-        through unwrapped, or it silently becomes a no-return function → null.
-        (Verified live: `"returned"` returned null before the fix.)"""
-        server, cdp = _server_with_cdp(
-            returns={"Runtime.evaluate": {"result": {"value": "returned"}}}
+    async def test_a_js_exception_is_reported(self):
+        self.daemon.answers["Runtime.evaluate"] = {
+            "result": {}, "exceptionDetails": {"text": "Uncaught", "exception": {"description": "ReferenceError: x"}},
+        }
+        self.assertEqual(json.loads(await self.call("browser_evaluate", script="x")),
+                         {"error": "JavaScript exception", "detail": "ReferenceError: x"})
+
+    async def test_a_cdp_failure_is_reported(self):
+        self.daemon.answers["Runtime.evaluate"] = RuntimeError("Runtime.evaluate failed: gone")
+        self.assertEqual(await self.call("browser_evaluate", script="1"), "evaluate failed: Runtime.evaluate failed: gone")
+
+    async def test_script_is_required(self):
+        self.assertEqual(await self.call("browser_evaluate", script="  "), "Error: script is required.")
+
+
+class TestFocusTool(_ToolTestCase):
+    async def test_focused(self):
+        self.daemon.answers["Runtime.evaluate"] = {"result": {"value": True}}
+        self.assertEqual(json.loads(await self.call("browser_focus", selector="textarea.inputarea")),
+                         {"focused": True, "selector": "textarea.inputarea"})
+        self.assertIn('"textarea.inputarea"', self.daemon.params_of("Runtime.evaluate")[0]["expression"])
+        self.assertIn("Target.activateTarget", self.daemon.methods())
+
+    async def test_no_match(self):
+        self.daemon.answers["Runtime.evaluate"] = {"result": {"value": False}}
+        self.assertIs(json.loads(await self.call("browser_focus", selector="#nope"))["focused"], False)
+
+
+class TestKeyboardTools(_ToolTestCase):
+    async def test_press_key_sends_down_and_up(self):
+        self.assertEqual(json.loads(await self.call("browser_press_key", key="Enter")), {"pressed": "Enter", "count": 1})
+        events = self.daemon.params_of("Input.dispatchKeyEvent")
+        self.assertEqual([e["type"] for e in events], ["keyDown", "keyUp"])
+        self.assertEqual(events[0]["key"], "Enter")
+        self.assertEqual(events[0]["windowsVirtualKeyCode"], 13)
+
+    async def test_press_key_count(self):
+        await self.call("browser_press_key", key="ArrowDown", count=3)
+        self.assertEqual(len(self.daemon.params_of("Input.dispatchKeyEvent")), 6)
+
+    async def test_select_all_carries_the_edit_command(self):
+        await self.call("browser_press_key", key="Meta+a")
+        down, up = self.daemon.params_of("Input.dispatchKeyEvent")
+        self.assertEqual(down["commands"], ["selectAll"])
+        self.assertEqual(down["modifiers"], 4)
+        self.assertNotIn("commands", up)
+
+    async def test_printable_keys_carry_their_text(self):
+        for spec, text in (("a", "a"), ("A", "A"), ("1", "1"), (" ", " "), ("Space", " "),
+                           ("Shift+b", "B"), ("Shift+1", "!"), ("?", "?")):
+            with self.subTest(spec):
+                self.daemon.calls.clear()
+                await self.call("browser_press_key", key=spec)
+                down, up = self.daemon.params_of("Input.dispatchKeyEvent")
+                self.assertEqual(down["type"], "keyDown")
+                self.assertEqual(down.get("text"), text, down)
+                self.assertNotIn("text", up)
+
+    async def test_modifier_chords_and_named_keys_carry_no_text(self):
+        for spec in ("Meta+a", "Control+c", "Meta+z", "Alt+a", "Enter", "ArrowDown", "Backspace"):
+            with self.subTest(spec):
+                self.daemon.calls.clear()
+                await self.call("browser_press_key", key=spec)
+                down, _up = self.daemon.params_of("Input.dispatchKeyEvent")
+                self.assertNotIn("text", down)
+
+    async def test_keyboard_keys_type_printable_characters(self):
+        await self.call("browser_keyboard", keys=["x", "Meta+a"])
+        events = [e for e in self.daemon.params_of("Input.dispatchKeyEvent") if e["type"] == "keyDown"]
+        self.assertEqual([e.get("text") for e in events], ["x", None])
+
+    async def test_keyboard_presses_keys_then_inserts_text(self):
+        result = json.loads(await self.call("browser_keyboard", keys=["Meta+a", "Delete"], text="new"))
+        self.assertEqual(result, {"keys": ["Meta+a", "Delete"], "text_inserted": True})
+        methods = self.daemon.methods()
+        self.assertEqual(methods.count("Input.dispatchKeyEvent"), 4)
+        self.assertEqual(methods[-1], "Input.insertText")
+        self.assertEqual(self.daemon.params_of("Input.insertText"), [{"text": "new"}])
+
+    async def test_keyboard_needs_keys_or_text(self):
+        self.assertEqual(await self.call("browser_keyboard"), "Error: provide `keys` and/or `text`.")
+
+
+class TestSaveScreenshotTool(_ToolTestCase):
+    def setUp(self):
+        super().setUp()
+        self.daemon.answers["Page.getLayoutMetrics"] = {
+            "cssVisualViewport": {"pageX": 0, "pageY": 0, "clientWidth": 1, "clientHeight": 1},
+        }
+        self.daemon.answers["Page.captureScreenshot"] = {"data": _PNG_1x1}
+        self.dir = Path(_tempfile.mkdtemp(prefix="magus-shot-")).resolve()
+        self.addCleanup(_shutil.rmtree, self.dir, ignore_errors=True)
+
+    async def test_writes_the_png(self):
+        out = self.dir / "a" / "shot.png"
+        result = json.loads(await self.call("browser_save_screenshot", output_path=str(out)))
+        png = base64.b64decode(_PNG_1x1)
+        self.assertEqual(result, {"path": str(out), "size_bytes": len(png), "width": 1, "height": 1})
+        self.assertEqual(out.read_bytes(), png)
+
+    async def test_rejects_a_relative_path(self):
+        text = await self.call("browser_save_screenshot", output_path="shot.png")
+        self.assertIn("must be absolute", text)
+
+    async def test_rejects_a_non_png_path(self):
+        text = await self.call("browser_save_screenshot", output_path=str(self.dir / "shot.jpg"))
+        self.assertIn("must end in .png", text)
+
+    async def test_rejects_data_that_is_not_a_png(self):
+        self.daemon.answers["Page.captureScreenshot"] = {"data": base64.b64encode(b"GIF89a....").decode()}
+        text = await self.call("browser_save_screenshot", output_path=str(self.dir / "shot.png"))
+        self.assertEqual(text, "Error: the browser returned data that is not a PNG.")
+        self.assertFalse((self.dir / "shot.png").exists())
+
+
+class TestDoctorTool(unittest.IsolatedAsyncioTestCase):
+    async def test_doctor_reports_core_fields(self):
+        data = json.loads(await _make_server()._handle_doctor({}))
+        for field in ("python_version", "python_executable", "browser_use", "browser_harness",
+                      "mcp", "playwright", "chromium_present", "chromium_path", "chromium_source",
+                      "chromium_error", "api_keys"):
+            self.assertIn(field, data)
+        self.assertTrue(data["browser_use"]["installed"])
+        self.assertEqual(data["browser_use"]["version"], _mod._package_version("browser-use"))
+        self.assertEqual(
+            set(data["api_keys"]), {"ANTHROPIC_API_KEY", "OPENAI_API_KEY", "BROWSER_USE_API_KEY"}
         )
-        out = await server._handle_evaluate({"script": '"returned"'})
-        _, params = cdp.cdp_client.calls[-1]
-        self.assertEqual(params["expression"], '"returned"')  # NOT wrapped
-        self.assertEqual(json.loads(out), {"result": "returned"})
+        self.assertFalse(any(data["api_keys"].values()))
 
-    async def test_querySelector_return_class_not_wrapped(self):
-        server, cdp = _server_with_cdp(
-            returns={"Runtime.evaluate": {"result": {"value": "found"}}}
-        )
-        await server._handle_evaluate({"script": "document.querySelector('.return-btn')"})
-        _, params = cdp.cdp_client.calls[-1]
-        self.assertNotIn("(function(){", params["expression"])
+    async def test_doctor_never_starts_a_browser(self):
+        with _fake_browsers() as created:
+            server = _make_server()
+            await server._execute_tool("browser_doctor", {})
+        self.assertEqual(created, [])
+        self.assertEqual(server._sessions, {})
 
-    async def test_js_exception_surfaced_not_silent(self):
-        server, cdp = _server_with_cdp(
-            returns={
-                "Runtime.evaluate": {
-                    "exceptionDetails": {"exception": {"description": "ReferenceError: x"}}
-                }
-            }
-        )
-        out = await server._handle_evaluate({"script": "x"})
-        data = json.loads(out)
-        self.assertEqual(data["error"], "JavaScript exception")
-        self.assertIn("ReferenceError", data["detail"])
 
-    async def test_empty_script_rejected(self):
-        server, _ = _server_with_cdp()
-        out = await server._handle_evaluate({"script": "   "})
-        self.assertIn("script is required", out)
-
+# ---------------------------------------------------------------------------
+# Pure helpers: the eval wrapper, key parsing, run_script
+# ---------------------------------------------------------------------------
 
 class TestWrapEvalScript(unittest.TestCase):
     """Direct tests of the expression-vs-statement heuristic."""
@@ -1542,195 +1594,6 @@ class TestWrapEvalScript(unittest.TestCase):
         # 'returnValue' / 'returned' start with the letters but are not `return`.
         self.assertEqual(self.wrap('returnValue'), 'returnValue')
         self.assertEqual(self.wrap('returned'), 'returned')
-
-
-# A real 1x1 PNG: the signature, then an IHDR chunk carrying width=1, height=1.
-_PNG_1x1 = (
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
-)
-
-
-class TestSaveScreenshotTool(unittest.IsolatedAsyncioTestCase):
-    """browser_save_screenshot writes the live page to a PNG file, which upstream
-    browser_screenshot cannot do: it returns an image block, not a file."""
-
-    def setUp(self):
-        import tempfile
-        self.dir = Path(tempfile.mkdtemp())
-
-    def tearDown(self):
-        import shutil
-        shutil.rmtree(self.dir, ignore_errors=True)
-
-    async def test_writes_png_and_reports_size(self):
-        server, cdp = _server_with_cdp(returns={
-            "Page.getLayoutMetrics": {"cssVisualViewport": {"pageX": 0, "pageY": 200, "clientWidth": 1280, "clientHeight": 720}},
-            "Page.captureScreenshot": {"data": _PNG_1x1},
-        })
-        target = self.dir / "sub" / "shot.png"
-        out = json.loads(await server._handle_save_screenshot({"output_path": str(target)}))
-        self.assertTrue(target.exists())
-        self.assertEqual(target.read_bytes()[:8], b"\x89PNG\r\n\x1a\n")
-        self.assertEqual(out, {"path": str(target), "size_bytes": target.stat().st_size, "width": 1, "height": 1})
-        path, params = cdp.cdp_client.calls[-1]
-        self.assertEqual(path, "Page.captureScreenshot")
-        # The viewport is clipped explicitly, at its scroll offset.
-        self.assertEqual(params["clip"], {"x": 0, "y": 200, "width": 1280, "height": 720, "scale": 1})
-        self.assertNotIn("captureBeyondViewport", params)
-
-    async def test_full_page_clips_to_content_size(self):
-        server, cdp = _server_with_cdp(returns={
-            "Page.getLayoutMetrics": {"cssContentSize": {"width": 1280, "height": 4000}},
-            "Page.captureScreenshot": {"data": _PNG_1x1},
-        })
-        await server._handle_save_screenshot({"output_path": str(self.dir / "f.png"), "full_page": True})
-        _, params = cdp.cdp_client.calls[-1]
-        self.assertTrue(params["captureBeyondViewport"])
-        self.assertEqual((params["clip"]["width"], params["clip"]["height"]), (1280, 4000))
-
-    async def test_relative_path_is_refused_and_nothing_is_written(self):
-        server, cdp = _server_with_cdp(returns={"Page.captureScreenshot": {"data": _PNG_1x1}})
-        out = await server._handle_save_screenshot({"output_path": "shot.png"})
-        self.assertIn("must be absolute", out)
-        self.assertEqual(cdp.cdp_client.calls, [])
-
-    async def test_unwritable_path_is_an_error_line_not_an_exception(self):
-        server, _ = _server_with_cdp(returns={
-            "Page.getLayoutMetrics": {"cssVisualViewport": {"clientWidth": 10, "clientHeight": 10}},
-            "Page.captureScreenshot": {"data": _PNG_1x1},
-        })
-        blocker = self.dir / "file"
-        blocker.write_text("x")  # a file where a directory must go
-        out = await server._handle_save_screenshot({"output_path": str(blocker / "shot.png")})
-        self.assertTrue(out.startswith("Error: cannot write"), out)
-
-    async def test_non_png_suffix_is_refused(self):
-        server, _ = _server_with_cdp()
-        out = await server._handle_save_screenshot({"output_path": str(self.dir / "shot.jpg")})
-        self.assertIn(".png", out)
-
-    async def test_missing_page_size_is_an_error(self):
-        server, cdp = _server_with_cdp(returns={"Page.captureScreenshot": {"data": _PNG_1x1}})
-        out = await server._handle_save_screenshot({"output_path": str(self.dir / "z.png")})
-        self.assertIn("no page size", out)
-        self.assertNotIn("Page.captureScreenshot", [p for p, _ in cdp.cdp_client.calls])
-
-    async def test_non_png_data_is_an_error_not_a_file(self):
-        import base64 as _b64
-        server, _ = _server_with_cdp(returns={
-            "Page.getLayoutMetrics": {"cssVisualViewport": {"clientWidth": 10, "clientHeight": 10}},
-            "Page.captureScreenshot": {"data": _b64.b64encode(b"not a png").decode()},
-        })
-        target = self.dir / "bad.png"
-        out = await server._handle_save_screenshot({"output_path": str(target)})
-        self.assertIn("not a PNG", out)
-        self.assertFalse(target.exists())
-
-    async def test_no_session_errors_cleanly(self):
-        server = _make_server()
-        server.browser_session = None
-        out = await server._handle_save_screenshot({"output_path": str(self.dir / "x.png")})
-        self.assertIn("No browser session", out)
-
-
-class TestFocusTool(unittest.IsolatedAsyncioTestCase):
-    async def test_focus_uses_selector_and_reports_match(self):
-        server, cdp = _server_with_cdp(
-            returns={"Runtime.evaluate": {"result": {"value": True}}}
-        )
-        out = await server._handle_focus({"selector": "textarea.inputarea"})
-        _, params = cdp.cdp_client.calls[-1]
-        self.assertIn("textarea.inputarea", params["expression"])
-        self.assertEqual(json.loads(out), {"focused": True, "selector": "textarea.inputarea"})
-
-    async def test_focus_no_match_reports_false(self):
-        server, _ = _server_with_cdp(
-            returns={"Runtime.evaluate": {"result": {"value": False}}}
-        )
-        out = await server._handle_focus({"selector": "#nope"})
-        data = json.loads(out)
-        self.assertFalse(data["focused"])
-
-
-class TestKeyboardTools(unittest.IsolatedAsyncioTestCase):
-    async def test_press_key_sends_keydown_and_keyup(self):
-        server, cdp = _server_with_cdp()
-        await server._handle_press_key({"key": "Enter"})
-        paths = [p for p, _ in cdp.cdp_client.calls]
-        self.assertEqual(paths, ["Input.dispatchKeyEvent", "Input.dispatchKeyEvent"])
-        types = [params["type"] for _, params in cdp.cdp_client.calls]
-        self.assertEqual(types, ["keyDown", "keyUp"])
-
-    async def test_press_key_count_repeats(self):
-        server, cdp = _server_with_cdp()
-        await server._handle_press_key({"key": "ArrowDown", "count": 3})
-        # 3 presses × (down+up) = 6 dispatches
-        self.assertEqual(len(cdp.cdp_client.calls), 6)
-
-    async def test_meta_a_sets_modifier_bitmask(self):
-        """Cmd+A must carry the Meta modifier bit (4) and key 'a' / code 'KeyA'."""
-        server, cdp = _server_with_cdp()
-        await server._handle_press_key({"key": "Meta+a"})
-        _, down = cdp.cdp_client.calls[0]
-        self.assertEqual(down["modifiers"], 4)
-        self.assertEqual(down["key"], "a")
-        self.assertEqual(down["code"], "KeyA")
-
-    async def test_meta_a_attaches_selectall_command(self):
-        """REGRESSION: a synthetic Cmd/Ctrl+A only selects-all in the browser if
-        the keyDown carries CDP `commands: ['selectAll']`. The modifier bitmask
-        alone is NOT enough (verified against headless Chrome — without this the
-        field is appended to, not replaced). The keyUp must NOT carry commands."""
-        server, cdp = _server_with_cdp()
-        await server._handle_press_key({"key": "Meta+a"})
-        down = cdp.cdp_client.calls[0][1]
-        up = cdp.cdp_client.calls[1][1]
-        self.assertEqual(down.get("commands"), ["selectAll"])
-        self.assertNotIn("commands", up)
-
-    async def test_ctrl_a_also_attaches_selectall(self):
-        """Control+a (Linux/Windows) must also map to selectAll."""
-        server, cdp = _server_with_cdp()
-        await server._handle_press_key({"key": "Control+a"})
-        self.assertEqual(cdp.cdp_client.calls[0][1].get("commands"), ["selectAll"])
-
-    async def test_plain_a_has_no_command(self):
-        """A bare 'a' (no Cmd/Ctrl) must NOT carry an edit command — it's a letter."""
-        server, cdp = _server_with_cdp()
-        await server._handle_press_key({"key": "a"})
-        self.assertNotIn("commands", cdp.cdp_client.calls[0][1])
-
-    async def test_keyboard_path_focuses_target(self):
-        """Keyboard input must request a FOCUSED cdp session (Input events route
-        to the focused target); evaluate does not need focus."""
-        server, cdp = _server_with_cdp()
-        await server._handle_keyboard({"text": "hi"})
-        server.browser_session.get_or_create_cdp_session.assert_awaited_with(
-            target_id=None, focus=True
-        )
-
-    async def test_named_key_virtual_code(self):
-        server, cdp = _server_with_cdp()
-        await server._handle_press_key({"key": "Escape"})
-        _, down = cdp.cdp_client.calls[0]
-        self.assertEqual(down["key"], "Escape")
-        self.assertEqual(down["windowsVirtualKeyCode"], 27)
-
-    async def test_keyboard_keys_then_text(self):
-        """browser_keyboard presses keys first, then inserts text via insertText."""
-        server, cdp = _server_with_cdp()
-        await server._handle_keyboard({"keys": ["Meta+a", "Delete"], "text": "new value"})
-        paths = [p for p, _ in cdp.cdp_client.calls]
-        # 2 keys × 2 events = 4 dispatchKeyEvent, then 1 insertText, in that order
-        self.assertEqual(paths.count("Input.dispatchKeyEvent"), 4)
-        self.assertEqual(paths[-1], "Input.insertText")
-        _, last = cdp.cdp_client.calls[-1]
-        self.assertEqual(last["text"], "new value")
-
-    async def test_keyboard_requires_keys_or_text(self):
-        server, _ = _server_with_cdp()
-        out = await server._handle_keyboard({})
-        self.assertIn("keys", out)
 
 
 class TestParseKeySpec(unittest.TestCase):
@@ -1760,26 +1623,6 @@ class TestParseKeySpec(unittest.TestCase):
         self.assertEqual(_mod.MagusBrowserServer._command_for(8, "a"), [])
 
 
-class TestDoctorTool(unittest.IsolatedAsyncioTestCase):
-    async def test_doctor_reports_core_fields(self):
-        server = _make_server()
-        out = await server._handle_doctor({})
-        data = json.loads(out)
-        for field in ("python_version", "browser_use", "mcp", "playwright",
-                      "chromium_present", "api_keys"):
-            self.assertIn(field, data)
-        # browser_use is importable in the test env (the suite imported it).
-        self.assertTrue(data["browser_use"]["installed"])
-
-    async def test_doctor_never_spawns_browser(self):
-        """Doctor must be pure inspection — no get_or_create_cdp_session call."""
-        server = _make_server()
-        server.browser_session = MagicMock()
-        server.browser_session.get_or_create_cdp_session = AsyncMock()
-        await server._handle_doctor({})
-        server.browser_session.get_or_create_cdp_session.assert_not_called()
-
-
 class TestRunScriptFailFast(unittest.IsolatedAsyncioTestCase):
     """browser_run_script must reject non-file paths fast instead of hanging."""
 
@@ -1800,275 +1643,378 @@ class TestRunScriptFailFast(unittest.IsolatedAsyncioTestCase):
 
 
 # ---------------------------------------------------------------------------
-# Test 7 (v1.2.0): Local sessions force Playwright's bundled Chromium
+# Agent LLM: _build_llm, browser_set_agent_model
 # ---------------------------------------------------------------------------
 
-class TestChromiumChannel(unittest.TestCase):
-    """
-    Local sessions must pass channel='chromium' so browser-use launches
-    Playwright's bundled Chromium instead of the user's real Chrome.app
-    (which caused macOS link-hijack / focus-steal).
+class _RecordingChat:
+    """Captures the kwargs _build_llm hands a Chat class."""
 
-    The setting alone does not achieve that — see TestProfileCarriesResolvedBinary
-    for the executable_path that does. It is still asserted here because a user
-    config may deliberately override it, which is what opts a profile out of our
-    binary resolution.
-    """
-
-    def _captured_profile(self):
-        server = _make_server()
-        captured = {}
-
-        class CapturingProfile:
-            def __init__(self, **kwargs):
-                captured.update(kwargs)
-
-        mock_session = MagicMock()
-        mock_session.start = AsyncMock(return_value=None)
-
-        with (
-            _hermetic_chromium_cache(),
-            patch.object(_mod, "BrowserProfile", CapturingProfile),
-            patch.object(_mod, "BrowserSession", MagicMock(return_value=mock_session)),
-            patch.object(_mod, "get_default_profile", return_value={}),
-            patch.object(_mod, "get_default_llm", return_value={}),
-        ):
-            server._track_session = MagicMock()
-            asyncio.run(server._init_browser_session())
-
-        return captured
-
-    def test_local_profile_uses_chromium_channel(self):
-        """profile must include channel='chromium' by default."""
-        captured = self._captured_profile()
-        self.assertEqual(
-            captured.get("channel"),
-            "chromium",
-            f"Local profile must force channel='chromium'. Got: {captured.get('channel')!r}",
-        )
-
-    def test_user_config_can_override_channel(self):
-        """A channel set in the user's config file must win over our default."""
-        server = _make_server()
-        captured = {}
-
-        class CapturingProfile:
-            def __init__(self, **kwargs):
-                captured.update(kwargs)
-
-        mock_session = MagicMock()
-        mock_session.start = AsyncMock(return_value=None)
-
-        with (
-            _hermetic_chromium_cache(),
-            patch.object(_mod, "BrowserProfile", CapturingProfile),
-            patch.object(_mod, "BrowserSession", MagicMock(return_value=mock_session)),
-            patch.object(_mod, "get_default_profile", return_value={"channel": "chrome"}),
-            patch.object(_mod, "get_default_llm", return_value={}),
-        ):
-            server._track_session = MagicMock()
-            asyncio.run(server._init_browser_session())
-
-        self.assertEqual(captured.get("channel"), "chrome")
+    def __init__(self, **kwargs):
+        self.init_kwargs = dict(kwargs)
 
 
-# ---------------------------------------------------------------------------
-# Test 8 (v1.2.0): BROWSER_USE_CLOUD env switch
-# ---------------------------------------------------------------------------
-
-class TestCloudEnvSwitch(unittest.TestCase):
-    """
-    BROWSER_USE_CLOUD=true must build a use_cloud=True profile WITHOUT local
-    paths (user_data_dir / channel / headless / downloads_path), and must fail
-    with a clear error when BROWSER_USE_API_KEY is missing.
-    """
-
-    def _fake_chat_module(self):
-        fake_mod = MagicMock()
-        fake_mod.ChatBrowserUse = MagicMock(return_value=MagicMock(name="fake_bu_llm"))
-        return fake_mod
-
-    def test_cloud_profile_has_use_cloud_and_no_local_paths(self):
-        server = _make_server()
-        captured = {}
-
-        class CapturingProfile:
-            def __init__(self, **kwargs):
-                captured.update(kwargs)
-
-        mock_session = MagicMock()
-        mock_session.start = AsyncMock(return_value=None)
-
-        with (
-            patch.dict(os.environ, {"BROWSER_USE_CLOUD": "true", "BROWSER_USE_API_KEY": "test-key"}),
-            patch.dict(sys.modules, {"browser_use.llm.browser_use.chat": self._fake_chat_module()}),
-            patch.object(_mod, "BrowserProfile", CapturingProfile),
-            patch.object(_mod, "BrowserSession", MagicMock(return_value=mock_session)),
-            patch.object(_mod, "get_default_profile", return_value={}),
-            patch.object(_mod, "get_default_llm", return_value={}),
-        ):
-            server._track_session = MagicMock()
-            asyncio.run(server._init_browser_session())
-
-        self.assertIs(captured.get("use_cloud"), True, f"use_cloud must be True. Got: {captured!r}")
-        for local_key in ("user_data_dir", "channel", "headless", "downloads_path"):
-            self.assertNotIn(
-                local_key,
-                captured,
-                f"Cloud profile must not include local path/option {local_key!r}. Got: {captured!r}",
-            )
-
-    def test_cloud_without_api_key_raises_clear_error(self):
-        server = _make_server()
-
-        with (
-            patch.dict(os.environ, {"BROWSER_USE_CLOUD": "true"}),
-            patch.object(_mod, "get_default_profile", return_value={}),
-        ):
-            os.environ.pop("BROWSER_USE_API_KEY", None)
-            with self.assertRaises(RuntimeError) as ctx:
-                asyncio.run(server._init_browser_session())
-
-        self.assertIn("BROWSER_USE_API_KEY", str(ctx.exception))
+class _RecordingAnthropic(_RecordingChat):
+    pass
 
 
-# ---------------------------------------------------------------------------
-# Test 9a: _build_llm dispatch — each registry row builds the right class with
-#          the right kwargs (temperature / base_url / api_key rules).
-# ---------------------------------------------------------------------------
+class _RecordingOpenAI(_RecordingChat):
+    pass
+
+
+class _RecordingBrowserUse(_RecordingChat):
+    pass
+
+
+@contextlib.contextmanager
+def _recording_chats():
+    """browser_use's three Chat classes replaced by recorders, for kwargs checks."""
+    import browser_use
+
+    with patch.object(browser_use, "ChatAnthropic", _RecordingAnthropic), \
+            patch.object(browser_use, "ChatOpenAI", _RecordingOpenAI), \
+            patch.object(browser_use, "ChatBrowserUse", _RecordingBrowserUse):
+        yield
+
 
 class TestBuildLLM(unittest.TestCase):
     """
-    _build_llm(choice) must:
-      - build ChatAnthropic / ChatOpenAI / ChatBrowserUse per provider
-      - forward temperature ONLY for openai / openai_compatible
-      - forward base_url only when supported and provided
-      - pass api_key (from the resolved env var) even when None
-      - require base_url for openai_compatible (RuntimeError otherwise)
-      - require an api key for openai_compatible (RuntimeError otherwise)
-      - raise ValueError for an unknown provider
+    _build_llm(choice) builds browser-use 1.0's ChatAnthropic / ChatOpenAI /
+    ChatBrowserUse per provider, forwarding temperature only for openai and
+    openai_compatible and base_url only where the class takes one. The classes
+    themselves are exercised in TestBuildLLMReal10.
     """
 
-    def _choice(self, **kwargs):
-        return _mod.LLMChoice(**kwargs)
+    def setUp(self):
+        self.enterContext(_recording_chats())
 
-    def test_anthropic_row_builds_chat_anthropic_no_temperature(self):
+    def _build(self, **kwargs):
+        return _mod._build_llm(_mod.LLMChoice(**kwargs))
+
+    def test_anthropic_drops_temperature(self):
         with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-ant-xyz"}):
-            llm = _mod._build_llm(
-                self._choice(provider="anthropic", model="claude-sonnet-5", temperature=0.9)
-            )
-        self.assertIsInstance(llm, FakeChatAnthropic)
-        self.assertEqual(llm.init_kwargs["model"], "claude-sonnet-5")
-        self.assertEqual(llm.init_kwargs["api_key"], "sk-ant-xyz")
-        # send_temperature=False for anthropic — even a set temperature is dropped.
-        self.assertNotIn("temperature", llm.init_kwargs)
+            llm = self._build(provider="anthropic", model="claude-sonnet-5", temperature=0.9)
+        self.assertIsInstance(llm, _RecordingAnthropic)
+        self.assertEqual(llm.init_kwargs, {"model": "claude-sonnet-5", "api_key": "sk-ant-xyz"})
 
-    def test_anthropic_passes_none_api_key_when_env_absent(self):
-        env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
-        with patch.dict(os.environ, env, clear=True):
-            llm = _mod._build_llm(self._choice(provider="anthropic", model="claude-sonnet-5"))
+    def test_a_missing_key_is_passed_as_none(self):
+        llm = self._build(provider="anthropic", model="claude-sonnet-5")
         self.assertIn("api_key", llm.init_kwargs)
         self.assertIsNone(llm.init_kwargs["api_key"])
 
-    def test_openai_row_builds_chat_openai_with_temperature(self):
-        with patch.dict(os.environ, {"OPENAI_API_KEY": "sk-oai-abc"}):
-            llm = _mod._build_llm(
-                self._choice(provider="openai", model="gpt-5", temperature=0.3)
-            )
-        self.assertIsInstance(llm, FakeChatOpenAI)
-        self.assertEqual(llm.init_kwargs["model"], "gpt-5")
-        self.assertEqual(llm.init_kwargs["api_key"], "sk-oai-abc")
-        self.assertEqual(llm.init_kwargs["temperature"], 0.3)
+    def test_anthropic_with_base_url_is_refused_before_construction(self):
+        with self.assertRaises(ValueError) as cm:
+            self._build(provider="anthropic", model="m", base_url="https://proxy.example/anthropic")
+        self.assertIn("openai_compatible", str(cm.exception))
+
+    def test_openai_forwards_temperature(self):
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "sk-oai"}):
+            llm = self._build(provider="openai", model="gpt-5", temperature=0.3)
+        self.assertIsInstance(llm, _RecordingOpenAI)
+        self.assertEqual(llm.init_kwargs, {"model": "gpt-5", "api_key": "sk-oai", "temperature": 0.3})
 
     def test_openai_omits_temperature_when_none(self):
-        with patch.dict(os.environ, {"OPENAI_API_KEY": "sk-oai-abc"}):
-            llm = _mod._build_llm(self._choice(provider="openai", model="gpt-5"))
-        self.assertNotIn("temperature", llm.init_kwargs)
+        self.assertNotIn("temperature", self._build(provider="openai", model="gpt-5").init_kwargs)
 
-    def test_browser_use_row_builds_chat_browser_use_no_temperature(self):
+    def test_browser_use_drops_temperature_and_unset_base_url(self):
         with patch.dict(os.environ, {"BROWSER_USE_API_KEY": "bu-key"}):
-            llm = _mod._build_llm(
-                self._choice(provider="browser_use", model="bu-latest", temperature=0.5)
-            )
-        self.assertIsInstance(llm, FakeChatBrowserUse)
-        self.assertEqual(llm.init_kwargs["model"], "bu-latest")
-        self.assertEqual(llm.init_kwargs["api_key"], "bu-key")
-        self.assertNotIn("temperature", llm.init_kwargs)
+            llm = self._build(provider="browser_use", model="bu-fast", temperature=0.5)
+        self.assertIsInstance(llm, _RecordingBrowserUse)
+        # ChatBrowserUse turns base_url=None into the string "None".
+        self.assertEqual(llm.init_kwargs, {"model": "bu-fast", "api_key": "bu-key"})
 
-    def test_openai_compatible_builds_with_base_url_and_temperature(self):
+    def test_browser_use_forwards_a_base_url(self):
+        llm = self._build(provider="browser_use", model="bu-fast", base_url="https://gw.example/v1")
+        self.assertEqual(llm.init_kwargs["base_url"], "https://gw.example/v1")
+
+    def test_openai_compatible_forwards_base_url_key_and_temperature(self):
         with patch.dict(os.environ, {"MY_LOCAL_KEY": "local-secret"}):
-            llm = _mod._build_llm(
-                self._choice(
-                    provider="openai_compatible",
-                    model="llama-3",
-                    base_url="http://localhost:1234/v1",
-                    api_key_env="MY_LOCAL_KEY",
-                    temperature=0.1,
-                )
-            )
-        self.assertIsInstance(llm, FakeChatOpenAI)
-        self.assertEqual(llm.init_kwargs["base_url"], "http://localhost:1234/v1")
-        self.assertEqual(llm.init_kwargs["api_key"], "local-secret")
-        self.assertEqual(llm.init_kwargs["temperature"], 0.1)
+            llm = self._build(provider="openai_compatible", model="llama-3",
+                              base_url="http://localhost:1234/v1", api_key_env="MY_LOCAL_KEY", temperature=0.1)
+        self.assertIsInstance(llm, _RecordingOpenAI)
+        self.assertEqual(llm.init_kwargs, {
+            "model": "llama-3", "api_key": "local-secret",
+            "base_url": "http://localhost:1234/v1", "temperature": 0.1,
+        })
 
-    def test_openai_compatible_without_base_url_raises(self):
-        with patch.dict(os.environ, {"MY_LOCAL_KEY": "local-secret"}):
-            with self.assertRaises(RuntimeError) as ctx:
-                _mod._build_llm(
-                    self._choice(
-                        provider="openai_compatible",
-                        model="llama-3",
-                        api_key_env="MY_LOCAL_KEY",
-                    )
-                )
-        self.assertIn("base_url", str(ctx.exception))
+    def test_openai_compatible_needs_a_base_url(self):
+        with patch.dict(os.environ, {"MY_LOCAL_KEY": "local-secret"}), self.assertRaises(RuntimeError) as cm:
+            self._build(provider="openai_compatible", model="llama-3", api_key_env="MY_LOCAL_KEY")
+        self.assertIn("base_url", str(cm.exception))
 
-    def test_openai_compatible_without_api_key_raises(self):
-        env = {k: v for k, v in os.environ.items() if k != "MY_LOCAL_KEY"}
-        with patch.dict(os.environ, env, clear=True):
-            with self.assertRaises(RuntimeError) as ctx:
-                _mod._build_llm(
-                    self._choice(
-                        provider="openai_compatible",
-                        model="llama-3",
-                        base_url="http://localhost:1234/v1",
-                        api_key_env="MY_LOCAL_KEY",
-                    )
-                )
-        self.assertIn("MY_LOCAL_KEY", str(ctx.exception))
+    def test_openai_compatible_needs_a_key(self):
+        with self.assertRaises(RuntimeError) as cm:
+            self._build(provider="openai_compatible", model="llama-3",
+                        base_url="http://localhost:1234/v1", api_key_env="MY_LOCAL_KEY")
+        self.assertIn("MY_LOCAL_KEY", str(cm.exception))
 
-    def test_base_url_override_for_anthropic(self):
-        with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-ant"}):
-            llm = _mod._build_llm(
-                self._choice(
-                    provider="anthropic",
-                    model="claude-sonnet-5",
-                    base_url="https://proxy.example/anthropic",
-                )
-            )
-        self.assertEqual(llm.init_kwargs["base_url"], "https://proxy.example/anthropic")
-
-    def test_custom_api_key_env_overrides_default(self):
+    def test_custom_api_key_env(self):
         with patch.dict(os.environ, {"CUSTOM_ANT_KEY": "sk-custom"}):
-            llm = _mod._build_llm(
-                self._choice(
-                    provider="anthropic",
-                    model="claude-sonnet-5",
-                    api_key_env="CUSTOM_ANT_KEY",
-                )
-            )
+            llm = self._build(provider="anthropic", model="m", api_key_env="CUSTOM_ANT_KEY")
         self.assertEqual(llm.init_kwargs["api_key"], "sk-custom")
 
-    def test_unknown_provider_raises_value_error(self):
-        with self.assertRaises(ValueError) as ctx:
-            _mod._build_llm(self._choice(provider="not_a_provider", model="x"))
-        self.assertIn("not_a_provider", str(ctx.exception))
+    def test_unknown_provider(self):
+        with self.assertRaises(ValueError) as cm:
+            self._build(provider="not_a_provider", model="x")
+        self.assertIn("not_a_provider", str(cm.exception))
+
+
+class TestSetAgentModelTool(unittest.IsolatedAsyncioTestCase):
+    """
+    browser_set_agent_model validates, builds the model once so a bad choice is
+    reported at once, stores the override, and never echoes a secret.
+    """
+
+    def setUp(self):
+        self.server = _make_server()
+
+    async def _set(self, **args):
+        return await self.server._execute_tool("browser_set_agent_model", args)
+
+    async def test_stores_the_override(self):
+        payload = json.loads(await self._set(provider="anthropic", model="claude-sonnet-5"))
+        self.assertEqual(payload, {
+            "provider": "anthropic", "model": "claude-sonnet-5", "base_url": None,
+            "applied_to_live_session": False,
+        })
+        self.assertEqual(self.server._session_llm_override.model, "claude-sonnet-5")
+
+    async def test_reports_a_live_session(self):
+        browser = _FakeBrowser()
+        browser.name = "budaemon01"
+        self.server._primary = self.server._register(browser, "local")
+        payload = json.loads(await self._set(provider="openai", model="gpt-5", temperature=0.3))
+        self.assertIs(payload["applied_to_live_session"], True)
+        self.assertEqual(self.server._agent_llm_choice().temperature, 0.3)
+
+    async def test_override_is_what_the_agent_tools_use(self):
+        await self._set(provider="openai", model="gpt-5")
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "sk-oai"}):
+            import browser_use
+
+            llm = self.server._resolve_agent_llm()
+        self.assertIsInstance(llm, browser_use.ChatOpenAI)
+        self.assertEqual(llm.model, "gpt-5")
+
+    async def test_invalid_input_is_refused_and_not_stored(self):
+        cases = (
+            ({"provider": "bogus", "model": "x"}, "unknown provider"),
+            ({"provider": "openai", "model": ""}, "model is required"),
+            ({"provider": "openai_compatible", "model": "llama-3"}, "base_url"),
+            ({"provider": "anthropic", "model": "m", "base_url": "https://proxy.example"}, "base_url"),
+            ({"provider": "browser_use", "model": "bu-latest"}, "bu-fast"),
+            ({"provider": "openai_compatible", "model": "llama-3", "base_url": "http://localhost:1234/v1",
+              "api_key_env": "MISSING_KEY_VAR"}, "MISSING_KEY_VAR"),
+        )
+        prior = _mod.LLMChoice(provider="anthropic", model="prev-model")
+        for args, expected in cases:
+            with self.subTest(args):
+                self.server._session_llm_override = prior
+                text = await self._set(**args)
+                self.assertTrue(text.startswith("Error"), text)
+                self.assertIn(expected, text)
+                self.assertIs(self.server._session_llm_override, prior)
+
+    async def test_never_echoes_a_secret(self):
+        with patch.dict(os.environ, {"MY_SECRET_ENV": "super-secret-value"}):
+            text = await self._set(provider="openai_compatible", model="llama-3",
+                                   base_url="http://localhost:1234/v1", api_key_env="MY_SECRET_ENV")
+        self.assertNotIn("super-secret-value", text)
+        self.assertNotIn("api_key", json.loads(text))
+
+
+class TestAgentLLMStaticChecks(unittest.TestCase):
+    """Model selection lives in one place, and both agent tools use it."""
+
+    @classmethod
+    def setUpClass(cls):
+        import ast
+
+        cls.source = _SERVER_FILE.read_text()
+        cls.methods: dict = {}
+        for node in ast.walk(ast.parse(cls.source)):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                cls.methods[node.name] = ast.get_source_segment(cls.source, node) or ""
+
+    def test_no_gpt_4o_mini_default(self):
+        self.assertNotIn("gpt-4o-mini", self.source)
+
+    def test_one_build_point(self):
+        self.assertEqual(self.source.count("def _build_llm"), 1)
+        for chat in ("ChatAnthropic(", "ChatOpenAI(", "ChatBrowserUse("):
+            self.assertNotIn(chat, self.source, f"{chat} must be built only through _build_llm")
+
+    def test_both_agent_tools_use_the_configured_choice(self):
+        for handler in ("_handle_retry_with_browser_use_agent", "_handle_extract_content"):
+            self.assertIn("self._agent_llm_choice()", self.methods[handler], handler)
+            self.assertIn("_build_llm(", self.methods[handler], handler)
 
 
 # ---------------------------------------------------------------------------
-# Test 9b: config-resolution precedence
-#          session override > settings agentModel > legacy shim > DEFAULT
+# Lifecycle: idle sweep, parent death, main()
 # ---------------------------------------------------------------------------
+
+class TestIdleSweep(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        self.enterContext(patch.object(os, "getppid", lambda: 4242))
+        self.kills = self.enterContext(patch.object(os, "kill"))
+        self.server = _make_server()
+
+    def _session(self, name, idle_seconds):
+        browser = _FakeBrowser()
+        browser.name = name
+        key = self.server._register(browser, "local")
+        self.server._sessions[key].last_activity = time.time() - idle_seconds
+        return key, browser
+
+    async def test_stops_sessions_idle_over_10_minutes_only(self):
+        stale_id, stale = self._session("bustale", 601)
+        fresh_id, fresh = self._session("bufresh", 30)
+        self.server._primary = stale_id
+        await self.server._cleanup_expired_sessions()
+        self.assertTrue(stale.stopped)
+        self.assertFalse(fresh.stopped)
+        self.assertEqual(list(self.server._sessions), [fresh_id])
+        self.assertIsNone(self.server._primary)
+        self.kills.assert_not_called()
+
+    async def test_a_failed_stop_never_raises(self):
+        stale_id, stale = self._session("bustale", 3600)
+        stale.stop_error = RuntimeError("daemon gone")
+        await self.server._cleanup_expired_sessions()
+        self.assertIn(stale_id, self.server._sessions)
+
+    async def test_a_session_used_while_the_sweep_waits_for_the_lock_survives(self):
+        key, browser = self._session("busy", 3600)
+        async with self.server._lock:
+            sweep = asyncio.create_task(self.server._cleanup_expired_sessions())
+            await asyncio.sleep(0)
+            self.server._sessions[key].last_activity = time.time()
+        await sweep
+        self.assertFalse(browser.stopped, "the sweep closed a session a tool had just used")
+        self.assertIn(key, self.server._sessions)
+
+    async def test_tool_use_keeps_a_session_alive(self):
+        daemon = _FakeDaemon()
+        daemon.evaluate({"document.documentElement.outerHTML": "<html></html>"})
+        key, browser = self._session("budaemon01", 3600)
+        self.server._primary = key
+        with daemon.installed():
+            await self.server._execute_tool("browser_get_html", {})
+        await self.server._cleanup_expired_sessions()
+        self.assertFalse(browser.stopped)
+
+    async def test_the_loop_survives_a_failing_cycle(self):
+        calls = 0
+        done = asyncio.Event()
+
+        async def cycle():
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                raise RuntimeError("first cycle fails")
+            done.set()
+
+        with patch.object(_mod, "_MAINTENANCE_INTERVAL_SECONDS", 0), \
+                patch.object(self.server, "_cleanup_expired_sessions", cycle):
+            task = asyncio.create_task(self.server._maintenance_loop())
+            await asyncio.wait_for(done.wait(), timeout=5)
+            task.cancel()
+        self.assertGreaterEqual(calls, 2)
+
+    def test_the_interval_and_timeout(self):
+        self.assertEqual(_mod._MAINTENANCE_INTERVAL_SECONDS, 120)
+        self.assertEqual(_mod._SESSION_IDLE_SECONDS, 600)
+
+
+class TestParentDeathShutdown(unittest.TestCase):
+    """
+    A SIGKILLed `claude` reparents the server. The server then sends itself
+    SIGTERM, so browser-use's own handler stops every live Browser on the way
+    out. Only that one PID is ever signalled.
+    """
+
+    def _server(self, parent=4242):
+        with patch.object(os, "getppid", lambda: parent):
+            return _make_server()
+
+    def test_a_reparented_server_sends_itself_sigterm(self):
+        server = self._server()
+        with patch.object(os, "getppid", lambda: 1), patch.object(os, "kill") as kill, \
+                contextlib.redirect_stderr(io.StringIO()) as err:
+            server._exit_if_parent_died()
+        kill.assert_called_once_with(os.getpid(), signal.SIGTERM)
+        self.assertIn("parent process 4242 is gone", err.getvalue())
+
+    def test_a_live_parent_changes_nothing(self):
+        server = self._server()
+        with patch.object(os, "getppid", lambda: 4242), patch.object(os, "kill") as kill:
+            server._exit_if_parent_died()
+        kill.assert_not_called()
+
+    def test_an_unreadable_parent_is_never_a_reason_to_exit(self):
+        server = self._server()
+
+        def broken():
+            raise OSError("no")
+
+        with patch.object(os, "getppid", broken), patch.object(os, "kill") as kill:
+            server._exit_if_parent_died()
+        kill.assert_not_called()
+
+    def test_the_sweep_checks_the_parent(self):
+        server = self._server()
+        with patch.object(os, "getppid", lambda: 1), patch.object(os, "kill") as kill, \
+                contextlib.redirect_stderr(io.StringIO()):
+            asyncio.run(server._cleanup_expired_sessions())
+        kill.assert_called_once_with(os.getpid(), signal.SIGTERM)
+
+
+class TestServerSourceChecks(unittest.TestCase):
+    """What the source must and must not contain, beyond what behaviour shows."""
+
+    @classmethod
+    def setUpClass(cls):
+        import ast
+
+        cls.source = _SERVER_FILE.read_text()
+        tree = ast.parse(cls.source)
+        cls.main = next(
+            ast.get_source_segment(cls.source, node) or ""
+            for node in tree.body
+            if isinstance(node, ast.AsyncFunctionDef) and node.name == "main"
+        )
+        cls.imports = {
+            alias.name.split(".")[0]
+            for node in ast.walk(tree)
+            if isinstance(node, (ast.Import, ast.ImportFrom))
+            for alias in (node.names if isinstance(node, ast.Import) else [ast.alias(node.module or "")])
+        }
+
+    def test_no_pattern_based_process_kill(self):
+        for banned in ("pkill", "killall", "kill -9"):
+            self.assertNotIn(
+                banned, self.source,
+                f"{banned!r} kills by name or pattern and would reach processes this server does not own.",
+            )
+
+    def test_no_process_tree_machinery(self):
+        self.assertNotIn("psutil", self.imports)
+        for gone in ("_install_shutdown_handlers", "_shutdown_sync", "_exit_process",
+                     "_reap_orphaned_profiles", "os._exit"):
+            self.assertNotIn(gone, self.source)
+
+    def test_main_runs_the_maintenance_loop_and_keeps_stdout_for_json_rpc(self):
+        self.assertIn("_maintenance_loop()", self.main)
+        self.assertIn("sys.stdout = sys.stderr", self.main)
+        self.assertIn("close_all_sessions()", self.main)
+
+
+def _real_chat_anthropic():
+    """browser-use 1.0's own ChatAnthropic class."""
+    import browser_use
+
+    return browser_use.ChatAnthropic
+
 
 class TestResolveConfiguredLLM(unittest.TestCase):
     """
@@ -2117,16 +2063,16 @@ class TestResolveConfiguredLLM(unittest.TestCase):
             choice = self.server._resolve_configured_llm()
         self.assertIsNotNone(choice)
         self.assertEqual(choice.provider, "browser_use")
-        self.assertEqual(choice.model, "bu-latest")
+        self.assertEqual(choice.model, "bu-fast")
 
     def test_legacy_shim_respects_agent_model_env(self):
         with patch.dict(
             os.environ,
-            self._env(BROWSER_USE_API_KEY="bu-key", BROWSER_USE_AGENT_MODEL="bu-2-0"),
+            self._env(BROWSER_USE_API_KEY="bu-key", BROWSER_USE_AGENT_MODEL="bu-max"),
             clear=True,
         ):
             choice = self.server._resolve_configured_llm()
-        self.assertEqual(choice.model, "bu-2-0")
+        self.assertEqual(choice.model, "bu-max")
 
     def test_settings_agent_model_beats_legacy_shim(self):
         self._write_settings(
@@ -2213,417 +2159,19 @@ class TestResolveConfiguredLLM(unittest.TestCase):
             clear=True,
         ):
             llm = self.server._resolve_agent_llm()
-        self.assertIsInstance(llm, FakeChatAnthropic)
-        self.assertEqual(llm.init_kwargs["model"], "override-model")
+        self.assertIsInstance(llm, _real_chat_anthropic())
+        self.assertEqual(llm.model, "override-model")
 
     def test_resolve_agent_llm_falls_back_to_default(self):
         with patch.dict(os.environ, self._env(ANTHROPIC_API_KEY="sk-ant"), clear=True):
             llm = self.server._resolve_agent_llm()
-        self.assertIsInstance(llm, FakeChatAnthropic)
-        self.assertEqual(llm.init_kwargs["model"], "claude-sonnet-5")
+        self.assertIsInstance(llm, _real_chat_anthropic())
+        self.assertEqual(llm.model, "claude-sonnet-5")
 
 
 # ---------------------------------------------------------------------------
-# Test 9c: browser_set_agent_model tool
+# Chromium binary resolution (browser_env._resolve_chromium_binary)
 # ---------------------------------------------------------------------------
-
-class TestSetAgentModelTool(unittest.TestCase):
-    """
-    browser_set_agent_model must validate input, store the session override,
-    eagerly rebuild self.llm when a live session exists, and return a JSON
-    summary that never leaks the API key.
-    """
-
-    def setUp(self):
-        self.server = _make_server()
-
-    def test_valid_input_stores_override_no_live_session(self):
-        self.server.browser_session = None
-        with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-ant"}):
-            result = asyncio.run(
-                self.server._handle_set_agent_model(
-                    {"provider": "anthropic", "model": "claude-sonnet-5"}
-                )
-            )
-        payload = json.loads(result)
-        self.assertEqual(payload["provider"], "anthropic")
-        self.assertEqual(payload["model"], "claude-sonnet-5")
-        self.assertFalse(payload["applied_to_live_session"])
-        self.assertNotIn("api_key", payload)
-        # Override persisted for the next session start.
-        self.assertIsNotNone(self.server._session_llm_override)
-        self.assertEqual(self.server._session_llm_override.provider, "anthropic")
-
-    def test_valid_input_applies_to_live_session(self):
-        self.server.browser_session = MagicMock(name="live_session")
-        self.server.llm = MagicMock(name="old_llm")
-        with patch.dict(os.environ, {"OPENAI_API_KEY": "sk-oai"}):
-            result = asyncio.run(
-                self.server._handle_set_agent_model(
-                    {"provider": "openai", "model": "gpt-5", "temperature": 0.3}
-                )
-            )
-        payload = json.loads(result)
-        self.assertTrue(payload["applied_to_live_session"])
-        # self.llm was swapped to a freshly-built FakeChatOpenAI.
-        self.assertIsInstance(self.server.llm, FakeChatOpenAI)
-        self.assertEqual(self.server.llm.init_kwargs["model"], "gpt-5")
-        self.assertEqual(self.server.llm.init_kwargs["temperature"], 0.3)
-
-    def test_invalid_provider_returns_error_and_no_persist(self):
-        self.server.browser_session = None
-        result = asyncio.run(
-            self.server._handle_set_agent_model({"provider": "bogus", "model": "x"})
-        )
-        self.assertTrue(result.startswith("Error"), f"Expected error string, got {result!r}")
-        self.assertIsNone(self.server._session_llm_override)
-
-    def test_openai_compatible_without_base_url_returns_error(self):
-        self.server.browser_session = None
-        result = asyncio.run(
-            self.server._handle_set_agent_model(
-                {"provider": "openai_compatible", "model": "llama-3"}
-            )
-        )
-        self.assertTrue(result.startswith("Error"))
-        self.assertIn("base_url", result)
-        self.assertIsNone(self.server._session_llm_override)
-
-    def test_build_failure_reverts_override_and_keeps_llm(self):
-        prior_llm = MagicMock(name="prior_llm")
-        prior_override = _mod.LLMChoice(provider="anthropic", model="prev-model")
-        self.server.browser_session = MagicMock(name="live_session")
-        self.server.llm = prior_llm
-        self.server._session_llm_override = prior_override
-
-        # openai_compatible with base_url but a MISSING api key env → _build_llm
-        # raises RuntimeError, so the handler must revert.
-        env = {k: v for k, v in os.environ.items() if k != "MISSING_KEY_VAR"}
-        with patch.dict(os.environ, env, clear=True):
-            result = asyncio.run(
-                self.server._handle_set_agent_model(
-                    {
-                        "provider": "openai_compatible",
-                        "model": "llama-3",
-                        "base_url": "http://localhost:1234/v1",
-                        "api_key_env": "MISSING_KEY_VAR",
-                    }
-                )
-            )
-        self.assertTrue(result.startswith("Error"), f"Expected error string, got {result!r}")
-        # Override reverted; self.llm untouched.
-        self.assertIs(self.server._session_llm_override, prior_override)
-        self.assertIs(self.server.llm, prior_llm)
-
-    def test_result_json_never_contains_secret(self):
-        self.server.browser_session = None
-        with patch.dict(os.environ, {"MY_SECRET_ENV": "super-secret-value"}):
-            result = asyncio.run(
-                self.server._handle_set_agent_model(
-                    {
-                        "provider": "openai_compatible",
-                        "model": "llama-3",
-                        "base_url": "http://localhost:1234/v1",
-                        "api_key_env": "MY_SECRET_ENV",
-                    }
-                )
-            )
-        self.assertNotIn("super-secret-value", result)
-        self.assertNotIn("api_key", json.loads(result))
-
-
-# ---------------------------------------------------------------------------
-# Test 9d: static guard — resolver at both call sites, no gpt-4o-mini
-# ---------------------------------------------------------------------------
-
-class TestAgentLLMStaticChecks(unittest.TestCase):
-    """
-    Static source guard: the LLM-selection logic must live in exactly ONE place
-    (_resolve_agent_llm / _build_llm), be used at BOTH call sites
-    (_init_browser_session and _handle_start_cloud_session), and the old
-    duplicated selection + gpt-4o-mini default must be gone.
-    """
-
-    @classmethod
-    def setUpClass(cls):
-        cls.source = (Path(__file__).parent / "mcp-server.py").read_text()
-
-    def test_no_gpt_4o_mini_default(self):
-        self.assertNotIn(
-            "gpt-4o-mini",
-            self.source,
-            "The gpt-4o-mini default must be removed — selection now goes through "
-            "_resolve_agent_llm / _DEFAULT_LLM.",
-        )
-
-    def test_resolver_used_at_both_call_sites(self):
-        # _resolve_agent_llm is defined once and called at both init + cloud sites.
-        call_count = self.source.count("self._resolve_agent_llm()")
-        self.assertGreaterEqual(
-            call_count,
-            2,
-            f"_resolve_agent_llm() must be called at both call sites; found {call_count}.",
-        )
-
-    def test_single_resolver_definition(self):
-        self.assertEqual(
-            self.source.count("def _resolve_agent_llm"),
-            1,
-            "There must be exactly one _resolve_agent_llm definition.",
-        )
-        self.assertEqual(
-            self.source.count("def _build_llm"),
-            1,
-            "There must be exactly one _build_llm definition (single selection point).",
-        )
-
-    def test_init_does_not_inline_chat_construction(self):
-        import ast
-
-        tree = ast.parse(self.source)
-        init_src = ""
-        for node in ast.walk(tree):
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and (
-                node.name == "_init_browser_session"
-            ):
-                init_src = ast.get_source_segment(self.source, node) or ""
-                break
-        self.assertTrue(init_src, "Could not locate _init_browser_session")
-        # The old inline ChatOpenAI/ChatBrowserUse construction must be gone.
-        for dead in ("ChatOpenAI(", "ChatBrowserUse("):
-            self.assertNotIn(
-                dead,
-                init_src,
-                f"_init_browser_session must not inline {dead} — use _resolve_agent_llm().",
-            )
-
-
-# ---------------------------------------------------------------------------
-# Test 10 (v1.2.0): browser_start_cloud_session tool
-# ---------------------------------------------------------------------------
-
-class TestStartCloudSessionTool(unittest.TestCase):
-    """
-    browser_start_cloud_session must fail clearly without BROWSER_USE_API_KEY,
-    and on success must register the session, promote it to primary when no
-    local session exists, and return session_id / cdp_url / live_url JSON.
-    """
-
-    def test_missing_api_key_returns_clear_error(self):
-        server = _make_server()
-        os.environ.pop("BROWSER_USE_API_KEY", None)
-
-        result = asyncio.run(server._handle_start_cloud_session({}))
-
-        self.assertTrue(result.startswith("Error"), f"Expected error string, got: {result!r}")
-        self.assertIn("BROWSER_USE_API_KEY", result)
-
-    def test_happy_path_registers_and_promotes_session(self):
-        import json as _json
-
-        server = _make_server()
-        # Pre-set agent plumbing so promotion skips the lazy real imports.
-        server.tools = MagicMock()
-        server.file_system = MagicMock()
-        server.llm = MagicMock()
-
-        mock_session = MagicMock()
-        mock_session.id = "cloud-123"
-        mock_session.cdp_url = "wss://cloud.example/cdp/123"
-        mock_session.live_url = "https://live.example/watch/123"
-        mock_session.start = AsyncMock(return_value=None)
-
-        with (
-            patch.dict(os.environ, {"BROWSER_USE_API_KEY": "test-key"}),
-            patch.object(_mod, "BrowserProfile", MagicMock()) as mock_profile,
-            patch.object(_mod, "BrowserSession", MagicMock(return_value=mock_session)),
-        ):
-            result = asyncio.run(server._handle_start_cloud_session({}))
-
-        payload = _json.loads(result)
-        self.assertEqual(payload["session_id"], "cloud-123")
-        self.assertEqual(payload["cdp_url"], "wss://cloud.example/cdp/123")
-        self.assertEqual(payload["live_url"], "https://live.example/watch/123")
-        self.assertTrue(payload["is_primary"])
-
-        # Profile must request a cloud browser that stays alive between tools.
-        mock_profile.assert_called_once_with(use_cloud=True, keep_alive=True)
-        # Session must be tracked and promoted to primary.
-        self.assertIn("cloud-123", server.active_sessions)
-        self.assertIs(server.active_sessions["cloud-123"]["session"], mock_session)
-        self.assertIs(server.browser_session, mock_session)
-
-    def test_existing_primary_session_is_not_replaced(self):
-        server = _make_server()
-        existing = MagicMock(name="existing_local_session")
-        server.browser_session = existing
-
-        mock_session = MagicMock()
-        mock_session.id = "cloud-456"
-        mock_session.cdp_url = "wss://cloud.example/cdp/456"
-        mock_session.live_url = None
-        mock_session.start = AsyncMock(return_value=None)
-
-        with (
-            patch.dict(os.environ, {"BROWSER_USE_API_KEY": "test-key"}),
-            patch.object(_mod, "BrowserProfile", MagicMock()),
-            patch.object(_mod, "BrowserSession", MagicMock(return_value=mock_session)),
-        ):
-            result = asyncio.run(server._handle_start_cloud_session({}))
-
-        import json as _json
-        payload = _json.loads(result)
-        self.assertFalse(payload["is_primary"])
-        self.assertNotIn("live_url", payload, "live_url must be omitted when unavailable")
-        self.assertIs(server.browser_session, existing, "Existing primary must not be replaced")
-        self.assertIn("cloud-456", server.active_sessions)
-
-
-# ---------------------------------------------------------------------------
-# Test 11 (v1.2.0): Startup reaper for orphaned profiles
-# ---------------------------------------------------------------------------
-
-class TestReapOrphanedProfiles(unittest.TestCase):
-    """
-    _reap_orphaned_profiles(base_dir=...) must remove PID-scoped profile dirs
-    whose PID is dead, and must never touch: the 'default' dir, dirs of live
-    PIDs, or dirs whose suffix isn't a PID.
-    """
-
-    @staticmethod
-    def _find_dead_pid():
-        import psutil
-
-        for candidate in range(99999, 90000, -1):
-            if not psutil.pid_exists(candidate):
-                return candidate
-        raise RuntimeError("Could not find a dead PID in 90000-99999")
-
-    def test_reaps_only_dead_pid_dirs(self):
-        import shutil
-        import tempfile
-
-        tmp = Path(tempfile.mkdtemp())
-        try:
-            dead_pid = self._find_dead_pid()
-            live_pid = os.getpid()
-
-            dead_dir = tmp / f"{_NEW_SESSION_PREFIX}{dead_pid}"
-            live_dir = tmp / f"{_NEW_SESSION_PREFIX}{live_pid}"
-            default_dir = tmp / "default"
-            weird_dir = tmp / f"{_NEW_SESSION_PREFIX}notapid"
-
-            for d in (dead_dir, live_dir, default_dir, weird_dir):
-                d.mkdir(parents=True)
-                (d / "SingletonLock").write_text("dummy")
-
-            _mod._reap_orphaned_profiles(base_dir=tmp)
-
-            self.assertFalse(dead_dir.exists(), f"Dead-PID dir {dead_dir} must be reaped")
-            self.assertTrue(live_dir.exists(), "Live-PID dir must survive")
-            self.assertTrue(default_dir.exists(), "'default' dir must survive")
-            self.assertTrue(weird_dir.exists(), "Non-PID-suffixed dir must survive")
-        finally:
-            shutil.rmtree(tmp, ignore_errors=True)
-
-    def test_missing_profiles_dir_is_noop(self):
-        import tempfile
-
-        tmp = Path(tempfile.mkdtemp()) / "does-not-exist"
-        # Must not raise
-        _mod._reap_orphaned_profiles(base_dir=tmp)
-
-    def test_reaper_never_raises(self):
-        """Even a pathological base_dir must not raise (startup safety)."""
-        _mod._reap_orphaned_profiles(base_dir=Path("/dev/null"))
-
-
-# ---------------------------------------------------------------------------
-# Test 12 (v1.2.0): _shutdown_sync uses the live 0.13.1 API, not dead attrs
-# ---------------------------------------------------------------------------
-
-class TestShutdownStaticChecks(unittest.TestCase):
-    """
-    Static source check: shutdown must go through session.kill() and the
-    _local_browser_watchdog._subprocess psutil handle.  The old probing of
-    session._browser / session.browser / ._process / .process was dead code
-    on browser-use 0.13.1 (those attributes don't exist) and must be gone.
-    """
-
-    @classmethod
-    def setUpClass(cls):
-        import ast
-
-        source = (Path(__file__).parent / "mcp-server.py").read_text()
-        tree = ast.parse(source)
-        segments = []
-        for node in ast.walk(tree):
-            if isinstance(node, ast.ClassDef) and node.name == "MagusBrowserServer":
-                for item in node.body:
-                    if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)) and item.name in (
-                        "_shutdown_sync",
-                        "_kill_session_sync",
-                    ):
-                        segments.append(ast.get_source_segment(source, item) or "")
-        cls.shutdown_src = "\n".join(segments)
-        assert cls.shutdown_src.strip(), "Could not locate shutdown methods in mcp-server.py"
-
-    def test_shutdown_uses_kill(self):
-        self.assertIn(
-            ".kill()",
-            self.shutdown_src,
-            "Shutdown must call session.kill() — under keep_alive=True it is the "
-            "only call that actually terminates Chrome",
-        )
-
-    def test_shutdown_uses_local_browser_watchdog_subprocess(self):
-        self.assertIn("_local_browser_watchdog", self.shutdown_src)
-        self.assertIn("_subprocess", self.shutdown_src)
-
-    def test_shutdown_does_not_probe_dead_attributes(self):
-        for dead_attr in ('"_browser"', '"_process"', '"process"'):
-            self.assertNotIn(
-                dead_attr,
-                self.shutdown_src,
-                f"Shutdown must not probe dead attribute {dead_attr} "
-                "(does not exist on browser-use 0.13.1 sessions)",
-            )
-
-    def test_shutdown_iterates_active_sessions(self):
-        self.assertIn(
-            "active_sessions",
-            self.shutdown_src,
-            "Shutdown must kill tracked sessions too, not just the primary one",
-        )
-
-
-# ---------------------------------------------------------------------------
-# Test 13: Chromium binary resolution — helpers
-#
-# REGRESSION: browser-use launched the user's real Chrome instead of Playwright's
-# Chromium — /dev:fix session dev-fix-20260822-browser-chrome-hijack
-#
-# Why these tests do NOT use the CapturingProfile pattern for the profile guard:
-# CapturingProfile substitutes BrowserProfile with a kwargs recorder, so no real
-# profile is ever constructed, model_post_init never runs, and no binary is ever
-# resolved. That is precisely why 90 tests passed while the bug was live. The
-# resolver tests below assert the RESOLVED BINARY PATH, and the _copy_profile
-# guard constructs a REAL BrowserProfile.
-# ---------------------------------------------------------------------------
-
-import contextlib  # noqa: E402
-import io  # noqa: E402
-import shutil as _shutil  # noqa: E402
-import tempfile as _tempfile  # noqa: E402
-
-# The profile-directory convention that keeps upstream's _copy_profile() from
-# relocating our user_data_dir into tempfile.mkdtemp() once executable_path is
-# set (profile.py returns early when this marker appears in the path).
-_NEW_SESSION_PREFIX = "browser-use-user-data-dir-session-"
-
-# The pre-1.5.0 convention. A server SIGKILLed before it could clean up left one
-# of these behind at ~50MB, and the reaper must still sweep it.
-_OLD_SESSION_PREFIX = "session-"
 
 # The one path that must never come back from binary resolution.
 _HIJACK_PATH_FRAGMENT = "Google Chrome.app"
@@ -2708,9 +2256,9 @@ def _hermetic_chromium_cache():
     """
     A throwaway Playwright cache containing exactly one Chromium build.
 
-    Every test that reaches _init_browser_session now resolves a real binary, so
-    without this it would pass or fail on whether the developer's machine happens
-    to have Playwright installed — and error on a fresh CI runner. Points
+    A test that resolves the binary would otherwise pass or fail on whether the
+    developer's machine happens to have Playwright installed, and error on a
+    fresh CI runner. Points
     PLAYWRIGHT_BROWSERS_PATH at the fixture so the real ~/Library/Caches or
     ~/.cache copy is never touched.
     """
@@ -2721,30 +2269,6 @@ def _hermetic_chromium_cache():
             yield cache
     finally:
         _shutil.rmtree(cache, ignore_errors=True)
-
-
-def _capture_profile_kwargs(profile_config=None) -> dict:
-    """Run _init_browser_session and return the kwargs handed to BrowserProfile."""
-    server = _make_server()
-    captured: dict = {}
-
-    class CapturingProfile:
-        def __init__(self, **kwargs):
-            captured.update(kwargs)
-
-    mock_session = MagicMock()
-    mock_session.start = AsyncMock(return_value=None)
-
-    with (
-        patch.object(_mod, "BrowserProfile", CapturingProfile),
-        patch.object(_mod, "BrowserSession", MagicMock(return_value=mock_session)),
-        patch.object(_mod, "get_default_profile", return_value=profile_config or {}),
-        patch.object(_mod, "get_default_llm", return_value={}),
-    ):
-        server._track_session = MagicMock()
-        asyncio.run(server._init_browser_session())
-
-    return captured
 
 
 class _TempDirMixin(unittest.TestCase):
@@ -2758,8 +2282,6 @@ class _TempDirMixin(unittest.TestCase):
     def _resolver(self):
         """
         Return mcp-server.py's _resolve_chromium_binary, or fail with the reason.
-
-        The function does not exist yet — that is the point of the RED step.
         """
         fn = getattr(_mod, "_resolve_chromium_binary", None)
         if fn is None:
@@ -2788,7 +2310,7 @@ class TestResolveChromiumBinary(_TempDirMixin):
         loud, actionable error — never a silent fall-through to the user's Chrome.
 
         # REGRESSION: browser-use launched the user's real Chrome instead of
-        # Playwright's Chromium — /dev:fix session dev-fix-20260822-browser-chrome-hijack
+        # Playwright's Chromium.
         """
         resolve = self._resolver()
 
@@ -2831,7 +2353,7 @@ class TestResolveChromiumBinary(_TempDirMixin):
         what went stale upstream and caused this bug.
 
         # REGRESSION: browser-use launched the user's real Chrome instead of
-        # Playwright's Chromium — /dev:fix session dev-fix-20260822-browser-chrome-hijack
+        # Playwright's Chromium.
         """
         resolve = self._resolver()
 
@@ -2885,7 +2407,7 @@ class TestResolveChromiumBinary(_TempDirMixin):
         changes digit width.
 
         # REGRESSION: browser-use launched the user's real Chrome instead of
-        # Playwright's Chromium — /dev:fix session dev-fix-20260822-browser-chrome-hijack
+        # Playwright's Chromium.
         """
         resolve = self._resolver()
 
@@ -2910,7 +2432,7 @@ class TestResolveChromiumBinary(_TempDirMixin):
         existing file it names must be returned ahead of any cache hit.
 
         # REGRESSION: browser-use launched the user's real Chrome instead of
-        # Playwright's Chromium — /dev:fix session dev-fix-20260822-browser-chrome-hijack
+        # Playwright's Chromium.
         """
         resolve = self._resolver()
 
@@ -2938,7 +2460,7 @@ class TestResolveChromiumBinary(_TempDirMixin):
         never a silent fall-through to cache discovery or to the user's Chrome.
 
         # REGRESSION: browser-use launched the user's real Chrome instead of
-        # Playwright's Chromium — /dev:fix session dev-fix-20260822-browser-chrome-hijack
+        # Playwright's Chromium.
         """
         resolve = self._resolver()
 
@@ -2974,7 +2496,7 @@ class TestResolveChromiumBinary(_TempDirMixin):
         somewhere else. The resolver requires is_file() and says so.
 
         # REGRESSION: browser-use launched the user's real Chrome instead of
-        # Playwright's Chromium — /dev:fix session dev-fix-20260822-browser-chrome-hijack
+        # Playwright's Chromium.
         """
         resolve = self._resolver()
 
@@ -3027,7 +2549,7 @@ class TestResolveChromiumBinary(_TempDirMixin):
         carries MCP's JSON-RPC.
 
         # REGRESSION: browser-use launched the user's real Chrome instead of
-        # Playwright's Chromium — /dev:fix session dev-fix-20260822-browser-chrome-hijack
+        # Playwright's Chromium.
         """
         resolve = self._resolver()
 
@@ -3086,7 +2608,7 @@ class TestResolveChromiumBinary(_TempDirMixin):
         warning that matters.
 
         # REGRESSION: browser-use launched the user's real Chrome instead of
-        # Playwright's Chromium — /dev:fix session dev-fix-20260822-browser-chrome-hijack
+        # Playwright's Chromium.
         """
         resolve = self._resolver()
 
@@ -3119,966 +2641,6 @@ class TestResolveChromiumBinary(_TempDirMixin):
         )
 
 
-# ---------------------------------------------------------------------------
-# Test 13b: _copy_profile guard — REAL BrowserProfile, no CapturingProfile
-# ---------------------------------------------------------------------------
-
-class TestCopyProfileKeepsUserDataDir(_TempDirMixin):
-    """
-    Setting executable_path trips upstream's is_chrome check (profile.py: the
-    path contains 'chrome' on every platform), which relocates user_data_dir
-    into tempfile.mkdtemp() and blinds the reaper.  Upstream returns early when
-    'browser-use-user-data-dir-' appears in the path, so our profile-directory
-    convention must embed that marker.
-
-    This is deliberate coupling to an upstream implementation detail, pinned
-    here so an upstream marker change fails loudly instead of silently
-    re-breaking the reaper.  It MUST construct a real BrowserProfile —
-    _copy_profile runs in model_post_init, at construction, not at launch.
-    """
-
-    def test_real_profile_keeps_user_data_dir_under_browseruse_profiles(self):
-        """
-        # REGRESSION: browser-use launched the user's real Chrome instead of
-        # Playwright's Chromium — /dev:fix session dev-fix-20260822-browser-chrome-hijack
-        """
-        try:
-            from browser_use.browser.profile import BrowserProfile as RealBrowserProfile
-        except Exception as err:  # not installed in this environment
-            self.skipTest(f"browser_use is not importable: {err}")
-
-        cache = self._tmpdir()
-        fake_binary = _make_fake_chromium(cache, 1234, _current_platform_key())
-        self.assertIn(
-            "chrome",
-            str(fake_binary).lower(),
-            "precondition: every Playwright chromium binary contains 'chrome', which is "
-            "what trips upstream's is_chrome check",
-        )
-
-        # Take the plugin's ACTUAL user_data_dir convention rather than restating
-        # it, so this test tracks mcp-server.py instead of a copy of it.
-        with _chromium_env(cache_root=cache):
-            captured = _capture_profile_kwargs()
-        user_data_dir = captured.get("user_data_dir")
-        self.assertTrue(user_data_dir, f"profile must set user_data_dir. Got: {captured!r}")
-
-        profiles_root = str(Path.home() / ".config" / "browseruse" / "profiles")
-        temp_root = os.path.realpath(_tempfile.gettempdir())
-
-        profile = RealBrowserProfile(
-            user_data_dir=user_data_dir,
-            channel="chromium",
-            executable_path=str(fake_binary),
-            headless=True,
-        )
-        resolved = str(profile.user_data_dir)
-
-        try:
-            self.assertTrue(
-                resolved.startswith(profiles_root),
-                "user_data_dir must stay under ~/.config/browseruse/profiles/ after "
-                "executable_path is set, otherwise upstream's _copy_profile() relocates it "
-                "to a temp dir the reaper cannot see. Our convention must embed the "
-                f"'{_NEW_SESSION_PREFIX}' marker. Started as {user_data_dir!r}, "
-                f"became {resolved!r}",
-            )
-            self.assertFalse(
-                resolved.startswith(temp_root),
-                f"user_data_dir must NOT be relocated into a temp dir. Got: {resolved!r}",
-            )
-        finally:
-            # Upstream may have created a temp profile dir behind our back.
-            if (
-                not resolved.startswith(profiles_root)
-                and "browser-use-user-data-dir-" in Path(resolved).name
-                and Path(resolved).is_dir()
-            ):
-                _shutil.rmtree(resolved, ignore_errors=True)
-
-
-# ---------------------------------------------------------------------------
-# Test 13c: reaper round-trip over the renamed profile-directory prefix
-# ---------------------------------------------------------------------------
-
-class TestReaperHandlesNewProfilePrefix(_TempDirMixin):
-    """
-    The prefix rename has six code sites in mcp-server.py; the two the reaper
-    owns are the glob and the PID parse (entry.name[len("session-"):]), plus the
-    cmdline marker used to kill leftover Chrome.  Update the glob alone and the
-    PID parse yields a non-digit string, so the reaper skips every directory —
-    a silent no-op.  This test fails for either omission.
-    """
-
-    def test_dead_pid_dir_is_found_parsed_and_its_chrome_terminated(self):
-        """
-        # REGRESSION: browser-use launched the user's real Chrome instead of
-        # Playwright's Chromium — /dev:fix session dev-fix-20260822-browser-chrome-hijack
-        """
-        import psutil
-
-        tmp = self._tmpdir()
-        dead_pid = TestReapOrphanedProfiles._find_dead_pid()
-        live_pid = os.getpid()
-
-        dead_dir = tmp / f"{_NEW_SESSION_PREFIX}{dead_pid}"
-        live_dir = tmp / f"{_NEW_SESSION_PREFIX}{live_pid}"
-        default_dir = tmp / "default"
-        weird_dir = tmp / f"{_NEW_SESSION_PREFIX}notapid"
-        for d in (dead_dir, live_dir, default_dir, weird_dir):
-            d.mkdir(parents=True)
-            (d / "SingletonLock").write_text("dummy")
-
-        # Chrome still running on the dead session's profile — must be
-        # terminated. The cmdline names the directory being swept, which is what
-        # production looks like: browser-use records the same absolute path the
-        # reaper then walks.
-        orphan_chrome = MagicMock(name="orphan_chrome")
-        orphan_chrome.info = {
-            "pid": 4242,
-            "cmdline": ["/fake/chromium", f"--user-data-dir={dead_dir}"],
-        }
-        # The user's own Chrome — no browseruse path, must never be touched.
-        users_chrome = MagicMock(name="users_chrome")
-        users_chrome.info = {
-            "pid": 4243,
-            "cmdline": ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"],
-        }
-
-        with patch.object(psutil, "process_iter", return_value=[orphan_chrome, users_chrome]):
-            _mod._reap_orphaned_profiles(base_dir=tmp)
-
-        self.assertFalse(
-            dead_dir.exists(),
-            f"Dead-PID dir {dead_dir.name!r} must be reaped under the "
-            f"'{_NEW_SESSION_PREFIX}' convention. Either the glob still matches only "
-            "'session-*', or the PID parse still strips only len('session-') characters "
-            "and produced a non-digit string.",
-        )
-        self.assertTrue(live_dir.exists(), "Live-PID dir must survive")
-        self.assertTrue(default_dir.exists(), "'default' dir must survive")
-        self.assertTrue(weird_dir.exists(), "Non-PID-suffixed dir must survive")
-
-        orphan_chrome.terminate.assert_called_once_with()
-        users_chrome.terminate.assert_not_called()
-
-
-# ---------------------------------------------------------------------------
-# Test 13e: the reaper also sweeps the pre-1.5.0 'session-<pid>' convention
-# ---------------------------------------------------------------------------
-
-class TestReaperSweepsBothProfilePrefixes(_TempDirMixin):
-    """
-    v1.5.0 renamed the profile convention from 'session-<pid>' to
-    'browser-use-user-data-dir-session-<pid>' and the reaper's glob moved with
-    it.  A directory written by a pre-1.5.0 server whose owner was SIGKILLed
-    before it could clean up is therefore matched by nothing: it sits on disk at
-    ~50MB with no code path that will ever remove it.
-
-    The reaper must sweep BOTH names, and must derive the PID parse, the
-    liveness check, the cmdline kill marker and the rmtree from whichever prefix
-    matched — one code path, not two.
-    """
-
-    @staticmethod
-    def _chrome(pid: int, profile_dir: Path) -> MagicMock:
-        """
-        A fake Chrome running on `profile_dir`, named by its absolute path.
-
-        The path is the one the sweep is actually walking, which is what a real
-        browser records: browser-use passes the user_data_dir it was given, and
-        the reaper walks that same directory.
-        """
-        proc = MagicMock(name=f"chrome-{profile_dir.name}")
-        proc.info = {
-            "pid": pid,
-            "cmdline": ["/fake/chromium", f"--user-data-dir={profile_dir}"],
-        }
-        return proc
-
-    def test_glob_prefixes_cannot_double_match_the_same_directory(self):
-        """
-        The whole design rests on glob() anchoring at the start of the entry
-        name: if 'session-*' also matched 'browser-use-user-data-dir-session-1',
-        sweeping two prefixes would visit that directory twice and parse a PID
-        of 'browser-use-user-data-dir-session-1' the second time.
-        """
-        tmp = self._tmpdir()
-        for name in (
-            f"{_OLD_SESSION_PREFIX}1",
-            f"{_NEW_SESSION_PREFIX}1",
-            "default",
-        ):
-            (tmp / name).mkdir()
-
-        self.assertEqual(
-            sorted(p.name for p in tmp.glob(f"{_OLD_SESSION_PREFIX}*")),
-            [f"{_OLD_SESSION_PREFIX}1"],
-            "glob('session-*') must not also match the new prefix — it anchors "
-            "at the start of the name.",
-        )
-        self.assertEqual(
-            sorted(p.name for p in tmp.glob(f"{_NEW_SESSION_PREFIX}*")),
-            [f"{_NEW_SESSION_PREFIX}1"],
-        )
-
-    def test_old_prefix_dir_with_dead_owner_is_reaped(self):
-        import psutil
-
-        tmp = self._tmpdir()
-        dead_pid = TestReapOrphanedProfiles._find_dead_pid()
-        dead_dir = tmp / f"{_OLD_SESSION_PREFIX}{dead_pid}"
-        dead_dir.mkdir()
-        (dead_dir / "SingletonLock").write_text("dummy")
-
-        with patch.object(psutil, "process_iter", return_value=[]):
-            _mod._reap_orphaned_profiles(base_dir=tmp)
-
-        self.assertFalse(
-            dead_dir.exists(),
-            f"A pre-1.5.0 '{_OLD_SESSION_PREFIX}<pid>' dir whose owner is dead must be "
-            "reaped. Nothing else on the machine will ever remove it, so it "
-            "leaks ~50MB forever.",
-        )
-
-    def test_old_prefix_dir_with_live_owner_is_spared(self):
-        import psutil
-
-        tmp = self._tmpdir()
-        live_dir = tmp / f"{_OLD_SESSION_PREFIX}{os.getpid()}"
-        live_dir.mkdir()
-        (live_dir / "SingletonLock").write_text("dummy")
-
-        with patch.object(psutil, "process_iter", return_value=[]):
-            _mod._reap_orphaned_profiles(base_dir=tmp)
-
-        self.assertTrue(
-            live_dir.exists(),
-            "The liveness guard must apply to the old prefix too — pulling the "
-            "profile out from under a running Chrome corrupts it.",
-        )
-
-    def test_old_prefix_guards_default_and_non_numeric_suffixes(self):
-        import psutil
-
-        tmp = self._tmpdir()
-        default_dir = tmp / "default"
-        weird_dir = tmp / f"{_OLD_SESSION_PREFIX}notanumber"
-        for d in (default_dir, weird_dir):
-            d.mkdir()
-            (d / "SingletonLock").write_text("dummy")
-
-        with patch.object(psutil, "process_iter", return_value=[]):
-            _mod._reap_orphaned_profiles(base_dir=tmp)
-
-        self.assertTrue(
-            default_dir.exists(),
-            "'default' is the user's shared profile and must never be parsed, "
-            "matched or removed under any prefix.",
-        )
-        self.assertTrue(
-            weird_dir.exists(),
-            "'session-notanumber' must still be skipped by the isdigit() guard "
-            "— the PID parse has to strip the prefix that actually matched.",
-        )
-
-    def test_old_prefix_sweep_never_kills_a_same_pid_new_prefix_browser(self):
-        """
-        The dangerous case. Both conventions end in '<pid>', so any test looser
-        than 'these are the same directory' lets the old-prefix sweep reach a
-        browser owned by the new-prefix directory at the same PID.
-
-        Whole directory names must be compared:
-        'session-4242' != 'browser-use-user-data-dir-session-4242'.
-        """
-        import psutil
-
-        tmp = self._tmpdir()
-        pid = TestReapOrphanedProfiles._find_dead_pid()
-
-        old_dir = tmp / f"{_OLD_SESSION_PREFIX}{pid}"
-        old_dir.mkdir()
-        (old_dir / "SingletonLock").write_text("dummy")
-
-        # Same numeric suffix, different convention: this browser belongs to the
-        # new-prefix directory beside it and is none of the old-prefix sweep's
-        # business — same parent, different directory.
-        new_prefix_chrome = self._chrome(7001, tmp / f"{_NEW_SESSION_PREFIX}{pid}")
-        # Same PID under the OLD convention: this one IS ours and must die.
-        old_prefix_chrome = self._chrome(7002, old_dir)
-        # The user's own Chrome — no browseruse path anywhere.
-        users_chrome = MagicMock(name="users_chrome")
-        users_chrome.info = {
-            "pid": 7003,
-            "cmdline": ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"],
-        }
-
-        with patch.object(
-            psutil,
-            "process_iter",
-            return_value=[new_prefix_chrome, old_prefix_chrome, users_chrome],
-        ):
-            _mod._reap_orphaned_profiles(base_dir=tmp)
-
-        new_prefix_chrome.terminate.assert_not_called()
-        new_prefix_chrome.kill.assert_not_called()
-        old_prefix_chrome.terminate.assert_called_once_with()
-        users_chrome.terminate.assert_not_called()
-        self.assertFalse(old_dir.exists(), "The old-prefix dir must still be reaped")
-
-    def test_both_prefixes_are_swept_in_a_single_pass(self):
-        import psutil
-
-        tmp = self._tmpdir()
-        dead_pid = TestReapOrphanedProfiles._find_dead_pid()
-        live_pid = os.getpid()
-
-        old_dead = tmp / f"{_OLD_SESSION_PREFIX}{dead_pid}"
-        new_dead = tmp / f"{_NEW_SESSION_PREFIX}{dead_pid}"
-        old_live = tmp / f"{_OLD_SESSION_PREFIX}{live_pid}"
-        new_live = tmp / f"{_NEW_SESSION_PREFIX}{live_pid}"
-        default_dir = tmp / "default"
-        for d in (old_dead, new_dead, old_live, new_live, default_dir):
-            d.mkdir()
-            (d / "SingletonLock").write_text("dummy")
-
-        old_chrome = self._chrome(7101, old_dead)
-        new_chrome = self._chrome(7102, new_dead)
-
-        with patch.object(
-            psutil, "process_iter", return_value=[old_chrome, new_chrome]
-        ):
-            _mod._reap_orphaned_profiles(base_dir=tmp)
-
-        self.assertFalse(old_dead.exists(), "Old-prefix orphan must be reaped")
-        self.assertFalse(new_dead.exists(), "New-prefix orphan must be reaped")
-        self.assertTrue(old_live.exists(), "Old-prefix live dir must survive")
-        self.assertTrue(new_live.exists(), "New-prefix live dir must survive")
-        self.assertTrue(default_dir.exists(), "'default' must survive")
-
-        old_chrome.terminate.assert_called_once_with()
-        new_chrome.terminate.assert_called_once_with()
-
-    def test_source_declares_the_prefixes_as_a_tuple_not_a_special_case(self):
-        """
-        The reaper must iterate a declared tuple of known prefixes. A second
-        hand-rolled loop over 'session-' would drift from the first the next
-        time the convention changes.
-        """
-        source = (Path(__file__).parent / "mcp-server.py").read_text()
-        self.assertIn(
-            "_REAPABLE_PROFILE_PREFIXES",
-            source,
-            "mcp-server.py must declare the known profile prefixes in one tuple.",
-        )
-        prefixes = getattr(_mod, "_REAPABLE_PROFILE_PREFIXES", None)
-        self.assertIsInstance(
-            prefixes, tuple, "_REAPABLE_PROFILE_PREFIXES must be a tuple"
-        )
-        self.assertEqual(
-            list(prefixes),
-            [_NEW_SESSION_PREFIX, _OLD_SESSION_PREFIX],
-            "Current convention first, then the pre-1.5.0 name.",
-        )
-
-
-# ---------------------------------------------------------------------------
-# Test 13f: the reaper matches the --user-data-dir ARGUMENT, not a substring
-# ---------------------------------------------------------------------------
-
-class TestReaperMatchesUserDataDirArgument(_TempDirMixin):
-    """
-    The reaper decided what to terminate with a plain substring test against the
-    whole command line:
-
-        marker = f"browseruse/profiles/{entry.name}"
-        if not any(marker in arg for arg in cmdline): continue
-        proc.terminate()
-
-    Every profile directory ends in a PID, so one directory's marker is a PREFIX
-    of another's name:
-
-        marker  'browseruse/profiles/session-123'
-        cmdline '--user-data-dir=~/.config/browseruse/profiles/session-1234'
-                -> substring match: True
-
-    Sweeping the dead PID 123 therefore terminated the browser of the LIVE
-    server 1234.  The user lost a browser mid-task, with no error anywhere.
-    Both naming conventions are affected, because both end in digits.
-
-    v1.6.0 moved the reaper off startup and onto upstream's 120s cleanup
-    cadence, which turns a rare collision into a recurring one.
-
-    The match must be on the VALUE of a --user-data-dir argument, compared as a
-    normalised path, for both spellings Chrome accepts.
-    """
-
-    @staticmethod
-    def _proc(pid: int, cmdline: list, label: str = "chrome") -> MagicMock:
-        proc = MagicMock(name=f"{label}-{pid}")
-        proc.info = {"pid": pid, "cmdline": list(cmdline)}
-        return proc
-
-    @staticmethod
-    def _profile_path(base_dir: Path, profile_name: str) -> str:
-        """
-        The path recorded by a browser launched on `base_dir`/`profile_name`.
-
-        Production sees ONE directory here: browser-use is handed the
-        user_data_dir the server built, and the reaper later walks that same
-        directory. Building the cmdline under the base_dir being swept is
-        therefore the faithful pairing. Naming a path under $HOME while the
-        sweep walks a temp directory is a combination that never occurs, and
-        asserting on it once forced a looser rule into the kill path.
-        """
-        return f"{base_dir}/{profile_name}"
-
-    def _orphan_dir(self, prefix: str) -> tuple:
-        """A profiles dir holding one orphan directory under `prefix`."""
-        tmp = self._tmpdir()
-        dead_pid = TestReapOrphanedProfiles._find_dead_pid()
-        entry = tmp / f"{prefix}{dead_pid}"
-        entry.mkdir()
-        (entry / "SingletonLock").write_text("dummy")
-        return tmp, entry, dead_pid
-
-    def _sweep(self, base_dir: Path, processes: list) -> None:
-        import psutil
-
-        with patch.object(psutil, "process_iter", return_value=processes):
-            _mod._reap_orphaned_profiles(base_dir=base_dir)
-
-    # -- the exact bug -----------------------------------------------------
-
-    def test_new_prefix_sweep_spares_a_browser_whose_pid_extends_its_digits(self):
-        """
-        THE BUG. Dead PID 123's sweep must not touch the live PID 1234's browser.
-        """
-        tmp, entry, dead_pid = self._orphan_dir(_NEW_SESSION_PREFIX)
-
-        # A LIVE server whose PID merely starts with the dead one's digits.
-        live_browser = self._proc(
-            8001,
-            [
-                "/fake/chromium",
-                f"--user-data-dir={self._profile_path(tmp, f'{_NEW_SESSION_PREFIX}{dead_pid}4')}",
-            ],
-            label="live-browser",
-        )
-
-        self._sweep(tmp, [live_browser])
-
-        live_browser.terminate.assert_not_called()
-        live_browser.kill.assert_not_called()
-        self.assertEqual(
-            live_browser.terminate.call_count,
-            0,
-            f"Reaping the dead PID {dead_pid} terminated the browser of the LIVE "
-            f"server {dead_pid}4, whose profile name merely EXTENDS the dead "
-            "one's digits. The user loses a browser mid-task with no error. "
-            "Match the --user-data-dir value as a path, not as a substring.",
-        )
-        self.assertFalse(entry.exists(), "The orphan dir itself must still be reaped")
-
-    def test_old_prefix_sweep_spares_a_browser_whose_pid_extends_its_digits(self):
-        """Same collision under the pre-1.5.0 'session-<pid>' convention."""
-        tmp, entry, dead_pid = self._orphan_dir(_OLD_SESSION_PREFIX)
-
-        live_browser = self._proc(
-            8002,
-            [
-                "/fake/chromium",
-                f"--user-data-dir={self._profile_path(tmp, f'{_OLD_SESSION_PREFIX}{dead_pid}4')}",
-            ],
-            label="live-browser",
-        )
-
-        self._sweep(tmp, [live_browser])
-
-        self.assertEqual(
-            live_browser.terminate.call_count,
-            0,
-            f"Reaping '{_OLD_SESSION_PREFIX}{dead_pid}' terminated the browser on "
-            f"'{_OLD_SESSION_PREFIX}{dead_pid}4'. Both conventions end in digits, "
-            "so both carry the prefix collision.",
-        )
-        live_browser.kill.assert_not_called()
-        self.assertFalse(entry.exists(), "The orphan dir itself must still be reaped")
-
-    def test_space_separated_spelling_spares_a_longer_pid_too(self):
-        """The collision must not survive in the '--user-data-dir <path>' form."""
-        tmp, entry, dead_pid = self._orphan_dir(_NEW_SESSION_PREFIX)
-
-        live_browser = self._proc(
-            8003,
-            [
-                "/fake/chromium",
-                "--user-data-dir",
-                self._profile_path(tmp, f"{_NEW_SESSION_PREFIX}{dead_pid}4"),
-            ],
-            label="live-browser",
-        )
-
-        self._sweep(tmp, [live_browser])
-
-        self.assertEqual(live_browser.terminate.call_count, 0)
-        live_browser.kill.assert_not_called()
-        self.assertFalse(entry.exists())
-
-    # -- the legitimate case still works -----------------------------------
-
-    def test_the_dead_owners_own_browser_is_still_terminated(self):
-        """Killing the orphan's own browser is the whole point of the sweep."""
-        tmp, entry, dead_pid = self._orphan_dir(_NEW_SESSION_PREFIX)
-
-        orphan_browser = self._proc(
-            8004,
-            ["/fake/chromium", f"--user-data-dir={self._profile_path(tmp, entry.name)}"],
-            label="orphan-browser",
-        )
-
-        self._sweep(tmp, [orphan_browser])
-
-        orphan_browser.terminate.assert_called_once_with()
-        self.assertFalse(entry.exists())
-
-    def test_the_swept_directorys_own_full_path_matches(self):
-        """
-        base_dir is a documented parameter: a browser recorded with the path the
-        reaper is actually walking must be matched by that path. Full path
-        equality is the ONLY rule, so this is the one that has to hold.
-        """
-        tmp, entry, dead_pid = self._orphan_dir(_NEW_SESSION_PREFIX)
-
-        orphan_browser = self._proc(
-            8005,
-            ["/fake/chromium", f"--user-data-dir={entry}"],
-            label="orphan-browser",
-        )
-
-        self._sweep(tmp, [orphan_browser])
-
-        orphan_browser.terminate.assert_called_once_with()
-
-    def test_a_symlinked_base_dir_still_matches_the_real_path(self):
-        """
-        The reaper reaches its entries through base_dir, so pointing it at a
-        symlink to the profiles directory yields '<link>/<name>' while the
-        browser recorded the real '<dir>/<name>'. Both sides go through the same
-        realpath normalisation, which is what keeps an override directory
-        comparable — and is the whole job the deleted last-three-segments rule
-        claimed to do.
-        """
-        tmp, entry, dead_pid = self._orphan_dir(_NEW_SESSION_PREFIX)
-
-        link = self._tmpdir() / "profiles-link"
-        link.symlink_to(tmp, target_is_directory=True)
-
-        orphan_browser = self._proc(
-            8019,
-            ["/fake/chromium", f"--user-data-dir={entry}"],
-            label="orphan-browser",
-        )
-
-        self._sweep(link, [orphan_browser])
-
-        orphan_browser.terminate.assert_called_once_with()
-        self.assertFalse(entry.exists(), "The orphan dir itself must still be reaped")
-
-    def test_a_symlinked_entry_is_never_reaped(self):
-        """
-        A symlink PLANTED in the profiles directory must be skipped outright.
-
-        Ownership is decided by realpath equality, so a link named
-        '<prefix><dead-pid>' pointing anywhere makes a browser running on the
-        LINK'S TARGET compare equal — including the user's real Chrome. The
-        directory contents survive (rmtree refuses a top-level symlink), but the
-        kill does not: we would terminate a browser we do not own.
-
-        Skipping symlinked entries closes it. It does not weaken
-        test_a_symlinked_base_dir_still_matches_the_real_path above: there the
-        symlink is base_dir itself and the entry's own final component is a real
-        directory, which is the case that legitimately needs realpath.
-        """
-        tmp = self._tmpdir()
-        dead_pid = TestReapOrphanedProfiles._find_dead_pid()
-        target = self._tmpdir() / "someone-elses-profile"
-        target.mkdir()
-
-        planted = tmp / f"{_NEW_SESSION_PREFIX}{dead_pid}"
-        planted.symlink_to(target, target_is_directory=True)
-
-        # A browser legitimately running on the link's target, owned by nobody here.
-        foreign_browser = self._proc(
-            8020,
-            ["/fake/chromium", f"--user-data-dir={target}"],
-            label="foreign-browser",
-        )
-
-        self._sweep(tmp, [foreign_browser])
-
-        foreign_browser.terminate.assert_not_called()
-        self.assertTrue(
-            planted.is_symlink(),
-            "The planted link must be left alone, not followed and reaped",
-        )
-        self.assertTrue(target.is_dir(), "The link's target must be untouched")
-
-    def test_space_separated_user_data_dir_is_matched(self):
-        """Chrome accepts '--user-data-dir <path>'; the value is the NEXT arg."""
-        tmp, entry, dead_pid = self._orphan_dir(_NEW_SESSION_PREFIX)
-
-        orphan_browser = self._proc(
-            8006,
-            ["/fake/chromium", "--user-data-dir", self._profile_path(tmp, entry.name)],
-            label="orphan-browser",
-        )
-
-        self._sweep(tmp, [orphan_browser])
-
-        orphan_browser.terminate.assert_called_once_with()
-
-    def test_a_dangling_user_data_dir_flag_is_not_a_match(self):
-        """'--user-data-dir' as the last argument has no value to compare."""
-        tmp, entry, dead_pid = self._orphan_dir(_NEW_SESSION_PREFIX)
-
-        proc = self._proc(8007, ["/fake/chromium", "--user-data-dir"], label="dangling")
-
-        self._sweep(tmp, [proc])
-
-        proc.terminate.assert_not_called()
-        proc.kill.assert_not_called()
-
-    # -- normalisation -----------------------------------------------------
-
-    def test_a_trailing_slash_on_the_cmdline_value_still_matches(self):
-        tmp, entry, dead_pid = self._orphan_dir(_NEW_SESSION_PREFIX)
-
-        orphan_browser = self._proc(
-            8008,
-            ["/fake/chromium", f"--user-data-dir={self._profile_path(tmp, entry.name)}/"],
-            label="orphan-browser",
-        )
-
-        self._sweep(tmp, [orphan_browser])
-
-        orphan_browser.terminate.assert_called_once_with()
-
-    def test_dot_dot_segments_in_the_cmdline_value_still_match(self):
-        """Both sides must be normalised the same way before comparing."""
-        tmp, entry, dead_pid = self._orphan_dir(_NEW_SESSION_PREFIX)
-
-        noisy = f"{tmp}/../{tmp.name}/./{entry.name}"
-        orphan_browser = self._proc(
-            8009, ["/fake/chromium", f"--user-data-dir={noisy}"], label="orphan-browser"
-        )
-
-        self._sweep(tmp, [orphan_browser])
-
-        orphan_browser.terminate.assert_called_once_with()
-
-    def test_a_trailing_slash_does_not_reopen_the_collision(self):
-        tmp, entry, dead_pid = self._orphan_dir(_NEW_SESSION_PREFIX)
-
-        live_browser = self._proc(
-            8010,
-            [
-                "/fake/chromium",
-                f"--user-data-dir={self._profile_path(tmp, f'{_NEW_SESSION_PREFIX}{dead_pid}4')}/",
-            ],
-            label="live-browser",
-        )
-
-        self._sweep(tmp, [live_browser])
-
-        self.assertEqual(live_browser.terminate.call_count, 0)
-        live_browser.kill.assert_not_called()
-
-    # -- everything else on the machine is untouchable ---------------------
-
-    def test_the_users_own_chrome_is_never_terminated(self):
-        """No browseruse path anywhere: not ours, under any matching rule."""
-        tmp, entry, dead_pid = self._orphan_dir(_NEW_SESSION_PREFIX)
-
-        users_chrome = self._proc(
-            8011,
-            [
-                "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-                f"--user-data-dir={Path.home()}/Library/Application Support/Google/Chrome",
-            ],
-            label="users-chrome",
-        )
-
-        self._sweep(tmp, [users_chrome])
-
-        users_chrome.terminate.assert_not_called()
-        users_chrome.kill.assert_not_called()
-
-    def test_the_profile_path_in_another_flag_is_not_a_kill_signal(self):
-        """
-        Only --user-data-dir says 'this process is running ON that profile'. A
-        path that merely appears somewhere else in the command line does not.
-        """
-        tmp, entry, dead_pid = self._orphan_dir(_NEW_SESSION_PREFIX)
-
-        log_reader = self._proc(
-            8012,
-            [
-                "/fake/chromium",
-                f"--log-file={self._profile_path(tmp, entry.name)}/chrome_debug.log",
-                f"--user-data-dir={self._profile_path(tmp, 'default')}",
-            ],
-            label="other-flag",
-        )
-
-        self._sweep(tmp, [log_reader])
-
-        log_reader.terminate.assert_not_called()
-        log_reader.kill.assert_not_called()
-
-    def test_a_relative_user_data_dir_is_never_matched(self):
-        """
-        A relative --user-data-dir is resolved against the OWNING process's
-        working directory, which the reaper does not know. Normalising it
-        against the reaper's own cwd invents a path and can manufacture a match
-        for a directory that is not ours — so a non-absolute value is skipped.
-
-        Nothing this plugin launches can be affected: user_data_dir is built
-        from Path.home() and is always absolute.
-        """
-        tmp, entry, dead_pid = self._orphan_dir(_NEW_SESSION_PREFIX)
-
-        # Stand the REAPER in the directory it is sweeping, which is where a
-        # naive normalisation does the damage: without the isabs guard,
-        # './<name>' resolves against THIS process's cwd straight onto the swept
-        # entry, and a browser that never named our directory is terminated.
-        self.addCleanup(os.chdir, os.getcwd())
-        os.chdir(tmp)
-
-        someone_elses = [
-            self._proc(
-                8018,
-                ["/fake/chromium", f"--user-data-dir=browseruse/profiles/{entry.name}"],
-                label="relative-path",
-            ),
-            self._proc(
-                8020,
-                ["/fake/chromium", f"--user-data-dir=./{entry.name}"],
-                label="relative-onto-cwd",
-            ),
-        ]
-
-        self._sweep(tmp, someone_elses)
-
-        for proc in someone_elses:
-            proc.terminate.assert_not_called()
-            proc.kill.assert_not_called()
-
-    def test_a_malformed_cmdline_never_raises_and_never_matches(self):
-        """cmdline is untrusted input read from an arbitrary process."""
-        tmp, entry, dead_pid = self._orphan_dir(_NEW_SESSION_PREFIX)
-
-        weird = [
-            self._proc(8013, [], label="empty"),
-            self._proc(8014, ["--user-data-dir="], label="empty-value"),
-            self._proc(8015, ["--user-data-dir", ""], label="empty-next"),
-            self._proc(8016, [None, 42, "--user-data-dir"], label="non-strings"),
-        ]
-        no_cmdline = MagicMock(name="no-cmdline")
-        no_cmdline.info = {"pid": 8017, "cmdline": None}
-        weird.append(no_cmdline)
-
-        self._sweep(tmp, weird)
-
-        for proc in weird:
-            proc.terminate.assert_not_called()
-            proc.kill.assert_not_called()
-        self.assertFalse(entry.exists(), "The sweep must still complete")
-
-
-# ---------------------------------------------------------------------------
-# Test 13g: the reaper never reaches a browser under a DIFFERENT root
-# ---------------------------------------------------------------------------
-
-class TestReaperNeverReachesAnotherHome(_TempDirMixin):
-    """
-    Ownership used to be accepted on EITHER of two rules: full path equality
-    with the directory being swept, or the value's last three segments being
-    'browseruse/profiles/<that directory name>'.
-
-    The second rule is not an ownership proof.  It matches any absolute path on
-    the machine that ends in those three segments — a second user account's
-    ~/.config/browseruse/profiles/<name>, a container's mounted rootfs, a
-    restored backup — as long as the profile directory NAME matches.  Those
-    names collide readily: they are '<prefix><pid>', and PIDs repeat across
-    boots, across accounts and inside containers, so the collision needs no bad
-    luck at all.
-
-    Sweeping OUR orphan could therefore terminate a browser owned by someone
-    else — the same class of bug as the substring match, reached by a different
-    route.  Ownership is full normalised path equality with the directory being
-    swept, and nothing else.
-    """
-
-    @staticmethod
-    def _proc(pid: int, cmdline: list, label: str = "chrome") -> MagicMock:
-        proc = MagicMock(name=f"{label}-{pid}")
-        proc.info = {"pid": pid, "cmdline": list(cmdline)}
-        return proc
-
-    def _orphan(self, prefix: str) -> tuple:
-        """A profiles dir holding one dead-owner orphan directory."""
-        tmp = self._tmpdir()
-        dead_pid = TestReapOrphanedProfiles._find_dead_pid()
-        entry = tmp / f"{prefix}{dead_pid}"
-        entry.mkdir()
-        (entry / "SingletonLock").write_text("dummy")
-        return tmp, entry
-
-    def _sweep(self, base_dir: Path, processes: list) -> None:
-        import psutil
-
-        with patch.object(psutil, "process_iter", return_value=processes):
-            _mod._reap_orphaned_profiles(base_dir=base_dir)
-
-    def test_new_prefix_sweep_spares_the_same_name_under_another_home(self):
-        """
-        THE HAZARD. Another account's browser, same profile directory NAME,
-        different $HOME: not ours, must not be touched.
-        """
-        tmp, entry = self._orphan(_NEW_SESSION_PREFIX)
-
-        stranger = self._proc(
-            8101,
-            [
-                "/fake/chromium",
-                f"--user-data-dir=/some/other/home/.config/browseruse/profiles/{entry.name}",
-            ],
-            label="another-users-browser",
-        )
-
-        self._sweep(tmp, [stranger])
-
-        self.assertEqual(
-            stranger.terminate.call_count,
-            0,
-            "The reaper terminated a browser running under a DIFFERENT root "
-            f"(/some/other/home/.config/browseruse/profiles/{entry.name}) that "
-            f"merely shares the swept directory's NAME. {entry} is not that "
-            "directory. Ownership must be full normalised path equality.",
-        )
-        stranger.kill.assert_not_called()
-        self.assertFalse(entry.exists(), "The orphan dir itself must still be reaped")
-
-    def test_old_prefix_sweep_spares_the_same_name_under_another_root(self):
-        """Same hazard under the pre-1.5.0 convention, via a container mount."""
-        tmp, entry = self._orphan(_OLD_SESSION_PREFIX)
-
-        stranger = self._proc(
-            8102,
-            [
-                "/fake/chromium",
-                "--user-data-dir=/mnt/containers/app/root/.config/browseruse/"
-                f"profiles/{entry.name}",
-            ],
-            label="container-browser",
-        )
-
-        self._sweep(tmp, [stranger])
-
-        self.assertEqual(
-            stranger.terminate.call_count,
-            0,
-            "A container mount holding the same profile name is a different "
-            "directory and a different process namespace. Both naming "
-            "conventions carry this collision, because both end in a PID.",
-        )
-        stranger.kill.assert_not_called()
-        self.assertFalse(entry.exists(), "The orphan dir itself must still be reaped")
-
-    def test_the_swept_directorys_own_browser_is_still_terminated(self):
-        """
-        The rule must stay useful: the browser actually running on the swept
-        directory still dies, under either prefix, while the same-name stranger
-        beside it survives the same sweep.
-        """
-        for prefix in (_NEW_SESSION_PREFIX, _OLD_SESSION_PREFIX):
-            with self.subTest(prefix=prefix):
-                tmp, entry = self._orphan(prefix)
-
-                ours = self._proc(
-                    8103,
-                    ["/fake/chromium", f"--user-data-dir={entry}"],
-                    label="ours",
-                )
-                stranger = self._proc(
-                    8104,
-                    [
-                        "/fake/chromium",
-                        "--user-data-dir=/some/other/home/.config/browseruse/"
-                        f"profiles/{entry.name}",
-                    ],
-                    label="stranger",
-                )
-
-                self._sweep(tmp, [ours, stranger])
-
-                ours.terminate.assert_called_once_with()
-                self.assertEqual(
-                    stranger.terminate.call_count,
-                    0,
-                    "Only the browser on the swept directory itself is ours.",
-                )
-                self.assertFalse(entry.exists())
-
-
-# ---------------------------------------------------------------------------
-# Test 13d: the profile build actually carries the resolver's output
-# ---------------------------------------------------------------------------
-
-class TestProfileCarriesResolvedBinary(_TempDirMixin):
-    """
-    channel='chromium' alone is a soft preference upstream ignores when its
-    globs miss.  The profile must carry an explicit executable_path, which
-    upstream honours before any glob runs.
-    """
-
-    def test_profile_includes_executable_path_that_is_not_the_users_chrome(self):
-        """
-        # REGRESSION: browser-use launched the user's real Chrome instead of
-        # Playwright's Chromium — /dev:fix session dev-fix-20260822-browser-chrome-hijack
-        """
-        cache = self._tmpdir()
-        _make_fake_chromium(cache, 1234, _current_platform_key())
-
-        with _chromium_env(cache_root=cache):
-            captured = _capture_profile_kwargs()
-
-        executable_path = captured.get("executable_path")
-        self.assertIsNotNone(
-            executable_path,
-            "Local profiles must set executable_path from _resolve_chromium_binary(). "
-            "Without it, channel='chromium' is only a soft preference and upstream "
-            "falls through to /Applications/Google Chrome.app. "
-            f"Profile kwargs were: {sorted(captured)!r}",
-        )
-        self.assertNotIn(
-            _HIJACK_PATH_FRAGMENT,
-            str(executable_path),
-            f"executable_path must never be the user's real Chrome. Got: {executable_path!r}",
-        )
-        self.assertTrue(
-            str(executable_path).startswith(str(cache)),
-            "executable_path must come from the Playwright cache named by "
-            f"PLAYWRIGHT_BROWSERS_PATH ({str(cache)!r}). Got: {executable_path!r}",
-        )
-
-
-# ---------------------------------------------------------------------------
-# Test 13e: browser_doctor reports WHERE the binary came from, and survives
-# the resolver raising
-# ---------------------------------------------------------------------------
-
 class TestDoctorReportsChromiumResolution(_TempDirMixin, unittest.IsolatedAsyncioTestCase):
     """
     The doctor exists to diagnose exactly the failure this bug produced, so
@@ -4100,7 +2662,7 @@ class TestDoctorReportsChromiumResolution(_TempDirMixin, unittest.IsolatedAsynci
     async def test_doctor_reports_playwright_source_for_a_cache_hit(self):
         """
         # REGRESSION: browser-use launched the user's real Chrome instead of
-        # Playwright's Chromium — /dev:fix session dev-fix-20260822-browser-chrome-hijack
+        # Playwright's Chromium.
         """
         resolve = self._resolver()
 
@@ -4135,7 +2697,7 @@ class TestDoctorReportsChromiumResolution(_TempDirMixin, unittest.IsolatedAsynci
     async def test_doctor_reports_env_source_when_the_override_is_set(self):
         """
         # REGRESSION: browser-use launched the user's real Chrome instead of
-        # Playwright's Chromium — /dev:fix session dev-fix-20260822-browser-chrome-hijack
+        # Playwright's Chromium.
         """
         cache = self._tmpdir()
         _make_fake_chromium(cache, 1234, _current_platform_key())
@@ -4176,7 +2738,7 @@ class TestDoctorReportsChromiumResolution(_TempDirMixin, unittest.IsolatedAsynci
         called to diagnose tells the user nothing.
 
         # REGRESSION: browser-use launched the user's real Chrome instead of
-        # Playwright's Chromium — /dev:fix session dev-fix-20260822-browser-chrome-hijack
+        # Playwright's Chromium.
         """
         empty_cache = self._tmpdir()  # exists, contains no chromium-* at all
 
@@ -4218,440 +2780,602 @@ class TestDoctorReportsChromiumResolution(_TempDirMixin, unittest.IsolatedAsynci
 
 
 # ---------------------------------------------------------------------------
-# Test 14: the server cleans up after itself WHILE IT RUNS, not only at exit
-#
-# Shipped state: every cleanup path fired exactly once, at a process boundary.
-# _shutdown_sync (atexit / SIGTERM) was the only thing that removed the ~50MB
-# PID-scoped profile dir, and _reap_orphaned_profiles ran only from main().
-# An MCP server lives for days, so:
-#   - upstream's 10-minute idle sweep killed Chrome and left the profile behind;
-#   - orphans of dead servers were never swept unless a NEW server started;
-#   - a SIGKILLed parent stranded the server, its Chrome and its profile forever.
-# Measured: 38 live plugin servers, 0 Chrome processes, one 74MB profile per PID.
-#
-# Worse, main() bypasses upstream's BrowserUseServer.run() to own the stdio
-# wiring — and run() is the only caller of _start_cleanup_task(), so the idle
-# sweep never ran here at all.
+# browser-use 1.0: the real installed package, no stubs
 # ---------------------------------------------------------------------------
+#
+# Each test below loads a fresh copy of the server against the package that is
+# actually installed, constructs real browser_use objects, and fakes only the
+# browser-harness daemon (the `_cdp` / `_meta` channel and Browser.start /
+# Browser.stop).
 
 
-def _fake_browser_session(session_id: str, kill_error: BaseException | None = None):
-    """A BrowserSession stand-in whose kill() is awaitable (and can fail)."""
-    session = MagicMock(name=f"session-{session_id}")
-    session.id = session_id
-    session.kill = AsyncMock(side_effect=kill_error) if kill_error else AsyncMock(return_value=None)
-    return session
+_SERVER_PATH = Path(__file__).parent / "mcp-server.py"
+
+# Modules and names browser-use 1.0 deleted. Any of them in the server source
+# is a dependency on the 0.x API.
+_REMOVED_0X_NAMES = (
+    "browser_use.mcp.server",
+    "browser_use.browser.events",
+    "browser_use.tools.service",
+    "browser_use.filesystem",
+    "BrowserProfile",
+    "BrowserSession",
+    "get_default_profile",
+    "load_browser_use_config",
+)
+
+# The exact pins the PEP 723 header must carry. browser-use 1.0.0 itself pins
+# mcp==2.3.0, so any other mcp pin is unsatisfiable.
+_EXPECTED_PINS = ["browser-use==1.0.0", "mcp==2.3.0", "playwright==1.63.0"]
+
+# Variables that change what the server builds. Cleared for every test so the
+# developer's shell cannot leak in.
+_REAL_ENV_SCRUB = (
+    "BROWSER_USE_CLOUD",
+    "BROWSER_USE_API_KEY",
+    "BROWSER_USE_AGENT_MODEL",
+    "BROWSER_USE_HEADLESS",
+    "BROWSER_USE_ALLOWED_DOMAINS",
+    "CHROME_EXECUTABLE_PATH",
+    "PLAYWRIGHT_BROWSERS_PATH",
+    "CLAUDE_PROJECT_DIR",
+    "ANTHROPIC_API_KEY",
+    "OPENAI_API_KEY",
+    "XDG_CONFIG_HOME",
+    "BH_AGENT_WORKSPACE",
+    "BH_CONFIG_DIR",
+    "BH_RUNTIME_DIR",
+    "BH_TMP_DIR",
+    "BROWSER_HARNESS_HOME",
+)
 
 
-def _track(server, *sessions, last_activity=None):
-    """Register sessions the way upstream's _track_session does."""
-    now = time.time()
-    for session in sessions:
-        server.active_sessions[session.id] = {
-            "session": session,
-            "created_at": now,
-            "last_activity": now if last_activity is None else last_activity,
-            "url": None,
-        }
+def _load_real_server(testcase: unittest.TestCase) -> object:
+    """
+    Load a fresh copy of mcp-server.py against the installed browser_use.
+
+    A server that exits at import becomes a test failure that carries the
+    server's own error line, rather than a bare SystemExit.
+    """
+    spec = importlib.util.spec_from_file_location("_mcp_server_real", _SERVER_PATH)
+    mod = importlib.util.module_from_spec(spec)
+    saved_argv = sys.argv
+    sys.argv = ["mcp-server.py"]
+    err = io.StringIO()
+    try:
+        with contextlib.redirect_stderr(err):
+            spec.loader.exec_module(mod)
+    except SystemExit as exc:
+        testcase.fail(
+            f"mcp-server.py exited at import (code {exc.code}) against the installed "
+            f"browser_use: {err.getvalue().strip()}"
+        )
+    finally:
+        sys.argv = saved_argv
+    return mod
 
 
-_IDLE_LONGER_THAN_TIMEOUT = 3600  # seconds; upstream's timeout is 10 minutes
+def _pep723_metadata() -> dict:
+    """The server's PEP 723 `script` block, parsed as TOML."""
+    text = _SERVER_PATH.read_text()
+    match = re.search(r"^# /// script\n(.*?)^# ///$", text, re.S | re.M)
+    if match is None:
+        raise AssertionError("mcp-server.py has no PEP 723 `# /// script` block")
+    body = "\n".join(
+        line[2:] if line.startswith("# ") else line[1:]
+        for line in match.group(1).splitlines()
+    )
+    return tomllib.loads(body)
+
+
+def _text_of(result) -> str:
+    """A tool result as one string, whether the handler returned str or content."""
+    if isinstance(result, str):
+        return result
+    return "\n".join(getattr(item, "text", "") or "" for item in result or ())
+
+
+class _FakeAxCdp:
+    """
+    A CDP callable shaped like the one browser_use.ax.AxHelpers takes. It
+    answers just enough for click and type to run to completion, which is the
+    point where AxHelpers writes its action line through `log`.
+    """
+
+    def __init__(self):
+        self.methods: list[str] = []
+
+    def __call__(self, method, session_id=None, **params):
+        self.methods.append(method)
+        if method == "DOM.resolveNode":
+            return {"object": {"objectId": "fake-object"}}
+        if method == "Runtime.callFunctionOn":
+            return {"result": {"value": {
+                "x": 5, "y": 5, "covered": False, "tag": "INPUT", "type": "text",
+            }}}
+        if method == "Runtime.evaluate":
+            return {"result": {"value": {
+                "ready": "complete", "idle": 10_000, "doc": "doc", "url": "about:blank", "n": 1,
+            }}}
+        return {}
 
 
 @contextlib.contextmanager
-def _fake_home(create_profile_dir: bool = True):
+def _fresh_harness_helpers():
     """
-    A throwaway HOME containing this process's PID-scoped profile directory.
-
-    Everything under test resolves the profile dir through Path.home(), so
-    redirecting it keeps the developer's real ~/.config/browseruse untouched —
-    these tests delete directories and must never reach a live one.
+    Evict browser_harness.helpers so the next import re-runs its import-time
+    code (the .env loading and the agent workspace's agent_helpers.py), then
+    put back whatever was there before.
     """
-    tmp = Path(_tempfile.mkdtemp(prefix="magus-profile-home-")).resolve()
-    profile_dir = (
-        tmp / ".config" / "browseruse" / "profiles" / f"{_NEW_SESSION_PREFIX}{os.getpid()}"
-    )
-    if create_profile_dir:
-        profile_dir.mkdir(parents=True)
-        (profile_dir / "Cookies").write_text("dummy")
-        (profile_dir / "SingletonLock").write_text("dummy")
-        (profile_dir / "Default").mkdir()
+    import browser_harness
 
-    original_home = Path.home
+    saved_module = sys.modules.pop("browser_harness.helpers", None)
+    had_attr = "helpers" in vars(browser_harness)
+    saved_attr = vars(browser_harness).get("helpers")
+    if had_attr:
+        delattr(browser_harness, "helpers")
     try:
-        Path.home = staticmethod(lambda: tmp)
-        yield tmp, profile_dir
+        yield
     finally:
-        Path.home = original_home
-        _shutil.rmtree(tmp, ignore_errors=True)
+        sys.modules.pop("browser_harness.helpers", None)
+        if "helpers" in vars(browser_harness):
+            delattr(browser_harness, "helpers")
+        if saved_module is not None:
+            sys.modules["browser_harness.helpers"] = saved_module
+        if had_attr:
+            browser_harness.helpers = saved_attr
 
 
-class _FakeStdioServer:
-    """Async context manager standing in for mcp.server.stdio.stdio_server()."""
-
-    async def __aenter__(self):
-        return (MagicMock(name="read_stream"), MagicMock(name="write_stream"))
-
-    async def __aexit__(self, *exc_info):
-        return False
-
-
-# ---------------------------------------------------------------------------
-# Test 14a: the profile directory is freed when the last browser dies
-# ---------------------------------------------------------------------------
-
-class TestProfileDirFreedWhenBrowserDies(unittest.TestCase):
+class _RealBrowserUseTestCase(unittest.TestCase):
     """
-    Killing Chrome must also free its profile directory — at whichever moment
-    the browser actually dies, not merely at process exit.  Never while a
-    browser is still running on it.
+    Hermetic environment for tests against the real package: HOME is a temp
+    dir (no settings.json, no ~/.config/browseruse) and BH_HOME is a short /tmp
+    dir (the harness daemon socket path has a ~104-byte cap on macOS).
     """
 
-    def test_profile_dir_removed_when_last_session_is_closed(self):
-        server = _make_server()
-        session = _fake_browser_session("s1")
-        server.browser_session = session
-        _track(server, session)
+    def setUp(self):
+        super().setUp()
+        if importlib.util.find_spec("browser_use") is None:
+            if os.environ.get("CI"):
+                self.fail("browser_use must be installed under CI")
+            self.skipTest("browser_use is not installed")
+        self._home = self._tmp()
+        bh_home = Path(_tempfile.mkdtemp(prefix="bh", dir="/tmp"))
+        self.addCleanup(_shutil.rmtree, bh_home, ignore_errors=True)
+        self.enterContext(patch.dict(os.environ, {}))
+        for key in _REAL_ENV_SCRUB:
+            os.environ.pop(key, None)
+        os.environ["HOME"] = str(self._home)
+        os.environ["BH_HOME"] = str(bh_home)
 
-        with _fake_home() as (_, profile_dir):
-            result = asyncio.run(server._close_session("s1"))
-            survived = profile_dir.exists()
+    def _tmp(self) -> Path:
+        tmp = Path(_tempfile.mkdtemp(prefix="magus-bu1-test-")).resolve()
+        self.addCleanup(_shutil.rmtree, tmp, ignore_errors=True)
+        return tmp
 
-        self.assertIn("Successfully closed", result)
-        self.assertFalse(
-            survived,
-            "The last browser session was closed, so nothing is running on the "
-            "PID-scoped profile dir — it must be removed there and then. Waiting "
-            "for process exit leaks ~50MB for the multi-day life of the server.",
+    def _server_function(self, mod, name: str, purpose: str):
+        fn = getattr(mod, name, None)
+        if fn is None:
+            self.fail(f"mcp-server.py must define {name}(): {purpose}")
+        return fn
+
+
+class TestHeaderPinsBrowserUse10(unittest.TestCase):
+    """The PEP 723 header is the one place versions live, and it must resolve."""
+
+    def test_header_pins_browser_use_1_0(self):
+        deps = _pep723_metadata().get("dependencies", [])
+        self.assertEqual(sorted(deps), sorted(_EXPECTED_PINS))
+
+        if _shutil.which("uv") is None:
+            if os.environ.get("CI"):
+                self.fail("uv is required under CI: it is what proves the pins resolve")
+            self.skipTest("uv is not on PATH")
+        proc = subprocess.run(
+            ["uv", "pip", "compile", "--no-config", "--quiet",
+             "--python-version", "3.12", "-"],
+            input="\n".join(deps) + "\n",
+            capture_output=True,
+            text=True,
+            timeout=600,
         )
-
-    def test_profile_dir_survives_while_another_session_is_live(self):
-        server = _make_server()
-        first = _fake_browser_session("s1")
-        second = _fake_browser_session("s2")
-        server.browser_session = first
-        _track(server, first, second)
-
-        with _fake_home() as (_, profile_dir):
-            asyncio.run(server._close_session("s1"))
-            survived = profile_dir.exists()
-
-        self.assertTrue(
-            survived,
-            "Session s2 is still running on this profile directory. Removing it "
-            "would pull the profile out from under a live Chrome.",
-        )
-
-    def test_idle_sweep_frees_profile_dir(self):
-        """The 10-minute idle path kills Chrome — the profile must go with it."""
-        server = _make_server()
-        session = _fake_browser_session("idle")
-        server.browser_session = session
-        _track(server, session, last_activity=time.time() - _IDLE_LONGER_THAN_TIMEOUT)
-
-        with (
-            _fake_home() as (_, profile_dir),
-            patch.object(_mod, "_reap_orphaned_profiles", MagicMock()),
-        ):
-            asyncio.run(server._cleanup_expired_sessions())
-            survived = profile_dir.exists()
-
-        self.assertNotIn("idle", server.active_sessions, "Upstream must have closed it")
-        self.assertFalse(
-            survived,
-            "Upstream's idle sweep killed the browser after 10 idle minutes but "
-            "left its profile dir on disk. That is the leak: 38 servers x 74MB.",
-        )
-
-    def test_idle_sweep_keeps_profile_dir_when_a_session_is_still_active(self):
-        server = _make_server()
-        expired = _fake_browser_session("expired")
-        active = _fake_browser_session("active")
-        server.browser_session = active
-        _track(server, expired, last_activity=time.time() - _IDLE_LONGER_THAN_TIMEOUT)
-        _track(server, active)
-
-        with (
-            _fake_home() as (_, profile_dir),
-            patch.object(_mod, "_reap_orphaned_profiles", MagicMock()),
-        ):
-            asyncio.run(server._cleanup_expired_sessions())
-            survived = profile_dir.exists()
-
-        self.assertNotIn("expired", server.active_sessions)
-        self.assertIn("active", server.active_sessions)
-        self.assertTrue(
-            survived,
-            "One session expired but another is still driving a browser on this "
-            "profile directory — it must survive.",
-        )
-
-    def test_failed_close_keeps_profile_dir(self):
-        """
-        A close that errors leaves the session tracked, so the browser may well
-        still be alive.  Removing the directory under it is the one unsafe move.
-        """
-        server = _make_server()
-        session = _fake_browser_session("stuck", kill_error=RuntimeError("kill timed out"))
-        server.browser_session = session
-        _track(server, session)
-
-        with _fake_home() as (_, profile_dir):
-            result = asyncio.run(server._close_session("stuck"))
-            survived = profile_dir.exists()
-
-        self.assertIn("Error closing session", result)
-        self.assertIn("stuck", server.active_sessions)
-        self.assertTrue(
-            survived,
-            "kill() failed, so Chrome may still be running on this profile. The "
-            "directory must not be removed on a failed close.",
-        )
-
-    def test_close_all_sessions_frees_profile_dir(self):
-        server = _make_server()
-        first = _fake_browser_session("s1")
-        second = _fake_browser_session("s2")
-        server.browser_session = first
-        _track(server, first, second)
-
-        with _fake_home() as (_, profile_dir):
-            asyncio.run(server._close_all_sessions())
-            survived = profile_dir.exists()
-
-        self.assertFalse(
-            survived,
-            "browser_close_all_sessions killed every browser this server owns; "
-            "the profile dir must be freed with the last one.",
-        )
-
-
-# ---------------------------------------------------------------------------
-# Test 14b: the orphan reaper runs on a timer, not only at startup
-# ---------------------------------------------------------------------------
-
-class TestPeriodicOrphanReaping(unittest.TestCase):
-    """
-    _reap_orphaned_profiles only ever ran from main().  On a machine where no
-    new server starts, nothing is ever swept — orphaned profiles and any Chrome
-    stranded by a dead server sit there indefinitely.
-    """
-
-    def test_cleanup_cycle_invokes_the_reaper(self):
-        server = _make_server()
-        reaper = MagicMock()
-
-        with patch.object(_mod, "_reap_orphaned_profiles", reaper):
-            asyncio.run(server._cleanup_expired_sessions())
-
-        reaper.assert_called_once_with()
-
-    def test_periodic_sweep_spares_live_pids_and_the_default_profile(self):
-        """The timer must reuse the reaper's guards, not a looser copy of them."""
-        import psutil
-
-        server = _make_server()
-        dead_pid = TestReapOrphanedProfiles._find_dead_pid()
-
-        with _fake_home(create_profile_dir=False) as (home, _):
-            profiles = home / ".config" / "browseruse" / "profiles"
-            dead_dir = profiles / f"{_NEW_SESSION_PREFIX}{dead_pid}"
-            live_dir = profiles / f"{_NEW_SESSION_PREFIX}{os.getpid()}"
-            default_dir = profiles / "default"
-            weird_dir = profiles / f"{_NEW_SESSION_PREFIX}notapid"
-            for directory in (dead_dir, live_dir, default_dir, weird_dir):
-                directory.mkdir(parents=True)
-                (directory / "SingletonLock").write_text("dummy")
-
-            # No real process scan: this test must never touch a live process.
-            with patch.object(psutil, "process_iter", return_value=[]):
-                asyncio.run(server._cleanup_expired_sessions())
-
-            results = {
-                "dead": dead_dir.exists(),
-                "live": live_dir.exists(),
-                "default": default_dir.exists(),
-                "weird": weird_dir.exists(),
-            }
-
-        self.assertFalse(
-            results["dead"],
-            "A profile dir whose owning server is dead must be reaped by the "
-            "periodic sweep, without waiting for some future server to start.",
-        )
-        self.assertTrue(results["live"], "A live PID's profile dir must survive")
-        self.assertTrue(results["default"], "The 'default' profile dir must never be touched")
-        self.assertTrue(results["weird"], "A non-PID-suffixed dir must survive")
-
-    def test_main_starts_the_cleanup_loop(self):
-        """
-        main() bypasses upstream's run(), which is the ONLY caller of
-        _start_cleanup_task().  Without an explicit start here, every periodic
-        behaviour in this file is dead code.
-        """
-        started: list = []
-
-        async def recording_start(self):
-            started.append(self)
-
-        with (
-            patch.object(_mod, "_reap_orphaned_profiles", MagicMock()),
-            patch.object(_mod, "_install_shutdown_handlers", MagicMock()),
-            patch.object(_mod.MagusBrowserServer, "_start_cleanup_task", recording_start),
-            patch.object(
-                _mod.mcp.server.stdio,
-                "stdio_server",
-                MagicMock(return_value=_FakeStdioServer()),
-            ),
-        ):
-            asyncio.run(_mod.main())
-
         self.assertEqual(
-            len(started),
-            1,
-            "main() must start the periodic cleanup loop exactly once. Upstream "
-            "starts it in BrowserUseServer.run(), which main() does not call.",
+            proc.returncode, 0,
+            f"the header's pins do not resolve together: {proc.stderr.strip()}",
         )
 
 
-# ---------------------------------------------------------------------------
-# Test 14c: exit when the parent claude process dies
-# ---------------------------------------------------------------------------
+class TestNoRemoved0xImports(_RealBrowserUseTestCase):
+    """The server must not name any part of the API browser-use 1.0 deleted."""
 
-class TestParentDeathShutdown(unittest.TestCase):
+    def test_no_removed_0x_imports(self):
+        source = _SERVER_PATH.read_text()
+        present = [name for name in _REMOVED_0X_NAMES if name in source]
+        self.assertEqual(present, [], f"mcp-server.py still names removed 0.x API: {present}")
+        mod = _load_real_server(self)
+        self.assertTrue(hasattr(mod, "MagusBrowserServer"))
+
+
+class TestLocalBrowserOptions(_RealBrowserUseTestCase):
     """
-    A SIGKILLed `claude` leaves the server reparented to init: nobody reads its
-    stdio, nobody signals it, and its Chrome plus ~50MB profile survive forever.
-    os.getppid() changes the instant the kernel reparents us — that is the whole
-    signal, and it needs no process scan and no name matching.
+    _browser_options() is the keyword set for the browser_use.Browser a session
+    starts. A local session is always kind "chromium" with our resolved binary:
+    1.0's own binary search tries /Applications/Google Chrome.app first.
     """
 
-    def _require(self, name: str):
-        attr = getattr(_mod, name, None)
-        if attr is None:
-            self.fail(
-                f"mcp-server.py must define {name}(): parent-death shutdown has to go "
-                "through a module-level seam so it can be exercised without killing "
-                "the test runner."
+    def test_local_browser_options_build_a_real_chromium_Browser(self):
+        mod = _load_real_server(self)
+        import browser_use
+
+        options = self._server_function(
+            mod, "_browser_options",
+            "the keyword arguments of the browser_use.Browser a session starts",
+        )
+        tmp = self._tmp()
+        cache = tmp / "ms-playwright"
+        binary = _make_fake_chromium(cache, 1234, _current_platform_key())
+
+        with self.subTest("Playwright Chromium, headed by default"):
+            with _chromium_env(cache_root=cache), _captured_streams() as (out, _err):
+                opts = options()
+                browser = browser_use.Browser(**opts)
+            self.assertEqual(opts.get("kind"), "chromium")
+            self.assertEqual(Path(opts["executable_path"]).resolve(), binary.resolve())
+            self.assertIs(opts.get("headless"), False)
+            self.assertIsNone(opts.get("user_data_dir"))
+            self.assertEqual(browser.kind, "chromium")
+            self.assertFalse(browser.use_cloud)
+            self.assertEqual(Path(browser.executable_path).resolve(), binary.resolve())
+            self.assertEqual(out.getvalue(), "")
+
+        with self.subTest("BROWSER_USE_HEADLESS=true"):
+            with _chromium_env(cache_root=cache), \
+                    patch.dict(os.environ, {"BROWSER_USE_HEADLESS": "true"}):
+                opts = options()
+                browser_use.Browser(**opts)
+            self.assertIs(opts.get("headless"), True)
+
+        with self.subTest("CHROME_EXECUTABLE_PATH wins over the Playwright cache"):
+            override = tmp / "override" / "chrome"
+            override.parent.mkdir(parents=True)
+            override.write_text("#!/bin/sh\nexit 0\n")
+            override.chmod(0o755)
+            with _chromium_env(cache_root=cache, chrome_executable=override), \
+                    _captured_streams() as (out, _err):
+                opts = options()
+                browser_use.Browser(**opts)
+            self.assertEqual(Path(opts["executable_path"]).resolve(), override.resolve())
+            self.assertEqual(out.getvalue(), "")
+
+        with self.subTest("no Chromium anywhere names magus doctor --fix"):
+            empty = tmp / "empty-cache"
+            empty.mkdir()
+            with _chromium_env(cache_root=empty), self.assertRaises(Exception) as cm:
+                options()
+            self.assertIn("magus doctor --fix", str(cm.exception))
+
+        with self.subTest("BROWSER_USE_CLOUD=true is a cloud Browser with no local options"):
+            with _chromium_env(cache_root=cache), patch.dict(
+                os.environ, {"BROWSER_USE_CLOUD": "true", "BROWSER_USE_API_KEY": "bu-test-key"}
+            ):
+                opts = options()
+                browser = browser_use.Browser(**opts)
+            self.assertIs(opts.get("use_cloud"), True)
+            for local_only in ("executable_path", "headless", "user_data_dir"):
+                self.assertNotIn(local_only, opts)
+            self.assertNotEqual(opts.get("kind"), "chromium")
+            self.assertEqual(browser.kind, "cloud")
+
+
+class TestBuildLLMReal10(_RealBrowserUseTestCase):
+    """_build_llm must build browser-use 1.0's own Chat classes."""
+
+    def test_build_llm_with_real_1_0_classes(self):
+        mod = _load_real_server(self)
+        import browser_use
+
+        choice = mod.LLMChoice
+        os.environ.update({
+            "ANTHROPIC_API_KEY": "anthropic-test-key",
+            "OPENAI_API_KEY": "openai-test-key",
+            "COMPAT_TEST_KEY": "compat-test-key",
+            "BROWSER_USE_API_KEY": "bu-test-key",
+        })
+        cases = (
+            ("anthropic", choice(provider="anthropic", model="claude-test", temperature=0.4),
+             browser_use.ChatAnthropic),
+            ("openai", choice(provider="openai", model="gpt-test", temperature=0.4),
+             browser_use.ChatOpenAI),
+            ("openai_compatible", choice(
+                provider="openai_compatible", model="local-test",
+                base_url="http://127.0.0.1:1234/v1", api_key_env="COMPAT_TEST_KEY",
+                temperature=0.4,
+            ), browser_use.ChatOpenAI),
+            ("browser_use", choice(provider="browser_use", model="bu-fast", temperature=0.4),
+             browser_use.ChatBrowserUse),
+        )
+        for label, llm_choice, chat_cls in cases:
+            with self.subTest(label):
+                llm = mod._build_llm(llm_choice)
+                self.assertIsInstance(llm, chat_cls)
+                if label in ("openai", "openai_compatible"):
+                    self.assertEqual(llm.temperature, 0.4)
+                else:
+                    self.assertIsNone(getattr(llm, "temperature", None))
+                if label == "openai_compatible":
+                    self.assertEqual(llm.base_url, "http://127.0.0.1:1234/v1")
+                    self.assertEqual(llm.api_key, "compat-test-key")
+
+        with self.subTest("anthropic with base_url is our error, not the class's"):
+            with patch.object(browser_use, "ChatAnthropic") as chat_cls:
+                with self.assertRaises(Exception) as cm:
+                    mod._build_llm(choice(
+                        provider="anthropic", model="claude-test",
+                        base_url="https://proxy.example/v1",
+                    ))
+            chat_cls.assert_not_called()
+            self.assertNotIsInstance(cm.exception, TypeError)
+            self.assertIn("base_url", str(cm.exception))
+
+        with self.subTest("BROWSER_USE_API_KEY alone resolves to bu-fast"):
+            for key in ("ANTHROPIC_API_KEY", "OPENAI_API_KEY"):
+                os.environ.pop(key, None)
+            server = mod.MagusBrowserServer()
+            resolved = server._resolve_configured_llm()
+            self.assertIsNotNone(resolved)
+            self.assertEqual((resolved.provider, resolved.model), ("browser_use", "bu-fast"))
+            self.assertIsInstance(mod._build_llm(resolved), browser_use.ChatBrowserUse)
+
+
+class TestRetryAgentBrowser(_RealBrowserUseTestCase):
+    """
+    retry_with_browser_use_agent must hand browser_use.Agent a local Chromium
+    Browser. Agent's own default browser is a billed cloud browser.
+    """
+
+    def test_retry_agent_never_uses_a_cloud_or_default_browser(self):
+        mod = _load_real_server(self)
+        import browser_use
+
+        os.environ["ANTHROPIC_API_KEY"] = "anthropic-test-key"
+        tmp = self._tmp()
+        cache = tmp / "ms-playwright"
+        binary = _make_fake_chromium(cache, 1234, _current_platform_key())
+        agents: list = []
+
+        class _FakeHistory:
+            def number_of_steps(self):
+                return 7
+
+            def is_successful(self):
+                return True
+
+            def final_result(self):
+                return "the final answer"
+
+            def errors(self):
+                return []
+
+        class _RecordingAgent:
+            def __init__(self, task=None, llm=None, **kwargs):
+                self.task, self.llm, self.kwargs = task, llm, kwargs
+                self.max_steps = None
+                agents.append(self)
+
+            async def run(self, max_steps=100, **_kwargs):
+                self.max_steps = max_steps
+                return _FakeHistory()
+
+            async def close(self):
+                return None
+
+        def run_tool(arguments):
+            async def scenario():
+                server = mod.MagusBrowserServer()
+                return await server._execute_tool("retry_with_browser_use_agent", arguments)
+
+            agents.clear()
+            with contextlib.ExitStack() as stack:
+                stack.enter_context(_chromium_env(cache_root=cache))
+                stack.enter_context(patch.object(browser_use, "Agent", _RecordingAgent))
+                # A server that still runs the 0.x upstream handler reads the
+                # Agent name it imported into its own module. Replace that copy
+                # too, so this test can never start a real agent, a real browser
+                # or a billed model call; it fails on the assertions below instead.
+                # sys.modules.get never triggers 1.0's removed-module finder.
+                upstream = sys.modules.get("browser_use.mcp.server")
+                if upstream is not None and hasattr(upstream, "Agent"):
+                    stack.enter_context(patch.object(upstream, "Agent", _RecordingAgent))
+                text = _text_of(asyncio.run(scenario()))
+            self.assertEqual(len(agents), 1, f"browser_use.Agent was not constructed once; tool said: {text}")
+            agent = agents[0]
+            browser = agent.kwargs.get("browser") or agent.kwargs.get("browser_session")
+            self.assertIsInstance(browser, browser_use.Browser, f"Agent got browser={browser!r}")
+            self.assertEqual(browser.kind, "chromium")
+            self.assertFalse(browser.use_cloud)
+            self.assertEqual(Path(browser.executable_path).resolve(), binary.resolve())
+            self.assertIsNotNone(agent.llm)
+            return agent, browser, text
+
+        with self.subTest("defaults: no domains, vision left to Agent"):
+            agent, browser, text = run_tool({"task": "find the title", "max_steps": 5})
+            self.assertEqual(agent.task, "find the title")
+            self.assertEqual(agent.max_steps, 5)
+            self.assertEqual(tuple(browser.domains.allowed), ())
+            self.assertNotIn("use_vision", agent.kwargs)
+            self.assertRegex(text, r"\b7\b")
+            self.assertIn("the final answer", text)
+            self.assertNotRegex(text, r"(?i)\burls?\b")
+
+        with self.subTest("non-empty allowed_domains and use_vision=False are forwarded"):
+            agent, browser, _text = run_tool({
+                "task": "t", "allowed_domains": ["example.com"], "use_vision": False,
+            })
+            self.assertIn("example.com", repr(browser.domains.allowed))
+            self.assertIs(agent.kwargs.get("use_vision"), False)
+
+        with self.subTest("an empty allowed_domains list is not forwarded"):
+            _agent, browser, _text = run_tool({"task": "t", "allowed_domains": []})
+            self.assertEqual(tuple(browser.domains.allowed), ())
+
+
+class TestAxHelpersStdout(_RealBrowserUseTestCase):
+    """
+    browser_use.ax.AxHelpers logs every action line through `log`, which
+    defaults to print. On an MCP stdio server that line corrupts JSON-RPC.
+    """
+
+    def test_ax_helpers_never_print_to_stdout(self):
+        mod = _load_real_server(self)
+        make = self._server_function(
+            mod, "_make_ax_helpers",
+            "the one place AxHelpers is built for a CDP callable, with its log kept off stdout",
+        )
+        fake = _FakeAxCdp()
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            ax = make(fake)
+            ax.click(42)
+            ax.type(42, "hello")
+        self.assertIn("Input.dispatchMouseEvent", fake.methods)
+        self.assertIn("Input.insertText", fake.methods)
+        self.assertEqual(out.getvalue(), "", "AxHelpers wrote to stdout")
+
+        # Control: the library default does print here, so the check above can fail.
+        from browser_use.ax import AxHelpers
+
+        control = io.StringIO()
+        with contextlib.redirect_stdout(control):
+            AxHelpers(_FakeAxCdp()).click(42)
+        self.assertIn("[ok] click", control.getvalue())
+
+
+class TestHarnessHelpersImportIsolated(_RealBrowserUseTestCase):
+    """
+    Importing browser_harness.helpers execs <agent workspace>/agent_helpers.py
+    and copies its public names into the module, and loads the workspace .env.
+    The server's import must not run a user's file: one that prints corrupts
+    JSON-RPC, and one that replaces click changes what the tools do.
+    """
+
+    def test_workspace_agent_helpers_cannot_print_or_replace_click(self):
+        mod = _load_real_server(self)
+        make = self._server_function(
+            mod, "_make_ax_helpers",
+            "the one place AxHelpers is built, importing browser_harness.helpers in isolation",
+        )
+        from browser_use.ax import AxHelpers
+
+        library_click = AxHelpers.click
+        self.addCleanup(setattr, AxHelpers, "click", library_click)
+
+        workspace = self._tmp() / "agent-workspace"
+        workspace.mkdir()
+        (workspace / "agent_helpers.py").write_text(textwrap.dedent("""\
+            print("agent_helpers.py ran and printed to stdout")
+            from browser_use.ax import AxHelpers as _AxHelpers
+
+            def click(*args, **kwargs):
+                return "agent_helpers click"
+
+            def _replaced_click(self, id):
+                return "agent_helpers click"
+
+            _AxHelpers.click = _replaced_click
+            """))
+        (workspace / ".env").write_text("MAGUS_TEST_WORKSPACE_DOTENV=leaked\n")
+        os.environ["BH_AGENT_WORKSPACE"] = str(workspace)
+        env_before = dict(os.environ)
+
+        fake = _FakeAxCdp()
+        out = io.StringIO()
+        with _fresh_harness_helpers(), contextlib.redirect_stdout(out):
+            ax = make(fake)
+            helpers = sys.modules.get("browser_harness.helpers")
+            ax.click(42)
+
+        self.assertEqual(out.getvalue(), "", "the helpers import wrote to stdout")
+        self.assertIs(AxHelpers.click, library_click, "agent_helpers.py replaced AxHelpers.click")
+        self.assertIn("Input.dispatchMouseEvent", fake.methods)
+        self.assertIsNotNone(helpers, "building AxHelpers must import browser_harness.helpers")
+        self.assertNotIn("click", vars(helpers), "agent_helpers.py names reached browser_harness.helpers")
+        self.assertEqual(dict(os.environ), env_before, "the helpers import changed os.environ")
+
+
+class TestDownloadsDirOnPrimaryStart(_RealBrowserUseTestCase):
+    """
+    1.0 points Chrome's downloads at a directory only for Agent. Every primary
+    start must set it to ~/.config/browseruse/downloads, away from the
+    TCC-protected ~/Downloads, on the browser target's session.
+    """
+
+    def test_downloads_go_to_config_dir(self):
+        mod = _load_real_server(self)
+        import browser_use
+
+        for name in ("_cdp", "_meta"):
+            self._server_function(
+                mod, name, "the browser-harness daemon channel every CDP call goes through",
             )
-        return attr
+        tmp = self._tmp()
+        cache = tmp / "ms-playwright"
+        _make_fake_chromium(cache, 1234, _current_platform_key())
+        calls: list = []
 
-    def test_parent_pid_is_captured_at_startup(self):
-        server = _make_server()
-        captured = getattr(server, "_parent_pid", None)
-        if captured is None:
-            self.fail(
-                "MagusBrowserServer must capture os.getppid() at startup — after "
-                "reparenting there is nothing left to compare against."
-            )
-        self.assertEqual(captured, os.getppid())
+        def fake_cdp(name, method, session_id=None, **params):
+            calls.append((name, method, session_id, params))
+            if method == "Target.attachToBrowserTarget":
+                return {"sessionId": "browser-target-session"}
+            if method == "Runtime.evaluate":
+                return {"result": {"value": "complete"}}
+            if method == "Target.getTargets":
+                return {"targetInfos": [
+                    {"targetId": "TARGET0001", "type": "page", "url": "about:blank", "title": ""},
+                ]}
+            return {}
 
-    def test_reparented_server_shuts_down_and_exits(self):
-        self._require("_exit_process")
-        server = _make_server()
+        def fake_meta(name, *args, **kwargs):
+            return {"targetId": "TARGET0001", "url": "about:blank", "title": "",
+                    "session_id": "page-session"}
 
-        with (
-            patch.object(_mod, "_reap_orphaned_profiles", MagicMock()),
-            patch.object(server, "_shutdown_sync", MagicMock()) as shutdown,
-            patch.object(_mod, "_exit_process", MagicMock()) as exit_process,
-            patch.object(os, "getppid", return_value=1),
-        ):
-            asyncio.run(server._cleanup_expired_sessions())
+        async def fake_start(browser):
+            browser.name = "bufakedaemon"
+            return browser
 
-        shutdown.assert_called_once_with()
+        async def fake_stop(browser):
+            return None
+
+        async def scenario():
+            server = mod.MagusBrowserServer()
+            try:
+                return await server._execute_tool("browser_navigate", {"url": "about:blank"}), None
+            except Exception as exc:  # reported below with the recorded calls
+                return None, exc
+
+        with _chromium_env(cache_root=cache), \
+                patch.object(mod, "_cdp", fake_cdp), \
+                patch.object(mod, "_meta", fake_meta), \
+                patch.object(browser_use.Browser, "start", fake_start), \
+                patch.object(browser_use.Browser, "stop", fake_stop):
+            result, error = asyncio.run(scenario())
+
+        methods = [c[1] for c in calls]
+        context = f"tool result {result!r}, error {error!r}, CDP calls {methods}"
+        self.assertIn("Target.attachToBrowserTarget", methods, context)
+        self.assertIn("Browser.setDownloadBehavior", methods, context)
+        self.assertLess(
+            methods.index("Target.attachToBrowserTarget"),
+            methods.index("Browser.setDownloadBehavior"),
+            context,
+        )
+        name, _method, session_id, params = calls[methods.index("Browser.setDownloadBehavior")]
+        self.assertEqual(name, "bufakedaemon")
+        self.assertEqual(session_id, "browser-target-session")
+        self.assertEqual(params.get("behavior"), "allow")
         self.assertEqual(
-            exit_process.call_args_list,
-            [call(0)],
-            "A reparented server must take itself down through the existing "
-            "shutdown path (killing Chrome, removing the profile dir) and then "
-            "exit — otherwise it lingers with nobody to clean up after it.",
+            params.get("downloadPath"),
+            str(self._home / ".config" / "browseruse" / "downloads"),
         )
-
-    def test_live_parent_does_not_shut_down(self):
-        self._require("_exit_process")
-        server = _make_server()
-        parent_pid = server._parent_pid
-
-        with (
-            patch.object(_mod, "_reap_orphaned_profiles", MagicMock()),
-            patch.object(server, "_shutdown_sync", MagicMock()) as shutdown,
-            patch.object(_mod, "_exit_process", MagicMock()) as exit_process,
-            patch.object(os, "getppid", return_value=parent_pid),
-        ):
-            asyncio.run(server._cleanup_expired_sessions())
-
-        shutdown.assert_not_called()
-        exit_process.assert_not_called()
-
-
-# ---------------------------------------------------------------------------
-# Test 14d: static guards on the cleanup wiring
-# ---------------------------------------------------------------------------
-
-class TestAutoCleanupStaticChecks(unittest.TestCase):
-    """
-    The overrides above are tested against a transcription of upstream's
-    behaviour (_StubBrowserUseServer).  These checks pin the two things that
-    transcription cannot prove: that the overrides still DELEGATE to the real
-    parent, and that no cleanup path resorts to a pattern-based process kill.
-    """
-
-    @classmethod
-    def setUpClass(cls):
-        import ast
-
-        source = (Path(__file__).parent / "mcp-server.py").read_text()
-        cls.source = source
-        tree = ast.parse(source)
-
-        cls.methods: dict = {}
-        cls.functions: dict = {}
-        for node in ast.walk(tree):
-            if isinstance(node, ast.ClassDef) and node.name == "MagusBrowserServer":
-                for item in node.body:
-                    if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                        cls.methods[item.name] = ast.get_source_segment(source, item) or ""
-        for item in tree.body:
-            if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                cls.functions[item.name] = ast.get_source_segment(source, item) or ""
-
-    def _method(self, name: str) -> str:
-        src = self.methods.get(name)
-        if not src:
-            self.fail(f"MagusBrowserServer must override {name}()")
-        return src
-
-    def test_close_session_override_delegates_to_super(self):
-        self.assertIn(
-            "super()._close_session",
-            self._method("_close_session"),
-            "The override must delegate: upstream is what actually kills the "
-            "browser and untracks the session.",
-        )
-
-    def test_cleanup_cycle_override_delegates_to_super(self):
-        self.assertIn(
-            "super()._cleanup_expired_sessions",
-            self._method("_cleanup_expired_sessions"),
-            "The override must delegate: upstream is what expires idle sessions.",
-        )
-
-    def test_main_awaits_the_cleanup_task(self):
-        self.assertIn(
-            "_start_cleanup_task",
-            self.functions.get("main", ""),
-            "main() bypasses upstream's run(), so it must start the periodic "
-            "cleanup loop itself.",
-        )
-
-    def test_no_pattern_based_process_kill(self):
-        for banned in ("pkill", "killall", "kill -9"):
-            self.assertNotIn(
-                banned,
-                self.source,
-                f"{banned!r} kills by name/pattern and would reach processes this "
-                "server does not own. Every kill must target an explicit PID.",
-            )
 
 
 # ---------------------------------------------------------------------------

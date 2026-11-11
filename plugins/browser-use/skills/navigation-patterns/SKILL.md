@@ -1,12 +1,12 @@
 ---
 name: navigation-patterns
-description: URL navigation, multi-tab orchestration, session creation and management, back/forward navigation, browser profile persistence, session export/import for authentication reuse.
+description: Browser Use tab, session and back-navigation patterns, and login reuse via export/import. Use when opening or switching tabs, managing browser sessions, or reusing a login.
 user-invocable: false
 ---
 
 # Navigation Patterns
 
-Patterns for URL navigation, multi-tab workflows, session lifecycle management, and browser profile persistence.
+Patterns for URL navigation, multi-tab workflows, session lifecycle management, and keeping a login across sessions.
 
 ---
 
@@ -22,16 +22,19 @@ Step 1: Navigate to URL (session created automatically)
 
 Step 2: Inspect the page
   mcp__plugin_browser-use_browser-use__browser_get_state()
-  → Returns interactive_elements with numbered elements
+  → Returns interactive_elements, each with an index (the element's Chrome node id)
 
 Step 3: Interact (optional)
-  mcp__plugin_browser-use_browser-use__browser_click(index=3)
+  mcp__plugin_browser-use_browser-use__browser_click(index=1834)
 
 Step 4: Always close
   mcp__plugin_browser-use_browser-use__browser_close_session(session_id="abc123")
 ```
 
-**Verify page loaded**: After `browser_navigate`, check the response `title` and `url`. If `title` is blank or URL redirected unexpectedly, call `browser_get_state` to inspect the actual page content before proceeding.
+**Verify page loaded**: `browser_navigate` returns only `Navigated to: <url>`, or an
+`Error: navigation to <url> failed: …` line when the browser could not load it. It waits
+up to 15 seconds for the document to finish loading. To see where you landed (a redirect,
+a blank title), call `browser_get_state` and read its `url` and `title` before proceeding.
 
 **Wait for dynamic content**: For SPAs (React, Vue, Angular), the DOM may not be ready immediately after navigate. If `interactive_elements` in `browser_get_state` is sparse or empty, call `browser_get_state` again after a short delay:
 
@@ -55,13 +58,16 @@ Pattern: Visit detail page, then return to list
 3. browser_click(index=5)                          → navigate to product detail
 4. browser_extract_content(query="price and specs")
 5. browser_go_back()                                  → back to product list
-6. browser_get_state()                               → DOM refreshed
-7. browser_click(index=6)                          → next product
+6. browser_get_state()                               → the list page is a new document: new indices
+7. browser_click(index=<next product's index from step 6>)
 ... repeat ...
 N. browser_close_session(session_id)
 ```
 
-**Note**: `browser_go_back` uses the browser's history stack. It will fail if there is no previous page (e.g., you navigated directly to a deep URL). In that case, use `browser_navigate` with the list URL instead.
+**Note**: `browser_go_back` uses the tab's history stack. With no previous page (you
+navigated straight to a deep URL, or the tab is new) it returns
+`Error: there is no previous page in this tab's history.` Use `browser_navigate` with the
+list URL instead.
 
 ---
 
@@ -78,6 +84,11 @@ Open multiple tabs within a single session to compare pages or extract data in p
    → [{"tab_id": "8B3E", "url": "https://example.com/", "title": "…"},
       {"tab_id": "C41A", "url": "https://example.com/page-2", "title": "…"}]
 ```
+
+`new_tab=True` returns `Opened new tab with URL: <url>`, and the page tools now act on
+that new tab. A `tab_id` is the last 4 characters of the tab's id. If it matches more
+than one tab, `browser_switch_tab` and `browser_close_tab` return an error listing the
+full ids; pass more characters of the one you mean.
 
 ### 3.2 Switch Between Tabs
 
@@ -118,7 +129,7 @@ so read the id from `browser_list_sessions` straight after and record it:
 ```
 mcp__plugin_browser-use_browser-use__browser_navigate(url="https://example.com")
 mcp__plugin_browser-use_browser-use__browser_list_sessions()
-→ [{"session_id": "06ab70ef-…", "active": true, "age_minutes": 0.1, …}]
+→ [{"session_id": "5927ad6f594c497fa141e1beb2189883", "active": true, "age_minutes": 0.1, …}]
 ```
 
 ### 4.2 Session Inspection
@@ -199,12 +210,16 @@ mcp__plugin_browser-use_browser-use__browser_import_session(
   import_path="~/.browser-use/sessions/github-session.json",
   navigate_to="https://github.com/dashboard"
 )
-→ {"session_id": "new_xyz", "cookies_imported": 12, "original_url": "https://github.com/", "navigated_to": "https://github.com/dashboard"}
+→ {"session_id": "new_xyz", "cookies_imported": 12, "original_url": "https://github.com/", "navigated_to": "https://github.com/dashboard", "is_primary": true}
 
 # Verify login worked
 mcp__plugin_browser-use_browser-use__browser_get_state()
 # Check: interactive_elements should show dashboard elements, not login form
 ```
+
+Import before any other browser starts. The page tools drive the imported session only
+when none was active (`"is_primary": true`). With `"is_primary": false` they keep driving
+the session that was already open: close both sessions, then import again.
 
 ### 5.4 Session Expiry Check
 
@@ -258,7 +273,7 @@ for each product_url:
 # CORRECT: Close tab before opening next
 for each product_url:
     browser_navigate(url=product_url, new_tab=True)
-    tab_id = browser_list_tabs()[-1]["tab_id"]
+    tab_id = the browser_list_tabs() entry whose url is product_url
     # ... extract data ...
     browser_close_tab(tab_id=tab_id)
 ```

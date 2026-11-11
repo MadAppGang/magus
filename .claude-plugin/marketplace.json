@@ -616,8 +616,8 @@
     {
       "name": "browser-use",
       "source": "./plugins/browser-use",
-      "description": "Full-platform browser automation: live-page JS eval, keyboard and focus primitives, file screenshots, preflight and a configurable agent LLM, on local or cloud browsers. Runs Playwright's own Chromium, never your real Chrome. Adds Magus tools and 6 skills to the upstream Browser Use MCP set.",
-      "version": "1.10.0",
+      "description": "Full-platform browser automation through its own MCP server: navigation, clicks and typing, live-page JS eval, keyboard and focus, file screenshots, session export and a configurable agent LLM, on local or cloud browsers. Runs Playwright's own Chromium, never your real Chrome. Ships 6 skills.",
+      "version": "2.0.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -639,6 +639,15 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "2.0.0",
+          "date": "2026-11-12",
+          "kinds": [
+            "Changed",
+            "Fixed"
+          ],
+          "summary": "The MCP server runs on browser-use 1.0"
+        },
         {
           "version": "1.10.0",
           "date": "2026-10-20",
@@ -665,11 +674,6 @@
           "version": "1.8.0",
           "date": "2026-09-27",
           "summary": "Browser_save_screenshot writes the page to a PNG file. browser_screenshot shows the image to\u2026"
-        },
-        {
-          "version": "1.7.6",
-          "date": "2026-09-25",
-          "summary": "Tool names use the full plugin prefix, browser_evaluate is documented where the skills said no\u2026"
         }
       ]
     },

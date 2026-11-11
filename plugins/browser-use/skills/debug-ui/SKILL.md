@@ -26,7 +26,7 @@ Step 2: Capture visual state
 
 Step 3: Inspect DOM state for element details
   mcp__plugin_browser-use_browser-use__browser_get_state()
-  → interactive_elements: index, tag, text, href for each clickable element
+  → interactive_elements: index (a Chrome node id), tag, text, and placeholder or href, for each control
 
 Step 4: Get HTML for CSS/class inspection
   mcp__plugin_browser-use_browser-use__browser_get_html(
@@ -124,7 +124,8 @@ browser_evaluate(script="return [...document.querySelectorAll('button, a, input'
 
 ### 3.3 Attribute Validation
 
-`browser_get_state` lists only each element's index, tag, text and href. Read
+`browser_get_state` lists only each element's index, tag, text (its accessible name),
+placeholder and href. Read
 attributes from `browser_get_html(selector=…)`, or with `browser_evaluate`
 (`el.getAttribute('aria-label')`). Check for:
 
@@ -239,11 +240,10 @@ browser_get_html(selector="img")
 **Detection**:
 ```
 # Button appears active but doesn't respond to clicks
-browser_get_state()
-# Check interactive_elements element attributes for: disabled, aria-disabled, tabindex="-1"
-
+# get_state carries no attributes, so read them from the HTML
 browser_get_html(selector="#checkout-btn")
-# Check for: pointer-events:none, opacity:0.5 without disabled attr (just visually disabled)
+# Check for: disabled, aria-disabled, tabindex="-1"
+# and for pointer-events:none, opacity:0.5 without disabled attr (just visually disabled)
 ```
 
 ---

@@ -1,49 +1,46 @@
-# Live verification harness (browser-use v1.2.0 tools)
+# Live checks against real Chromium
 
-These scripts drive the **real** `MagusBrowserServer` handlers against a live
-headless Chrome via CDP — they verify behavior the mocked `test_mcp_server.py`
-unit suite cannot (that the CDP params actually work on a page). They are NOT run
-in CI (they need Chrome + network); run them by hand when changing the
-`browser_evaluate` / keyboard / focus code paths.
+These scripts start the plugin's MCP server as a subprocess, exactly as `.mcp.json`
+does, and call its tools over stdio against a real Chromium. They check what the
+unit suite cannot: that the CDP commands behind `browser_evaluate`, `browser_focus`,
+`browser_press_key` and `browser_keyboard` actually act on a page. They are not run
+in CI. Run them by hand after changing those code paths.
 
-## The three test layers (use the right one)
+## The test layers
 
-| Layer | File | Drives | Needs Chrome? | In CI? |
+| Layer | File | Drives | Needs Chromium? | In CI? |
 |---|---|---|---|---|
-| Handler unit tests | `../test_mcp_server.py` | `_handle_*` directly, mocked CDP | No | Yes |
-| Protocol integration | `../test_mcp_protocol.py` | real MCP `tools/call` via the SDK's in-memory client (`mcp.shared.memory.create_connected_server_and_client_session`) — same path Claude Code uses | No | Yes |
-| Live CDP gate | this dir | real handlers vs real headless Chrome | **Yes** | No |
-
-`test_mcp_protocol.py` is the automated stand-in for "call the tool in a real
-Claude session": it spawns no subprocess and needs no Chrome, but exercises the
-real protocol envelope (dispatch, schema sanitization, result serialization) that
-the handler-level unit tests bypass. Prefer it over the MCP Inspector for
-automation — Inspector's `--cli` mode works but is a human-first Node tool that
-spins up a localhost UI proxy.
+| Handler unit tests | `../test_mcp_server.py` | handlers directly, recorded CDP calls | No | Yes |
+| Protocol | `../test_mcp_protocol.py` | real MCP `tools/call` through the SDK's in-memory client | No | Yes |
+| Stdio process | `../test_mcp_stdio.py` | the server as a subprocess, no browser | No | Yes |
+| Lifecycle | `../test_e2e_lifecycle.py` | the server as a subprocess, real Chromium: launch, page round trip, cleanup | Yes | Yes (e2e job) |
+| Keyboard and editors | this directory | the server as a subprocess, real Chromium: keys, focus, evaluate, Monaco | Yes | No |
 
 ## Why these exist
 
-The unit suite mocks the CDP client, so it proves dispatch wiring and schema but
-not that, e.g., a synthetic `Cmd+A` truly selects-all. A live run caught exactly
-that: `dispatchKeyEvent` with `modifiers: 4` alone does **not** select-all —
-Chrome requires the `commands: ["selectAll"]` field on the keyDown. These
-harnesses are the gate that catches such CDP-correctness gaps.
+A recorded CDP call proves the server sent it, not that Chrome acted on it. A live
+run is what found that a synthetic `Meta+A` (`modifiers: 4`) selects nothing unless
+the keyDown also carries `commands: ["selectAll"]`.
 
 ## Run
 
-Requires `browser-use` installed and a Chrome/Chromium present (`browser_doctor`
-reports both).
+Use an interpreter with the server's pinned dependencies: the env
+`uv sync --no-config --script ../mcp-server.py` builds (find it with
+`uv python find --no-config --script ../mcp-server.py`), or any venv holding the
+versions in the header. Playwright's Chromium must be installed (`magus doctor --fix`).
 
 ```sh
-SERVER=../mcp-server.py   # path to the plugin's mcp-server.py
+cd plugins/browser-use/scripts/manual-verify
 
-# Full Monaco scenario (the bug report's headline case). Serve the page over
-# HTTP so the CDN-loaded Monaco works (a file:// origin blocks some CDN fetches):
-python3 -m http.server 8799 &   # cwd containing monaco-page.html (rename to index.html or pass the URL)
-python3 live_repro.py "$SERVER" "http://localhost:8799/monaco-page.html"
+# Keys, shortcuts, focus and evaluate on a data: URL page. No network.
+<env python> keyboard_repro.py
 
-# Full keyboard surface (Backspace, arrows+count, Enter/Escape, Meta+a+Delete):
-python3 keyboard_repro.py "$SERVER"
+# Monaco editor: setValue via evaluate, and typing into its hidden textarea.
+# Serves monaco-page.html itself on 127.0.0.1; Monaco loads from cdnjs, so it needs network.
+<env python> live_repro.py
 ```
 
-Each prints `[PASS]/[FAIL]` lines and exits non-zero on any failure.
+`stdio_server.py` is the shared launcher. It gives the server a temp `HOME`, a short
+temp `BH_HOME` and no API keys, resolves Chromium once from your real `HOME`, and runs
+it headless (`HEADED=1` to watch). Each script prints `[PASS]`/`[FAIL]` lines and exits
+non-zero on any failure. Nothing here calls a model or a cloud browser.

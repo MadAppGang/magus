@@ -21,7 +21,8 @@ The fundamental extract-one-page workflow:
 
 2. Get DOM state (find data containers and pagination controls)
    mcp__plugin_browser-use_browser-use__browser_get_state()
-   → interactive_elements: [..., {"index": 47, "tag": "a", "text": "Next →", "href": "..."}, ...]
+   → interactive_elements: [..., {"index": 2417, "tag": "a", "text": "Next →", "href": "..."}, ...]
+   (index is the element's Chrome node id, not its position: pass it as given)
 
 3. Extract structured data with LLM-powered query
    mcp__plugin_browser-use_browser-use__browser_extract_content(
@@ -40,6 +41,10 @@ The fundamental extract-one-page workflow:
 ```
 
 ### When to Use `extract_content` vs `get_html`
+
+`extract_content` reads the page text with the agent model (see the
+`browser-use:agent-model` skill) and needs that model's API key; without one it returns
+an error naming the variable to set. `get_html` and `browser_evaluate` need no model.
 
 | Situation | Tool | Reason |
 |-----------|------|--------|
@@ -72,7 +77,7 @@ for page in range(1, max_pages + 1):
 
     data = mcp__plugin_browser-use_browser-use__browser_extract_content(
         query="all product names, prices, and URLs")
-    all_results.append(data["content"])
+    all_results.append(data)   # extract_content returns plain text
 
     # Rate limit: pause between pages
     Bash: sleep 1
@@ -103,7 +108,8 @@ LOOP:
         BREAK  # No more pages
 
     browser_click(index=next_index)
-    # After click, DOM updates — call get_state again in next loop iteration
+    # After the click the page may replace its elements, and their old indices
+    # stop working: call get_state again in the next iteration, never reuse one
 
 browser_close_session(session_id)
 ```
@@ -111,9 +117,10 @@ browser_close_session(session_id)
 **Finding the "next" button**: Look in `interactive_elements` for elements with:
 - `text` containing: `"Next"`, `"›"`, `"»"`, `">"`, `"Load more"`
 - `href` containing: `page=N+1`, `offset=`, `cursor=`
-- nothing else: entries carry only `index`, `tag`, `text` and `href`. For an icon-only
-  button, find it with `browser_get_html(selector="[aria-label*='Next']")` and click it
-  with `browser_evaluate`.
+- nothing else: entries carry only `index`, `tag`, `text`, and `placeholder` or `href`
+  when present. `text` is the accessible name, so an icon-only button with
+  `aria-label="Next page"` shows `"Next page"`. One with no label at all shows an empty
+  `text`: find it with `browser_get_html` and click it with `browser_evaluate`.
 
 ### 2.3 Infinite Scroll (Lazy Loading)
 
@@ -293,7 +300,7 @@ Watch for these signals in `browser_get_state` responses:
 - URL change to `/challenge`, `/captcha`, `/blocked`
 - `interactive_elements` dominated by CAPTCHA widgets
 
-**On bot detection**: Stop scraping. Consider a cloud session (`browser_start_cloud_session`), which includes stealth mode, proxy rotation, and CAPTCHA handling. See the `browser-use:agent-model` skill for picking its brain model.
+**On bot detection**: Stop scraping. Consider a cloud session (`browser_start_cloud_session`), which includes stealth mode, proxy rotation, and CAPTCHA handling, and drive it with the same page tools. `retry_with_browser_use_agent` does not help here: it runs a local Chromium of its own and meets the same block.
 
 ---
 
@@ -306,7 +313,7 @@ all_results = []
 
 for each page:
     data = browser_extract_content(query="product name, price, URL")
-    all_results.append(data["content"])
+    all_results.append(data)   # plain text from the agent model
 ```
 
 ### 6.2 Writing JSON Output

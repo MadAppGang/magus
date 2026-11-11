@@ -1,99 +1,120 @@
 #!/usr/bin/env python3
 """
-End-to-end browser lifecycle tests — REAL browser, REAL processes, no mocks.
+End-to-end browser lifecycle tests: REAL browser, REAL processes, no mocks.
 
-Every other guard on this behaviour is mocked: test_mcp_server.py patches
-`psutil.process_iter`, invents PIDs, and never launches anything. That proves the
-reaper's *arithmetic*, not that it reaps. This file proves the shipped thing works
-by doing it: it boots `python3 mcp-server.py` as a subprocess (the same way
-`.mcp.json` does — see test_mcp_stdio.py, whose transport approach this reuses),
-drives it over real MCP JSON-RPC, and then inspects the actual operating system.
+The unit suites fake the browser-harness daemon. This file proves the shipped
+thing works by doing it: it boots `python3 mcp-server.py` as a subprocess (the
+way `.mcp.json` does), drives it over real MCP JSON-RPC on stdio, and then
+inspects the operating system.
+
+Each local session of the server owns three child processes, all started by
+browser-use 1.0:
+  - Chrome, in its own process group, on a temp profile
+    `<tmp>/browser-use-chrome-*/profile` that browser-use creates and deletes;
+  - the browser-harness daemon (`python -m browser_harness.daemon`), which
+    speaks CDP to Chrome and lingers for about 20-30 s after it is told to stop;
+  - the LocalBrowser watchdog (`python -P -c ...`), which blocks on a pipe only
+    the server holds, and cleans up Chrome, the daemon and the temp profile when
+    the server dies without stopping them (SIGKILL, OOM).
 
 What is proven, against processes that really exist:
 
-  1. The launched binary is Playwright's Chromium, NOT the user's /Applications
-     Google Chrome. This is the regression test for the original hijack bug.
-  2. The PID-scoped profile directory is created as
-     `browser-use-user-data-dir-session-<server pid>`, and the browser's real
-     `--user-data-dir` argument names exactly that directory.
-  3. Closing the session through the server kills the browser AND frees the
-     directory.
-  4. SIGTERM on the server kills the browser AND removes the directory, and the
-     server then exits rather than lingering with its cleanup done.
-  5. A newly started server's reaper terminates a REAL orphaned browser — one
-     whose owning server was SIGKILLed and is genuinely gone.
-  6. That same reaper does NOT touch a browser owned by a LIVE server, including
-     the PID-prefix case (`session-8173` must not reap `session-81735`), built
-     from a real dead PID and a real live one rather than a patched process_iter.
+  1. The launched binary is Playwright's Chromium, not the user's real Chrome.
+  2. The real `--user-data-dir` argument is a browser-use temp profile, not a
+     directory under `~/.config/browseruse/profiles`, and two servers get two
+     different ones.
+  3. Closing the session through the server kills Chrome and removes its temp
+     profile.
+  4. SIGTERM on the server kills Chrome and removes the profile before the
+     server exits, and the server does exit.
+  5. A SIGKILLed server leaves nothing behind: the watchdog kills Chrome and
+     removes the profile within 10 s, and the daemon is gone within 40 s, while a
+     second live server's browser keeps running and keeps working.
+  6. The port drives a page: navigate, get_state, click by index, evaluate,
+     save_screenshot, and a download that lands in the config downloads dir.
+  7. On pages from a local HTTP server: get_html with a selector, and an
+     invalid selector reported as an error; controls inside a srcdoc iframe
+     indexed, clicked and typed by index; printable keys typed by press_key and
+     keyboard while modifier chords stay commands; export_session carrying the
+     cookies of two origins (127.0.0.1 and localhost); and an imported session
+     that is not the primary downloading into the config downloads dir.
 
 Safety rules this file obeys, without exception:
-  - No `pkill`, no `killall`, no name or pattern matching. Every process it
+  - No `pkill`, no `killall`, no killing by name or pattern. Every process it
     terminates is one it started, killed by explicit PID, and `_terminate_owned`
-    refuses any PID not in `_OWNED_PIDS`.
-  - Every server runs with `HOME` pointed at a temp directory, so no test can
-    reach the user's real `~/.config/browseruse/profiles`. setUpClass asserts
-    that before launching anything.
+    refuses any PID not in `_OWNED_PIDS`. Chrome, the daemon and the watchdog are
+    children of a server this file started, so they are recorded as owned.
+  - Every server runs with HOME in a temp dir, so no test reads or writes the
+    user's real config, and with BH_HOME in a short /tmp dir: the daemon socket
+    path is capped near 104 bytes, which a macOS $TMPDIR path would exceed.
+  - The servers run in the temp HOME with every model and cloud API key removed
+    from their environment, so nothing can call a model or a cloud service.
   - `BROWSER_USE_HEADLESS=true` throughout: nothing appears on screen.
   - `addClassCleanup` tears the world down even when an assertion fails.
 
-Cost control: browsers are slow, so each class runs its scenario ONCE in
-setUpClass, records what it observed, and the test methods assert on those
-recordings. That keeps the suite near a minute while still letting each
-behaviour fail on its own.
+Cost control: each class runs its scenario once in setUpClass, records what it
+observed, and the test methods assert on those recordings.
 
 Negative control: `SABOTAGE` (below) lets a driver inject Python that runs after
-mcp-server.py is imported but before `main()` — e.g. neutering
-`_remove_session_profile_dir`. That is how this suite demonstrates each assertion
-can fail WITHOUT editing mcp-server.py. It is None in every normal run.
+mcp-server.py is imported but before `main()`, for example making
+`browser_use.browser.local.LocalBrowser.stop` a no-op. That is how this suite
+shows its assertions can fail without editing mcp-server.py. It is None in every
+normal run.
 
-Skips (loudly, with a reason) when browser_use/mcp/psutil are missing, when
-Playwright's Chromium is not installed, or on a platform without POSIX signals.
+The suite refuses to run (each class reports why) when browser_use, mcp or psutil
+is missing, when Playwright's Chromium is not installed, or on a platform without
+POSIX signals.
 """
 
+import base64
+import http.server
 import importlib.util
 import json
 import os
 import selectors
 import shutil
 import signal
+import socket
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import unittest
+import urllib.parse
+from dataclasses import dataclass
+from html import escape as html_escape
 from pathlib import Path
 
-_SERVER_PATH = Path(__file__).parent / "mcp-server.py"
+_SCRIPTS_DIR = Path(__file__).resolve().parent
+_SERVER_PATH = _SCRIPTS_DIR / "mcp-server.py"
 
-# Must match mcp-server.py's _SESSION_PROFILE_PREFIX. Deliberately duplicated
-# rather than imported: a test that asks the code under test what to expect
-# cannot detect the code under test changing it.
-_PROFILE_PREFIX = "browser-use-user-data-dir-session-"
+# browser-use 1.0's temp-dir prefix (browser_use/browser/local.py TMP_PREFIX).
+# Duplicated on purpose: a test that asks the code under test what to expect
+# cannot notice the code under test changing it.
+_TEMP_PROFILE_PREFIX = "browser-use-chrome-"
 
-# Negative-control hook — see the module docstring. Normal runs leave this None.
+# Negative-control hook; see the module docstring. Normal runs leave this None.
 SABOTAGE: str | None = None
+
+# Environment the servers must never inherit: anything that could reach a model,
+# a cloud browser, the user's Chrome, or the user's own harness state.
+_STRIPPED_ENV = (
+    "ANTHROPIC_API_KEY",
+    "OPENAI_API_KEY",
+    "BROWSER_USE_API_KEY",
+    "BROWSER_USE_CLOUD",
+    "BROWSER_USE_ALLOWED_DOMAINS",
+    "CHROME_EXECUTABLE_PATH",
+    "CLAUDE_PROJECT_DIR",
+    "XDG_CONFIG_HOME",
+)
+_STRIPPED_ENV_PREFIXES = ("BH_", "BROWSER_HARNESS_", "BU_")
 
 
 # ---------------------------------------------------------------------------
 # Environment gating
 # ---------------------------------------------------------------------------
-
-def _missing_dependency() -> str | None:
-    """Reason this machine cannot run these tests, or None."""
-    if os.name != "posix":
-        return "POSIX only: the suite sends SIGTERM/SIGKILL to the server"
-    for module in ("browser_use", "mcp", "psutil"):
-        if importlib.util.find_spec(module) is None:
-            return f"{module} is not installed"
-    if not _SERVER_PATH.is_file():
-        return f"server not found at {_SERVER_PATH}"
-    if _playwright_chromium() is None:
-        return (
-            "no Playwright Chromium in the browser cache — install it with "
-            "'python3 -m playwright install chromium'"
-        )
-    return None
-
 
 def _playwright_cache_root() -> Path:
     """Playwright's browser cache root. Resolved independently of mcp-server.py:
@@ -104,37 +125,6 @@ def _playwright_cache_root() -> Path:
     if sys.platform == "darwin":
         return Path.home() / "Library" / "Caches" / "ms-playwright"
     return Path.home() / ".cache" / "ms-playwright"
-
-
-def _exe_of(pid: int, required: bool = False, attempts: int = 5) -> str | None:
-    """
-    The executable path of `pid`, or None once it is gone.
-
-    Reading it is inherently racy: psutil resolves /proc/<pid>/exe on Linux, so a
-    process that exits between the check and the read raises FileNotFoundError
-    rather than NoSuchProcess. Chrome reaps helper processes constantly, so this
-    fires in normal operation — it failed a CI run on a helper, not on anything
-    the test was asserting about.
-
-    `required=True` retries briefly before giving up, for a process the caller
-    genuinely expects to be alive (the main browser). Everything else is
-    best-effort and simply drops out of the result.
-    """
-    import psutil
-
-    for attempt in range(attempts if required else 1):
-        try:
-            return psutil.Process(pid).exe()
-        except (psutil.NoSuchProcess, psutil.AccessDenied, FileNotFoundError, OSError):
-            if not required:
-                return None
-            if attempt == attempts - 1:
-                raise AssertionError(
-                    f"could not read the executable path of pid {pid}; the process "
-                    "the test expects to be running is gone"
-                )
-            time.sleep(0.2)
-    return None
 
 
 def _playwright_chromium() -> str | None:
@@ -149,11 +139,28 @@ def _playwright_chromium() -> str | None:
     return str(matches[-1]) if matches else None
 
 
-_SKIP_REASON = _missing_dependency()
+def _missing_dependency() -> str | None:
+    """Reason this machine cannot run these tests, or None."""
+    if os.name != "posix":
+        return "POSIX only: the suite sends SIGTERM/SIGKILL to the server"
+    for module in ("browser_use", "browser_harness", "mcp", "psutil"):
+        if importlib.util.find_spec(module) is None:
+            return f"{module} is not installed"
+    if not _SERVER_PATH.is_file():
+        return f"server not found at {_SERVER_PATH}"
+    if _playwright_chromium() is None:
+        return (
+            "no Playwright Chromium in the browser cache; install it with "
+            "'python3 -m playwright install chromium'"
+        )
+    return None
+
+
+_UNAVAILABLE = _missing_dependency()
 
 
 # ---------------------------------------------------------------------------
-# Process ownership — nothing is killed unless this test started it
+# Process ownership: nothing is killed unless this test started it
 # ---------------------------------------------------------------------------
 
 _OWNED_PIDS: set[int] = set()
@@ -165,8 +172,9 @@ def _own_tree(pid: int) -> list[int]:
 
     Chrome forks helpers and renderers continuously, so this is called at each
     observation point rather than once. Anything reachable from a PID we spawned
-    was spawned by us, transitively — which is what makes killing it in cleanup
-    legitimate.
+    was spawned by us, transitively, which is what makes killing it in cleanup
+    legitimate. It must run while the server is alive: after a SIGKILL its
+    children are reparented and no longer reachable from it.
     """
     import psutil
 
@@ -186,16 +194,13 @@ def _terminate_owned(pid: int, timeout: float = 5.0) -> None:
     """
     Terminate one PID this test created. Raises if the PID is not ours.
 
-    The guard is the point: it makes an accidental kill of a process belonging to
-    the user (their Chrome, their editor, anything) impossible by construction,
-    rather than by a pattern that happens to be careful today.
+    The guard makes an accidental kill of a process belonging to the user (their
+    Chrome, their editor, anything) impossible by construction.
     """
     import psutil
 
     if pid not in _OWNED_PIDS:
-        raise AssertionError(
-            f"refusing to terminate pid {pid}: not started by this test"
-        )
+        raise AssertionError(f"refusing to terminate pid {pid}: not started by this test")
     try:
         proc = psutil.Process(pid)
     except psutil.NoSuchProcess:
@@ -215,24 +220,24 @@ def _terminate_owned(pid: int, timeout: float = 5.0) -> None:
 
 def _terminate_all_owned() -> None:
     """Kill every PID this test started that is somehow still alive."""
-    import psutil
-
     for pid in sorted(_OWNED_PIDS):
-        if psutil.pid_exists(pid):
+        if _alive(pid):
             _terminate_owned(pid, timeout=3.0)
 
 
-def _alive(pid: int) -> bool:
+def _alive(pid: int | None) -> bool:
     """True while `pid` is a live, non-zombie process."""
     import psutil
 
+    if not pid:
+        return False
     try:
         return psutil.Process(pid).status() != psutil.STATUS_ZOMBIE
     except Exception:
         return False
 
 
-def _wait_until(predicate, timeout: float, interval: float = 0.25) -> bool:
+def _wait_until(predicate, timeout: float, interval: float = 0.1) -> bool:
     """Poll `predicate` until true or `timeout` elapses. Returns its final value."""
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -242,35 +247,43 @@ def _wait_until(predicate, timeout: float, interval: float = 0.25) -> bool:
     return bool(predicate())
 
 
-def _describe_survivors(profile_dir: Path, limit: int = 40) -> str:
+def _exe_of(pid: int, required: bool = False, attempts: int = 5) -> str | None:
     """
-    What is still inside `profile_dir`, or '<gone>'. Never raises.
+    The executable path of `pid`, or None once it is gone.
 
-    A profile that survived shutdown is not one bug but a choice of two, and the
-    contents tell them apart: a full Chrome profile means the removal never ran,
-    while a handful of files (a stray journal, one directory) means it ran and
-    lost a race with something still writing. Without this, a CI failure reports
-    only that the path exists.
+    Racy by nature: Chrome reaps helpers constantly, and on Linux psutil reads
+    /proc/<pid>/exe, which raises FileNotFoundError for a process that exited in
+    between. `required=True` retries briefly, for the main browser process.
     """
+    import psutil
+
+    for attempt in range(attempts if required else 1):
+        try:
+            return psutil.Process(pid).exe()
+        except (psutil.NoSuchProcess, psutil.AccessDenied, FileNotFoundError, OSError):
+            if not required:
+                return None
+            if attempt == attempts - 1:
+                raise AssertionError(
+                    f"could not read the executable path of pid {pid}; the process "
+                    "the test expects to be running is gone"
+                )
+            time.sleep(0.2)
+    return None
+
+
+def _cmdline(pid: int) -> list[str]:
+    import psutil
+
     try:
-        if not profile_dir.exists():
-            return "<gone>"
-        names = sorted(str(p.relative_to(profile_dir)) for p in profile_dir.rglob("*"))
-    except Exception as exc:  # pragma: no cover - diagnostics must not fail a run
-        return f"<unreadable: {exc}>"
-    shown = ", ".join(names[:limit]) or "<empty directory>"
-    suffix = f" (+{len(names) - limit} more)" if len(names) > limit else ""
-    return f"{len(names)} entries: {shown}{suffix}"
+        return psutil.Process(pid).cmdline()
+    except Exception:
+        return []
 
 
 def _user_data_dir_args(pid: int) -> list[str]:
     """Every --user-data-dir VALUE on a live process's real command line."""
-    import psutil
-
-    try:
-        cmdline = psutil.Process(pid).cmdline()
-    except Exception:
-        return []
+    cmdline = _cmdline(pid)
     values = []
     for index, arg in enumerate(cmdline):
         if arg.startswith("--user-data-dir="):
@@ -280,86 +293,37 @@ def _user_data_dir_args(pid: int) -> list[str]:
     return values
 
 
-def _dead_digit_prefix(pid: int) -> int | None:
+def _role(pid: int) -> str:
     """
-    A PID that is a DIGIT PREFIX of `pid` and does not currently exist.
-
-    This is how the suite builds the prefix collision with real processes:
-    a dead 8173 whose profile directory name is a string prefix of live 81735's.
-    Returns the longest such prefix, or None when every prefix is taken.
+    What one direct child of a server is: 'chrome', 'daemon', 'watchdog' or
+    'other'. Read from the command line of a process this test already owns,
+    only to classify it; nothing is ever killed by what this returns.
     """
-    import psutil
-
-    text = str(pid)
-    for cut in range(len(text) - 1, 0, -1):
-        candidate = text[:cut]
-        if candidate.startswith("0"):
-            continue
-        value = int(candidate)
-        if value <= 1:  # 1 is init/launchd and always exists
-            continue
-        if psutil.pid_exists(value):
-            continue
-        return value
-    return None
+    cmdline = _cmdline(pid)
+    joined = " ".join(cmdline)
+    if any(arg.startswith("--user-data-dir") for arg in cmdline):
+        return "chrome"
+    if "browser_harness.daemon" in joined:
+        return "daemon"
+    if "-c" in cmdline and "sys.stdin.buffer.read()" in joined:
+        return "watchdog"
+    return "other"
 
 
-def _ensure_prefixable_pid_space(budget_seconds: float = 20.0) -> int | None:
-    """
-    Walk the PID counter until a freshly spawned process has a free digit prefix.
+def _describe_survivors(path: Path, limit: int = 40) -> str:
+    """What is still inside `path`, or '<gone>'. Never raises.
 
-    Returns the probe PID that satisfied it, or None if the budget ran out. It is
-    a near no-op when the condition already holds, which is the usual case on a
-    developer machine.
-
-    Why this exists: a fresh container starts near the bottom of the PID space,
-    and every PID below roughly 1000 on Linux is a kernel thread that always
-    exists. MEASURED on a GitHub ubuntu runner: the live server drew pid 2850,
-    whose only digit prefixes are 285, 28 and 2 — all occupied — so
-    _dead_digit_prefix returned None, setUpClass raised SkipTest, and the whole
-    five-test class silently did not run. The suite reported OK (skipped=1) and
-    the CI gate then failed the job for running 6 tests instead of 11.
-
-    A five-digit PID has its longest prefix in the 1000-9999 range, which is
-    empty on a machine running a few dozen processes. Spawning throwaway children
-    walks the counter into that range, because each spawn advances it by one.
-
-    Batched on purpose: serially spawning and waiting would need thousands of
-    round trips to climb from 2850 past 10000, where firing a batch and reaping
-    it takes a fraction of that wall-clock.
-
-    This cannot help where `kernel.pid_max` is itself below the five-digit range.
-    There the budget expires and the caller skips exactly as it did before, so
-    the worst case is today's behaviour rather than a hang.
-    """
-    true_bin = shutil.which("true") or "/bin/true"
-
-    def probe() -> int:
-        child = subprocess.Popen(
-            [true_bin], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-        )
-        pid = child.pid
-        child.wait()
-        return pid
-
-    pid = probe()
-    if _dead_digit_prefix(pid) is not None:
-        return pid
-
-    deadline = time.monotonic() + budget_seconds
-    while time.monotonic() < deadline:
-        batch = [
-            subprocess.Popen(
-                [true_bin], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-            )
-            for _ in range(256)
-        ]
-        last = batch[-1].pid
-        for child in batch:
-            child.wait()
-        if _dead_digit_prefix(last) is not None:
-            return last
-    return None
+    A full Chrome profile means the removal never ran; a few files mean it ran
+    and lost a race with something still writing."""
+    try:
+        if not path.exists():
+            return "<gone>"
+        names = sorted(str(p.relative_to(path)) for p in path.rglob("*"))
+    except Exception as exc:  # pragma: no cover - diagnostics must not fail a run
+        return f"<unreadable: {exc}>"
+    shown = ", ".join(names[:limit]) or "<empty directory>"
+    suffix = f" (+{len(names) - limit} more)" if len(names) > limit else ""
+    return f"{len(names)} entries: {shown}{suffix}"
 
 
 # ---------------------------------------------------------------------------
@@ -368,6 +332,7 @@ def _ensure_prefixable_pid_space(budget_seconds: float = 20.0) -> int | None:
 
 _LAUNCHER_TEMPLATE = """\
 import asyncio, importlib.util, sys
+sys.path.insert(0, {scripts!r})
 spec = importlib.util.spec_from_file_location("magus_mcp_server", {server!r})
 mod = importlib.util.module_from_spec(spec)
 sys.modules["magus_mcp_server"] = mod
@@ -377,17 +342,31 @@ asyncio.run(mod.main())
 """
 
 
+@dataclass
+class _Launch:
+    """The three processes one local browser session started, and its profile."""
+
+    chrome: int
+    daemon: int | None
+    watchdog: int | None
+    profile_dir: Path
+
+    @property
+    def temp_dir(self) -> Path:
+        """`<tmp>/browser-use-chrome-*`: browser-use deletes it on stop."""
+        return self.profile_dir.parent
+
+
 class _Server:
     """
     A real `mcp-server.py` subprocess plus a minimal JSON-RPC client.
 
-    test_mcp_stdio.py uses the MCP SDK's stdio_client for the same job; this
-    speaks the newline-delimited framing directly because these tests need the
-    server's PID (to compute its profile directory name) and need to signal it —
-    neither of which the SDK's transport exposes.
+    This speaks the newline-delimited framing directly rather than through the
+    MCP SDK's stdio_client, because these tests need the server's PID and need
+    to signal it, which the SDK's transport does not expose.
     """
 
-    def __init__(self, home: Path, extra_env: dict[str, str] | None = None):
+    def __init__(self, home: Path, bh_home: Path):
         self.home = home
         self._scratch: Path | None = None
         self.stderr_path = home / f"server-stderr-{time.monotonic_ns()}.log"
@@ -395,20 +374,21 @@ class _Server:
         self._buffer = b""
         self._next_id = 0
 
-        env = dict(os.environ)
+        env = {
+            key: value
+            for key, value in os.environ.items()
+            if key not in _STRIPPED_ENV and not key.startswith(_STRIPPED_ENV_PREFIXES)
+        }
         env.update(
             HOME=str(home),
+            BH_HOME=str(bh_home),
             # The temp HOME has no browser cache, so point the resolver at the
-            # real one. This is also what keeps assertion 1 meaningful: the
-            # binary must come from HERE, not from /Applications.
+            # real one. The binary must come from here, not /Applications.
             PLAYWRIGHT_BROWSERS_PATH=str(_playwright_cache_root()),
             BROWSER_USE_HEADLESS="true",
             ANONYMIZED_TELEMETRY="false",
             PYTHONUNBUFFERED="1",
         )
-        for key in ("CHROME_EXECUTABLE_PATH", "CLAUDE_PROJECT_DIR", "BROWSER_USE_CLOUD"):
-            env.pop(key, None)
-        env.update(extra_env or {})
 
         self.proc = subprocess.Popen(
             self._argv(),
@@ -416,6 +396,8 @@ class _Server:
             stdout=subprocess.PIPE,
             stderr=self._stderr_file,
             env=env,
+            # browser-use reads a .env from the working directory at import.
+            cwd=str(home),
             bufsize=0,
         )
         self.pid = self.proc.pid
@@ -431,14 +413,11 @@ class _Server:
         self._scratch = Path(tempfile.mkdtemp(prefix="e2e-sabotage-"))
         launcher = self._scratch / "launcher.py"
         launcher.write_text(
-            _LAUNCHER_TEMPLATE.format(server=str(_SERVER_PATH), sabotage=SABOTAGE)
+            _LAUNCHER_TEMPLATE.format(
+                scripts=str(_SCRIPTS_DIR), server=str(_SERVER_PATH), sabotage=SABOTAGE
+            )
         )
         return [sys.executable, str(launcher)]
-
-    @property
-    def profile_dir(self) -> Path:
-        """Where this server's PID-scoped Chrome profile must appear."""
-        return self.home / ".config" / "browseruse" / "profiles" / f"{_PROFILE_PREFIX}{self.pid}"
 
     # -- transport ------------------------------------------------------
 
@@ -475,7 +454,7 @@ class _Server:
             self._buffer += chunk
 
     def request(self, method: str, params: dict | None = None, timeout: float = 120.0) -> dict:
-        """One JSON-RPC request/response round trip, skipping notifications."""
+        """One JSON-RPC request/response round trip, passing over notifications."""
         self._next_id += 1
         request_id = self._next_id
         self._send({"jsonrpc": "2.0", "id": request_id, "method": method, "params": params or {}})
@@ -488,7 +467,7 @@ class _Server:
         self.request(
             "initialize",
             {
-                "protocolVersion": "2024-11-05",
+                "protocolVersion": "2025-06-18",
                 "capabilities": {},
                 "clientInfo": {"name": "e2e-lifecycle", "version": "1"},
             },
@@ -496,35 +475,77 @@ class _Server:
         )
         self._send({"jsonrpc": "2.0", "method": "notifications/initialized"})
 
-    def call_tool(self, name: str, arguments: dict | None = None, timeout: float = 180.0) -> str:
-        """Call an MCP tool and return its text content."""
+    def call_tool_raw(self, name: str, arguments: dict | None = None, timeout: float = 120.0) -> tuple[str, bool]:
+        """Call an MCP tool and return (first text content, isError), whatever it says."""
         reply = self.request(
             "tools/call", {"name": name, "arguments": arguments or {}}, timeout=timeout
         )
+        if "error" in reply:
+            raise RuntimeError(f"{name}: JSON-RPC error {reply['error']}")
         result = reply.get("result") or {}
-        if result.get("isError"):
-            raise RuntimeError(f"{name} failed: {result}")
         content = result.get("content") or []
-        return content[0].get("text", "") if content else ""
+        text = content[0].get("text", "") if content else ""
+        return text, bool(result.get("isError"))
+
+    def call_tool(self, name: str, arguments: dict | None = None, timeout: float = 120.0) -> str:
+        """Call an MCP tool and return its first text content. Raises on an error result."""
+        text, is_error = self.call_tool_raw(name, arguments, timeout)
+        if is_error or text.startswith("Error"):
+            raise RuntimeError(f"{name} failed: {text}")
+        return text
 
     # -- lifecycle ------------------------------------------------------
 
-    def launch_browser(self) -> int:
-        """
-        Start a real browser through the server and return its root PID.
-
-        `browser_navigate` is the tool the plugin uses; it lazily calls
-        `_init_browser_session`, which is the code path under test. about:blank
-        keeps it offline and fast.
-        """
+    def children(self) -> set[int]:
         import psutil
 
-        self.call_tool("browser_navigate", {"url": "about:blank"})
+        try:
+            return {child.pid for child in psutil.Process(self.pid).children()}
+        except Exception:
+            return set()
+
+    def launch_browser(self, url: str = "about:blank") -> _Launch:
+        """
+        Start a real browser through the server and return what it started.
+
+        `browser_navigate` starts the primary session on demand, which is the
+        code path under test. Only children that appeared during this call are
+        considered, so an earlier session's lingering daemon (or, under the
+        negative control, its surviving Chrome) is never mistaken for this one.
+        """
+        before = self.children()
+        self.call_tool("browser_navigate", {"url": url})
+        roles: dict[str, list[int]] = {}
+
+        def classified() -> bool:
+            roles.clear()
+            for pid in self.children() - before:
+                roles.setdefault(_role(pid), []).append(pid)
+            return all(roles.get(role) for role in ("chrome", "daemon", "watchdog"))
+
+        _wait_until(classified, timeout=10.0)
         _own_tree(self.pid)
-        children = psutil.Process(self.pid).children()
-        if not children:
-            raise RuntimeError("server launched no browser process")
-        return children[0].pid
+        if not roles.get("chrome"):
+            raise RuntimeError(
+                f"server launched no browser process; new children by role: {roles}; "
+                f"stderr tail: {self.stderr_tail(800)}"
+            )
+        chrome = roles["chrome"][0]
+        user_data_dirs = _user_data_dir_args(chrome)
+        if not user_data_dirs:
+            raise RuntimeError(f"browser {chrome} has no --user-data-dir argument")
+        return _Launch(
+            chrome=chrome,
+            daemon=(roles.get("daemon") or [None])[0],
+            watchdog=(roles.get("watchdog") or [None])[0],
+            profile_dir=Path(user_data_dirs[0]),
+        )
+
+    def only_session_id(self) -> str:
+        sessions = json.loads(self.call_tool("browser_list_sessions"))
+        if len(sessions) != 1:
+            raise RuntimeError(f"expected one session, the server lists {sessions}")
+        return sessions[0]["session_id"]
 
     def stderr_tail(self, limit: int = 4000) -> str:
         try:
@@ -548,12 +569,11 @@ class _Server:
             except Exception:
                 pass
         if self.proc.poll() is None:
-            _terminate_owned(self.pid, timeout=5.0)
-            if self.proc.poll() is None:
-                try:
-                    self.proc.kill()
-                except Exception:
-                    pass
+            # stdin is closed, so the server stops its browsers and returns.
+            try:
+                self.proc.wait(timeout=15)
+            except Exception:
+                _terminate_owned(self.pid, timeout=5.0)
         try:
             self.proc.wait(timeout=5)
         except Exception:
@@ -566,460 +586,800 @@ class _Server:
             shutil.rmtree(self._scratch, ignore_errors=True)
 
 
-_RAW_PROCS: list[subprocess.Popen] = []
-
-
-def _launch_raw_chromium(profile_dir: Path) -> int:
+def _make_world(cls) -> tuple[Path, Path]:
     """
-    Launch Playwright's Chromium directly on `profile_dir` and return its PID.
+    A temp HOME and a short BH_HOME for one class, with cleanups registered.
 
-    Used to stand up the reaper's *victims* cheaply. The reaper identifies a
-    browser solely by the `--user-data-dir` value on its command line, so a
-    directly-launched Chromium is indistinguishable from a server-launched one
-    to the code under test — and costs ~1s instead of ~15s.
+    BH_HOME lives directly under /tmp because the daemon's socket path must stay
+    under the AF_UNIX limit (about 104 bytes on macOS).
     """
-    binary = _playwright_chromium()
-    assert binary is not None
-    profile_dir.mkdir(parents=True, exist_ok=True)
-    proc = subprocess.Popen(
-        [
-            binary,
-            "--headless=new",
-            f"--user-data-dir={profile_dir}",
-            "--no-first-run",
-            "--no-default-browser-check",
-            "--disable-extensions",
-            "--remote-debugging-port=0",
-            "about:blank",
-        ],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-    _RAW_PROCS.append(proc)  # keep a reference so Python reaps it, not the GC
-    _OWNED_PIDS.add(proc.pid)
-    if not _wait_until(lambda: bool(_user_data_dir_args(proc.pid)), timeout=20.0):
-        _terminate_owned(proc.pid)
-        raise RuntimeError("raw Chromium did not come up")
-    _own_tree(proc.pid)
-    return proc.pid
+    home = Path(tempfile.mkdtemp(prefix="browser-use-e2e-home-"))
+    bh_home = Path(tempfile.mkdtemp(prefix="bh", dir="/tmp"))
+    # Cleanups run last-in first-out: servers first, then strays, then dirs.
+    cls.addClassCleanup(shutil.rmtree, home, ignore_errors=True)
+    cls.addClassCleanup(shutil.rmtree, bh_home, ignore_errors=True)
+    cls.addClassCleanup(_terminate_all_owned)
+    real_config = Path.home() / ".config"
+    assert not str(home).startswith(str(real_config)), "HOME must be a temp dir"
+    return home, bh_home
 
 
-def _make_home() -> Path:
-    """A temp directory to use as HOME, so nothing touches the real profiles."""
-    return Path(tempfile.mkdtemp(prefix="browser-use-e2e-home-"))
+def _data_url(html: str) -> str:
+    return "data:text/html," + urllib.parse.quote(html)
+
+
+def _server_tmp_root() -> str:
+    """The temp root the servers inherit through TMPDIR, resolved."""
+    return os.path.realpath(tempfile.gettempdir())
 
 
 # ---------------------------------------------------------------------------
-# 1-4: launch, profile directory, close, shutdown
+# Launch, profile directory, close, SIGTERM
 # ---------------------------------------------------------------------------
 
-@unittest.skipIf(_SKIP_REASON is not None, f"E2E unavailable: {_SKIP_REASON}")
+@unittest.skipIf(_UNAVAILABLE is not None, f"E2E unavailable: {_UNAVAILABLE}")
 class TestServerOwnedBrowserLifecycle(unittest.TestCase):
     """One real server, two real browsers, one recorded scenario.
 
     Sequence, run once in setUpClass:
       launch -> observe -> close through the server -> observe
-             -> launch again -> SIGTERM the server -> observe
+             -> launch again -> SIGTERM the server -> observe at exit and after
     """
 
     observations: dict = {}
 
     @classmethod
     def setUpClass(cls):
-        import psutil
+        obs = cls.observations = {}
+        home, bh_home = _make_world(cls)
+        obs["home"] = home
 
-        cls.observations = {}
-        home = _make_home()
-        cls.addClassCleanup(shutil.rmtree, home, ignore_errors=True)
-        cls.addClassCleanup(_terminate_all_owned)
-
-        server = _Server(home)
+        server = _Server(home, bh_home)
         cls.addClassCleanup(server.close)
-
-        profiles_root = home / ".config" / "browseruse" / "profiles"
-        assert str(profiles_root).startswith(str(home)), "profiles must live under the temp HOME"
-
         server.initialize()
 
         # --- launch -----------------------------------------------------
-        browser_pid = server.launch_browser()
+        first = server.launch_browser()
         tree = _own_tree(server.pid)
-        cls.observations["browser_pid"] = browser_pid
-        cls.observations["browser_exe"] = _exe_of(browser_pid, required=True)
-        # Chrome spawns and reaps helper processes continuously, so
-        # `pid_exists(pid)` followed by `Process(pid).exe()` is a race: on Linux
-        # the second call reads /proc/<pid>/exe and raises FileNotFoundError for
-        # a helper that died in between. Observed on CI. Drop what vanished
-        # rather than failing the run over it — the assertion cares about which
-        # binaries ran, not about catching every short-lived helper.
-        cls.observations["descendant_exes"] = sorted(
-            {exe for exe in (_exe_of(pid) for pid in tree) if exe}
-        )
-        cls.observations["user_data_dir_args"] = _user_data_dir_args(browser_pid)
-        cls.observations["profile_dir"] = server.profile_dir
-        cls.observations["profiles_root_entries"] = sorted(
-            p.name for p in profiles_root.iterdir()
-        ) if profiles_root.is_dir() else []
-        cls.observations["profile_dir_exists_after_launch"] = server.profile_dir.is_dir()
+        obs["first"] = first
+        obs["browser_exe"] = _exe_of(first.chrome, required=True)
+        obs["descendant_exes"] = sorted({exe for exe in (_exe_of(pid) for pid in tree) if exe})
+        obs["user_data_dir_args"] = _user_data_dir_args(first.chrome)
+        obs["profile_exists_after_launch"] = first.profile_dir.is_dir()
 
         # --- close the session through the server -----------------------
-        sessions = json.loads(server.call_tool("browser_list_sessions"))
-        session_id = sessions[0]["session_id"]
-        # Re-snapshot: Chrome forks renderers as it runs, so the tree recorded at
-        # launch is already out of date by the time the session is closed.
-        tree = _own_tree(server.pid)
-        cls.observations["close_result"] = server.call_tool(
-            "browser_close_session", {"session_id": session_id}
-        )
-        # Helpers exit a beat after the process that spawned them, so the whole
-        # tree is part of the wait, not just the root.
+        session_id = server.only_session_id()
+        chrome_tree = [pid for pid in _own_tree(first.chrome)]
+        obs["close_result"] = server.call_tool("browser_close_session", {"session_id": session_id})
         _wait_until(
             lambda: (
-                not _alive(browser_pid)
-                and not any(_alive(p) for p in tree)
-                and not server.profile_dir.exists()
+                not _alive(first.chrome)
+                and not any(_alive(p) for p in chrome_tree)
+                and not first.temp_dir.exists()
             ),
             timeout=30.0,
         )
-        cls.observations["browser_alive_after_close"] = _alive(browser_pid)
-        cls.observations["tree_alive_after_close"] = [p for p in tree if _alive(p)]
-        cls.observations["profile_dir_exists_after_close"] = server.profile_dir.exists()
+        obs["browser_alive_after_close"] = _alive(first.chrome)
+        obs["tree_alive_after_close"] = [p for p in chrome_tree if _alive(p)]
+        obs["watchdog_alive_after_close"] = _alive(first.watchdog)
+        obs["temp_dir_exists_after_close"] = first.temp_dir.exists()
+        obs["temp_dir_survivors_after_close"] = _describe_survivors(first.temp_dir)
 
         # --- launch again, then SIGTERM the server ----------------------
-        browser_pid_2 = server.launch_browser()
-        cls.observations["browser_pid_2"] = browser_pid_2
-        cls.observations["profile_dir_exists_after_relaunch"] = server.profile_dir.is_dir()
+        second = server.launch_browser()
+        obs["second"] = second
+        obs["profile_exists_after_relaunch"] = second.profile_dir.is_dir()
+        chrome_tree_2 = _own_tree(second.chrome)
+        _own_tree(server.pid)
 
-        tree_2 = _own_tree(server.pid)
         server.signal(signal.SIGTERM)
-        # The server's own exit is part of the wait, not a separate check after
-        # it: shutdown removes the directory microseconds before os._exit(0), so
-        # sampling the two independently is a race the harness would lose.
-        _wait_until(
-            lambda: (
-                not _alive(browser_pid_2)
-                and not any(_alive(p) for p in tree_2)
-                and not server.profile_dir.exists()
-                and server.proc.poll() is not None
-            ),
-            timeout=45.0,
-        )
-        cls.observations["browser_alive_after_sigterm"] = _alive(browser_pid_2)
-        cls.observations["tree_alive_after_sigterm"] = [p for p in tree_2 if _alive(p)]
-        cls.observations["profile_dir_exists_after_sigterm"] = server.profile_dir.exists()
-        cls.observations["server_exited_after_sigterm"] = server.proc.poll() is not None
-        # What is left when this fails is the whole diagnosis: a directory that
-        # rmtree emptied and something wrote back into looks nothing like one it
-        # never touched. Recording it here is the only chance — the temp HOME is
-        # deleted at class teardown.
-        cls.observations["profile_dir_survivors"] = _describe_survivors(server.profile_dir)
+        try:
+            server.proc.wait(timeout=45)
+        except subprocess.TimeoutExpired:
+            pass
+        # Sampled the instant the server is gone. browser-use's SIGTERM handler
+        # stops the browser before the process dies, so by now Chrome is dead
+        # and its profile removed. The watchdog would also clean up, but only
+        # after the server has exited, so it cannot make this sample pass.
+        obs["server_exited_after_sigterm"] = server.proc.poll() is not None
+        obs["browser_alive_at_exit"] = _alive(second.chrome)
+        obs["temp_dir_exists_at_exit"] = second.temp_dir.exists()
+        obs["temp_dir_survivors_at_exit"] = _describe_survivors(second.temp_dir)
+
+        _wait_until(lambda: not any(_alive(p) for p in chrome_tree_2), timeout=15.0)
+        obs["tree_alive_after_sigterm"] = [p for p in chrome_tree_2 if _alive(p)]
+        # The daemons linger for about 20-30 s after they acknowledge shutdown.
+        daemons = [pid for pid in (first.daemon, second.daemon) if pid]
+        _wait_until(lambda: not any(_alive(p) for p in daemons), timeout=45.0, interval=0.5)
+        obs["daemons_alive_at_end"] = [p for p in daemons if _alive(p)]
+        obs["stderr"] = server.stderr_tail(1500)
 
     def test_launched_binary_is_playwright_chromium(self):
-        """The browser must come from Playwright's cache — the resolver's whole job."""
-        exe = self.observations["browser_exe"]
-        self.assertIn(
-            "ms-playwright",
-            exe,
-            f"browser was launched from {exe!r}, which is not Playwright's Chromium",
+        """The browser must come from Playwright's cache, the resolver's whole job."""
+        exe = os.path.realpath(self.observations["browser_exe"])
+        root = os.path.realpath(_playwright_cache_root())
+        self.assertTrue(
+            exe.startswith(root + os.sep),
+            f"browser was launched from {exe!r}, which is not under Playwright's cache {root!r}",
         )
 
     def test_launched_binary_is_not_the_users_real_chrome(self):
         """The original bug: the plugin silently drove /Applications/Google Chrome."""
-        real_chrome = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-        for exe in [self.observations["browser_exe"], *self.observations["descendant_exes"]]:
-            self.assertNotEqual(exe, real_chrome, "launched the user's real Chrome")
-            self.assertNotIn(
-                "/Applications/Google Chrome.app",
-                exe,
-                f"a browser process is running out of the user's Chrome bundle: {exe!r}",
-            )
-
-    def test_profile_directory_is_created_with_the_session_pid_name(self):
-        """`browser-use-user-data-dir-session-<server pid>`, under the temp HOME."""
-        profile_dir = self.observations["profile_dir"]
-        self.assertTrue(
-            self.observations["profile_dir_exists_after_launch"],
-            f"{profile_dir} was not created; profiles dir held "
-            f"{self.observations['profiles_root_entries']}",
+        real_chromes = (
+            "/Applications/Google Chrome.app",
+            "/opt/google/chrome",
+            "/usr/bin/google-chrome",
         )
-        self.assertTrue(profile_dir.name.startswith(_PROFILE_PREFIX))
-        self.assertTrue(profile_dir.name[len(_PROFILE_PREFIX):].isdigit())
+        for exe in [self.observations["browser_exe"], *self.observations["descendant_exes"]]:
+            for real in real_chromes:
+                self.assertFalse(
+                    exe.startswith(real),
+                    f"a browser process is running out of the user's Chrome: {exe!r}",
+                )
 
-    def test_user_data_dir_argument_points_at_that_profile_directory(self):
-        """Not just named right — the real Chrome process must actually use it."""
+    def test_user_data_dir_is_a_browser_use_chrome_temp_dir(self):
+        """The real --user-data-dir is <tmp>/browser-use-chrome-*/profile, nowhere in HOME."""
         values = self.observations["user_data_dir_args"]
-        self.assertTrue(values, "browser process had no --user-data-dir argument")
-        expected = os.path.realpath(self.observations["profile_dir"])
-        resolved = [os.path.realpath(v) for v in values]
-        self.assertIn(
-            expected,
-            resolved,
-            f"--user-data-dir was {resolved}, expected {expected}",
+        self.assertEqual(1, len(values), f"expected one --user-data-dir, saw {values}")
+        profile = Path(os.path.realpath(values[0]))
+        self.assertEqual("profile", profile.name, f"--user-data-dir is {profile}")
+        self.assertTrue(
+            profile.parent.name.startswith(_TEMP_PROFILE_PREFIX),
+            f"--user-data-dir {profile} is not inside a {_TEMP_PROFILE_PREFIX}* temp dir",
+        )
+        self.assertEqual(
+            _server_tmp_root(),
+            str(profile.parent.parent),
+            f"--user-data-dir {profile} is not in the system temp dir",
+        )
+        self.assertTrue(self.observations["profile_exists_after_launch"])
+        home = os.path.realpath(self.observations["home"])
+        self.assertFalse(
+            str(profile).startswith(home + os.sep),
+            f"--user-data-dir {profile} is under HOME",
+        )
+        self.assertFalse(
+            (self.observations["home"] / ".config" / "browseruse" / "profiles").exists(),
+            "something created ~/.config/browseruse/profiles; profiles belong in the temp dir",
         )
 
     def test_closing_the_session_kills_the_browser_and_frees_the_profile_dir(self):
-        """browser_close_session must end the process AND reclaim the ~50MB dir."""
+        """browser_close_session must end Chrome AND remove its temp profile."""
+        first = self.observations["first"]
+        self.assertIsNotNone(first.watchdog, "the session started no watchdog")
+        self.assertIsNotNone(first.daemon, "the session started no browser-harness daemon")
         self.assertIn("Successfully closed", self.observations["close_result"])
         self.assertFalse(
-            self.observations["browser_alive_after_close"],
-            "browser survived browser_close_session",
+            self.observations["browser_alive_after_close"], "browser survived browser_close_session"
         )
         self.assertEqual(
             [], self.observations["tree_alive_after_close"], "browser helpers survived close"
         )
         self.assertFalse(
-            self.observations["profile_dir_exists_after_close"],
-            f"{self.observations['profile_dir']} survived browser_close_session",
+            self.observations["watchdog_alive_after_close"],
+            "the watchdog survived a normal close; it would clean up a second time later",
+        )
+        self.assertFalse(
+            self.observations["temp_dir_exists_after_close"],
+            f"{first.temp_dir} survived browser_close_session; what is left: "
+            f"{self.observations['temp_dir_survivors_after_close']}",
         )
 
     def test_sigterm_shutdown_kills_the_browser_and_removes_the_profile_dir(self):
-        """A normally-terminated server must not strand Chrome or its profile."""
+        """A server ended by SIGTERM cleans up before it exits, and does exit."""
+        second = self.observations["second"]
+        self.assertIsNotNone(second.daemon, "the second session started no browser-harness daemon")
         self.assertTrue(
-            self.observations["profile_dir_exists_after_relaunch"],
-            "the second launch did not recreate the profile directory",
+            self.observations["profile_exists_after_relaunch"],
+            "the second launch did not create a profile directory",
+        )
+        self.assertTrue(
+            self.observations["server_exited_after_sigterm"],
+            f"the server did not exit within 45 s of SIGTERM; stderr: {self.observations['stderr']}",
         )
         self.assertFalse(
-            self.observations["browser_alive_after_sigterm"],
-            "browser survived SIGTERM of its server",
+            self.observations["browser_alive_at_exit"],
+            "Chrome was still running when its server exited after SIGTERM",
+        )
+        self.assertFalse(
+            self.observations["temp_dir_exists_at_exit"],
+            f"{second.temp_dir} still existed when its server exited after SIGTERM; "
+            f"what was there: {self.observations['temp_dir_survivors_at_exit']}",
         )
         self.assertEqual(
             [],
             self.observations["tree_alive_after_sigterm"],
             "browser helpers survived SIGTERM of their server",
         )
-        self.assertFalse(
-            self.observations["profile_dir_exists_after_sigterm"],
-            f"{self.observations['profile_dir']} survived SIGTERM of its server; "
-            f"what is left: {self.observations['profile_dir_survivors']}",
-        )
-        # Cleanup is bounded, so it may delay the exit but must never prevent it.
-        # A server that cleaned up perfectly and then stayed resident is the bug
-        # os._exit(0) exists to prevent, and it would otherwise pass this class.
-        self.assertTrue(
-            self.observations["server_exited_after_sigterm"],
-            "the server cleaned up but never exited after SIGTERM",
+        self.assertEqual(
+            [],
+            self.observations["daemons_alive_at_end"],
+            "a browser-harness daemon was still running 45 s after its server stopped",
         )
 
 
 # ---------------------------------------------------------------------------
-# 5-6: the reaper, against processes that really exist
+# The server drives a real page
 # ---------------------------------------------------------------------------
 
-@unittest.skipIf(_SKIP_REASON is not None, f"E2E unavailable: {_SKIP_REASON}")
-class TestReaperAgainstRealProcesses(unittest.TestCase):
+_DOWNLOAD_NAME = "e2e-download.txt"
+_DOWNLOAD_BODY = "downloaded by the browser-use e2e suite\n"
+_PAGE = (
+    "<title>start</title>"
+    "<button onclick=\"document.title='clicked'\">Press me</button>"
+    "<a href=\"data:text/plain;base64,"
+    + base64.b64encode(_DOWNLOAD_BODY.encode()).decode()
+    + f"\" download=\"{_DOWNLOAD_NAME}\">Get the file</a>"
+)
+
+
+@unittest.skipIf(_UNAVAILABLE is not None, f"E2E unavailable: {_UNAVAILABLE}")
+class TestServerDrivesARealPage(unittest.TestCase):
+    """One server, one page: the tools a model uses, end to end."""
+
+    observations: dict = {}
+
+    @classmethod
+    def setUpClass(cls):
+        obs = cls.observations = {}
+        home, bh_home = _make_world(cls)
+        server = _Server(home, bh_home)
+        cls.addClassCleanup(server.close)
+        server.initialize()
+
+        launch = server.launch_browser(_data_url(_PAGE))
+        obs["temp_dir"] = launch.temp_dir
+
+        state = json.loads(server.call_tool("browser_get_state"))
+        obs["state"] = state
+        elements = state.get("interactive_elements") or []
+        button = next((e for e in elements if e.get("tag") == "button"), None)
+        link = next((e for e in elements if e.get("tag") == "a"), None)
+        obs["button"], obs["link"] = button, link
+
+        if button is not None:
+            obs["click_result"] = server.call_tool("browser_click", {"index": button["index"]})
+            obs["title_after_click"] = json.loads(
+                server.call_tool("browser_evaluate", {"script": "document.title"})
+            )
+        obs["evaluate_sum"] = json.loads(
+            server.call_tool("browser_evaluate", {"script": "return 6 * 7"})
+        )
+
+        shot = home / "shots" / "page.png"
+        obs["shot_path"] = shot
+        obs["save_result"] = json.loads(
+            server.call_tool("browser_save_screenshot", {"output_path": str(shot)})
+        )
+        obs["shot_bytes"] = shot.read_bytes() if shot.is_file() else b""
+
+        downloads = home / ".config" / "browseruse" / "downloads"
+        target = downloads / _DOWNLOAD_NAME
+        obs["download_target"] = target
+        if link is not None:
+            obs["download_click"] = server.call_tool("browser_click", {"index": link["index"]})
+            _wait_until(lambda: target.is_file() and target.read_text() == _DOWNLOAD_BODY, 20.0)
+        obs["download_text"] = target.read_text() if target.is_file() else None
+        obs["downloads_listing"] = sorted(p.name for p in downloads.iterdir()) if downloads.is_dir() else []
+        obs["real_downloads_untouched"] = not (home / "Downloads" / _DOWNLOAD_NAME).exists()
+
+        obs["close_all"] = server.call_tool("browser_close_all")
+        _wait_until(lambda: not _alive(launch.chrome) and not launch.temp_dir.exists(), 30.0)
+
+    def test_navigate_get_state_click_evaluate_round_trip(self):
+        """Navigate a data: page, find the button by index, click it, read the title back."""
+        state = self.observations["state"]
+        self.assertEqual("start", state.get("title"), f"get_state: {state}")
+        button = self.observations["button"]
+        self.assertIsNotNone(button, f"get_state listed no button: {state.get('interactive_elements')}")
+        self.assertIsInstance(button["index"], int)
+        self.assertIn("Press me", button.get("text", ""))
+        self.assertEqual(f"Clicked element {button['index']}", self.observations["click_result"])
+        self.assertEqual(
+            {"result": "clicked"},
+            self.observations["title_after_click"],
+            "clicking the button by its get_state index did not run its onclick",
+        )
+        self.assertEqual({"result": 42}, self.observations["evaluate_sum"])
+
+    def test_save_screenshot_writes_a_png(self):
+        """browser_save_screenshot writes a real PNG of the live page to the path given."""
+        result = self.observations["save_result"]
+        data = self.observations["shot_bytes"]
+        self.assertEqual(str(self.observations["shot_path"]), result["path"])
+        self.assertEqual(b"\x89PNG\r\n\x1a\n", data[:8], "the file is not a PNG")
+        self.assertEqual(len(data), result["size_bytes"])
+        self.assertGreater(result["width"], 0)
+        self.assertGreater(result["height"], 0)
+
+    def test_download_lands_in_config_downloads(self):
+        """A download goes to ~/.config/browseruse/downloads under its own name."""
+        self.assertIsNotNone(self.observations["link"], "get_state listed no download link")
+        self.assertEqual(
+            _DOWNLOAD_BODY,
+            self.observations["download_text"],
+            f"{self.observations['download_target']} did not receive the download; the "
+            f"downloads dir holds {self.observations['downloads_listing']}",
+        )
+        self.assertTrue(self.observations["real_downloads_untouched"], "the file went to ~/Downloads")
+
+
+# ---------------------------------------------------------------------------
+# Tool behaviour on real pages served over local HTTP
+# ---------------------------------------------------------------------------
+
+_FRAME_DOC = (
+    "<button onclick=\"parent.frameClicked = true\">Frame button</button>"
+    "<input id=\"fi\" aria-label=\"Frame field\">"
+)
+_SITE_PAGES = {
+    "/html": "<title>html</title><div id=\"main\"><p>hi</p></div>",
+    "/frames": (
+        "<title>frames</title>"
+        "<button onclick=\"window.mainClicked = true\">Main button</button>"
+        f"<iframe srcdoc=\"{html_escape(_FRAME_DOC, quote=True)}\"></iframe>"
+    ),
+    "/keys": "<title>keys</title><input id=\"k\">",
+    "/dl": "<title>dl</title><a id=\"dl\" href=\"/file\">file</a>",
+}
+_IMPORT_DOWNLOAD_NAME = "import-download.txt"
+_IMPORT_DOWNLOAD_BODY = "downloaded by an imported session\n"
+
+
+class _SiteHandler(http.server.BaseHTTPRequestHandler):
+    """The test site: a few fixed pages, a cookie setter and a file download."""
+
+    def log_message(self, *args):  # keep the test output to test results
+        pass
+
+    def _reply(self, body: str, content_type: str = "text/html", headers: tuple = ()) -> None:
+        data = body.encode()
+        self.send_response(200)
+        self.send_header("Content-Type", f"{content_type}; charset=utf-8")
+        self.send_header("Content-Length", str(len(data)))
+        for name, value in headers:
+            self.send_header(name, value)
+        self.end_headers()
+        self.wfile.write(data)
+
+    def do_GET(self):
+        path = urllib.parse.urlsplit(self.path).path
+        if path.startswith("/set/"):
+            name = path[len("/set/"):]
+            self._reply(
+                f"<title>set {name}</title>",
+                headers=(("Set-Cookie", f"{name}=on; Path=/; Max-Age=3600"),),
+            )
+        elif path == "/file":
+            self._reply(
+                _IMPORT_DOWNLOAD_BODY,
+                content_type="text/plain",
+                headers=(("Content-Disposition", f"attachment; filename=\"{_IMPORT_DOWNLOAD_NAME}\""),),
+            )
+        elif path in _SITE_PAGES:
+            self._reply(_SITE_PAGES[path])
+        else:
+            self.send_error(404)
+
+
+def _start_site(cls) -> int:
     """
-    Three real browsers and three real servers, sharing one HOME:
+    Serve the test site on a free port on 127.0.0.1, and on ::1 at the same port
+    when the machine has IPv6 loopback, so `localhost` reaches it either way.
+    Two hostnames give two cookie origins on one server.
+    """
+    servers = [http.server.ThreadingHTTPServer(("127.0.0.1", 0), _SiteHandler)]
+    port = servers[0].server_address[1]
 
-      LIVE     server L, running, with its own real browser on session-<L>
-      ORPHAN   server B, SIGKILLed after launching a browser -> session-<B>
-      PREFIX   a real Chromium on session-<D>, where D is a real DEAD pid whose
-               digits are a prefix of L's -> its directory name is a string
-               prefix of LIVE's
+    class _V6Server(http.server.ThreadingHTTPServer):
+        address_family = socket.AF_INET6
 
-    Then server R starts. Its reaper must kill ORPHAN and PREFIX and remove their
-    directories, and must leave LIVE's browser and directory completely alone.
-    The PREFIX pair is the bug just fixed: a substring test reaping dead 8173
-    also killed live 81735's browser mid-task.
+    try:
+        servers.append(_V6Server(("::1", port), _SiteHandler))
+    except OSError:
+        pass
+    for server in servers:
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        cls.addClassCleanup(server.server_close)
+        cls.addClassCleanup(server.shutdown)
+    return port
+
+
+def _daemon_sockets(bh_home: Path) -> set[Path]:
+    """The browser-harness daemon sockets under a BH_HOME this test created."""
+    return set(bh_home.rglob("bu-*.sock"))
+
+
+def _daemon_cdp(sock: Path, method: str, **params) -> dict:
+    """
+    One CDP command to the attached tab of a daemon the server under test
+    started for this test. Used only where no tool reaches that daemon.
+    """
+    conn = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    conn.settimeout(30)
+    try:
+        conn.connect(str(sock))
+        conn.sendall((json.dumps({"method": method, "params": params, "session_id": None}) + "\n").encode())
+        data = b""
+        while not data.endswith(b"\n"):
+            chunk = conn.recv(65536)
+            if not chunk:
+                break
+            data += chunk
+    finally:
+        conn.close()
+    reply = json.loads(data or b"{}")
+    if "error" in reply:
+        raise RuntimeError(f"{method} failed: {reply['error']}")
+    return reply.get("result") or {}
+
+
+def _attempt(obs: dict, key: str, step) -> None:
+    """Record what one step returned, or why it failed, so later steps still run."""
+    try:
+        obs[key] = step()
+    except Exception as exc:
+        obs[key] = f"<failed: {exc}>"
+
+
+def _element(state, text: str) -> dict | None:
+    if not isinstance(state, dict):
+        return None
+    return next((e for e in state.get("interactive_elements") or [] if e.get("text") == text), None)
+
+
+@unittest.skipIf(_UNAVAILABLE is not None, f"E2E unavailable: {_UNAVAILABLE}")
+class TestToolsOnRealPages(unittest.TestCase):
+    """
+    One server, pages from a local HTTP server: get_html with a selector, controls
+    inside a srcdoc iframe, printable keys, cookie export across two origins, and
+    an imported session that is not the primary.
     """
 
     observations: dict = {}
 
     @classmethod
     def setUpClass(cls):
-        import psutil
+        obs = cls.observations = {}
+        home, bh_home = _make_world(cls)
+        port = _start_site(cls)
+        on_ip = f"http://127.0.0.1:{port}"
+        on_localhost = f"http://localhost:{port}"
+        server = _Server(home, bh_home)
+        cls.addClassCleanup(server.close)
+        server.initialize()
+        launches = [server.launch_browser(on_ip + "/html")]
 
-        cls.observations = {}
-        home = _make_home()
-        cls.addClassCleanup(shutil.rmtree, home, ignore_errors=True)
-        cls.addClassCleanup(_terminate_all_owned)
-        profiles_root = home / ".config" / "browseruse" / "profiles"
+        # get_html with a selector: a match, no match, an invalid selector.
+        _attempt(obs, "html_main", lambda: server.call_tool_raw("browser_get_html", {"selector": "#main"}))
+        _attempt(obs, "html_missing", lambda: server.call_tool_raw("browser_get_html", {"selector": "#nope"}))
+        _attempt(obs, "html_invalid", lambda: server.call_tool_raw("browser_get_html", {"selector": "[["}))
 
-        # Before anything is created: the PREFIX case below needs the live
-        # server's PID to have a free digit prefix, and the live server takes
-        # whatever PID the OS is handing out when it starts. Move the counter
-        # into a range where that is possible FIRST, because it cannot be fixed
-        # afterwards without tearing the whole fixture down.
-        _ensure_prefixable_pid_space()
+        # Controls inside a same-origin srcdoc iframe, clicked and typed by index.
+        _attempt(obs, "frames_nav", lambda: server.call_tool("browser_navigate", {"url": on_ip + "/frames"}))
+        _attempt(obs, "frames_state", lambda: json.loads(server.call_tool("browser_get_state")))
+        main_button = _element(obs["frames_state"], "Main button")
+        frame_button = _element(obs["frames_state"], "Frame button")
+        frame_field = _element(obs["frames_state"], "Frame field")
+        obs["frame_controls"] = (main_button, frame_button, frame_field)
+        if main_button:
+            _attempt(obs, "main_click", lambda: server.call_tool_raw("browser_click", {"index": main_button["index"]}))
+        if frame_button:
+            _attempt(obs, "frame_click", lambda: server.call_tool_raw("browser_click", {"index": frame_button["index"]}))
+        if frame_field:
+            _attempt(obs, "frame_type", lambda: server.call_tool_raw(
+                "browser_type", {"index": frame_field["index"], "text": "typed in frame"}
+            ))
+        _attempt(obs, "frames_after", lambda: json.loads(server.call_tool("browser_evaluate", {"script": (
+            "return [window.mainClicked === true, window.frameClicked === true,"
+            " document.querySelector('iframe').contentDocument.getElementById('fi').value]"
+        )})))
 
-        # --- LIVE: a real server with a real browser --------------------
-        live = _Server(home)
+        # Printable keys and modifier chords into a focused input.
+        field = "return document.getElementById('k').value"
+
+        def keys():
+            server.call_tool("browser_navigate", {"url": on_ip + "/keys"})
+            server.call_tool("browser_focus", {"selector": "#k"})
+            for key in ("a", "A", "1", " "):
+                server.call_tool("browser_press_key", {"key": key})
+            typed = json.loads(server.call_tool("browser_evaluate", {"script": field}))
+            server.call_tool("browser_keyboard", {"keys": ["Shift+b", "!"]})
+            shifted = json.loads(server.call_tool("browser_evaluate", {"script": field}))
+            server.call_tool("browser_press_key", {"key": "Control+a"})
+            server.call_tool("browser_press_key", {"key": "z"})
+            replaced = json.loads(server.call_tool("browser_evaluate", {"script": field}))
+            return typed, shifted, replaced
+
+        _attempt(obs, "keys", keys)
+
+        # Cookies on two origins, then export the session.
+        export = home / "export" / "session.json"
+        obs["export_path"] = export
+
+        def export_cookies():
+            server.call_tool("browser_navigate", {"url": on_ip + "/set/ip_cookie"})
+            server.call_tool("browser_navigate", {"url": on_localhost + "/set/localhost_cookie"})
+            session_id = server.only_session_id()
+            json.loads(server.call_tool(
+                "browser_export_session", {"session_id": session_id, "output_path": str(export)}
+            ))
+            return json.loads(export.read_text())
+
+        _attempt(obs, "export", export_cookies)
+
+        # Import that file into a second session, which is not the primary,
+        # and download a file in it.
+        downloads = home / ".config" / "browseruse" / "downloads"
+        target = downloads / _IMPORT_DOWNLOAD_NAME
+        obs["import_download_target"] = target
+
+        def import_and_download():
+            before = _daemon_sockets(bh_home)
+            result = json.loads(server.call_tool(
+                "browser_import_session", {"import_path": str(export), "navigate_to": on_ip + "/dl"}
+            ))
+            _own_tree(server.pid)
+            _wait_until(lambda: _daemon_sockets(bh_home) - before, timeout=10.0)
+            new = sorted(_daemon_sockets(bh_home) - before)
+            if len(new) != 1:
+                raise RuntimeError(f"expected one new daemon socket, found {new}")
+            sock = new[0]
+
+            def ready():
+                try:
+                    value = _daemon_cdp(sock, "Runtime.evaluate", expression=(
+                        "document.readyState === 'complete' && !!document.getElementById('dl')"
+                    ), returnByValue=True)
+                except RuntimeError:
+                    return False
+                return (value.get("result") or {}).get("value") is True
+
+            if not _wait_until(ready, timeout=15.0, interval=0.2):
+                raise RuntimeError("the imported session's page never loaded")
+            _daemon_cdp(sock, "Runtime.evaluate", expression="document.getElementById('dl').click()",
+                        userGesture=True)
+            _wait_until(lambda: target.is_file() and target.read_text() == _IMPORT_DOWNLOAD_BODY, 20.0)
+            again = home / "export" / "imported.json"
+            server.call_tool("browser_export_session", {"session_id": result["session_id"], "output_path": str(again)})
+            return result, json.loads(again.read_text())
+
+        _attempt(obs, "import", import_and_download)
+        obs["import_download_text"] = target.read_text() if target.is_file() else None
+        obs["downloads_listing"] = sorted(p.name for p in downloads.iterdir()) if downloads.is_dir() else []
+        obs["home_downloads"] = (
+            sorted(p.name for p in (home / "Downloads").iterdir()) if (home / "Downloads").is_dir() else []
+        )
+
+        chromes = [pid for pid in _own_tree(server.pid) if _role(pid) == "chrome"] + [launches[0].chrome]
+        obs["close_all"] = server.call_tool("browser_close_all")
+        _wait_until(lambda: not any(_alive(pid) for pid in chromes), 30.0)
+
+    def _ok(self, key: str) -> object:
+        value = self.observations.get(key)
+        if isinstance(value, str) and value.startswith("<failed"):
+            self.fail(f"{key}: {value}")
+        return value
+
+    def test_get_html_with_a_selector_returns_the_element(self):
+        """A selector that matches returns that element's outerHTML."""
+        text, is_error = self._ok("html_main")
+        self.assertFalse(is_error, text)
+        self.assertEqual('<div id="main"><p>hi</p></div>', text)
+        missing, missing_error = self._ok("html_missing")
+        self.assertEqual("No element found for selector: #nope", missing)
+        self.assertFalse(missing_error)
+
+    def test_get_html_reports_a_javascript_exception_as_an_error(self):
+        """An invalid selector throws in the page; that is an error, not 'no element'."""
+        text, is_error = self._ok("html_invalid")
+        self.assertTrue(is_error, f"an invalid selector was not an error result: {text!r}")
+        self.assertNotIn("No element found", text)
+        self.assertIn("SyntaxError", text)
+
+    def test_get_state_lists_controls_inside_a_srcdoc_iframe(self):
+        """browser_get_state indexes the iframe's button and input beside the main-frame button."""
+        self._ok("frames_state")
+        main_button, frame_button, frame_field = self.observations["frame_controls"]
+        elements = self.observations["frames_state"].get("interactive_elements")
+        self.assertIsNotNone(main_button, f"no main-frame button: {elements}")
+        self.assertIsNotNone(frame_button, f"the iframe's button has no index: {elements}")
+        self.assertIsNotNone(frame_field, f"the iframe's input has no index: {elements}")
+
+    def test_click_and_type_by_index_reach_the_iframe(self):
+        """An index from a child frame works with browser_click and browser_type."""
+        for key in ("main_click", "frame_click", "frame_type"):
+            self.assertIn(key, self.observations, f"{key} never ran: get_state gave no index for it")
+            text, is_error = self._ok(key)
+            self.assertFalse(is_error or text.startswith("Error"), f"{key}: {text}")
+        self.assertEqual({"result": [True, True, "typed in frame"]}, self._ok("frames_after"))
+
+    def test_press_key_types_printable_characters(self):
+        """'a', 'A', '1' and a space type into the focused input; Shift+b and '!' too."""
+        typed, shifted, _replaced = self._ok("keys")
+        self.assertEqual({"result": "aA1 "}, typed)
+        self.assertEqual({"result": "aA1 B!"}, shifted)
+
+    def test_modifier_chords_stay_commands(self):
+        """Control+a selects all instead of typing 'a', so the next key replaces the text."""
+        _typed, _shifted, replaced = self._ok("keys")
+        self.assertEqual({"result": "z"}, replaced)
+
+    def test_export_session_includes_cookies_from_every_origin(self):
+        """Cookies set on 127.0.0.1 and on localhost both reach the export file."""
+        data = self._ok("export")
+        names = {(c.get("name"), c.get("domain")) for c in data.get("cookies") or []}
+        self.assertIn(("ip_cookie", "127.0.0.1"), names, f"exported: {names}")
+        self.assertIn(("localhost_cookie", "localhost"), names, f"exported: {names}")
+
+    def test_import_restores_cookies_from_every_origin(self):
+        """The export file imports into a new session that holds both origins' cookies."""
+        result, exported_again = self._ok("import")
+        self.assertIs(False, result["is_primary"])
+        names = {(c.get("name"), c.get("domain")) for c in exported_again.get("cookies") or []}
+        self.assertIn(("ip_cookie", "127.0.0.1"), names, f"imported session holds: {names}")
+        self.assertIn(("localhost_cookie", "localhost"), names, f"imported session holds: {names}")
+
+    def test_a_non_primary_imported_session_downloads_to_the_config_dir(self):
+        """A download in an imported session that is not the primary lands in the config dir."""
+        self._ok("import")
+        self.assertEqual(
+            _IMPORT_DOWNLOAD_BODY,
+            self.observations["import_download_text"],
+            f"{self.observations['import_download_target']} did not receive the download; the "
+            f"downloads dir holds {self.observations['downloads_listing']}, "
+            f"~/Downloads holds {self.observations['home_downloads']}",
+        )
+
+
+# ---------------------------------------------------------------------------
+# A SIGKILLed server: browser-use's watchdog cleans up after it
+# ---------------------------------------------------------------------------
+
+@unittest.skipIf(_UNAVAILABLE is not None, f"E2E unavailable: {_UNAVAILABLE}")
+class TestServerKilledHard(unittest.TestCase):
+    """
+    Two real servers sharing one HOME and one BH_HOME, each with a browser:
+
+      LIVE    keeps running throughout
+      VICTIM  is SIGKILLed, so none of its own cleanup code can run
+
+    The VICTIM's watchdog must then kill its Chrome, end its daemon and remove its
+    temp profile, and must leave LIVE's browser, daemon and profile alone.
+    """
+
+    observations: dict = {}
+
+    @classmethod
+    def setUpClass(cls):
+        obs = cls.observations = {}
+        home, bh_home = _make_world(cls)
+
+        live = _Server(home, bh_home)
         cls.addClassCleanup(live.close)
         live.initialize()
-        live_browser = live.launch_browser()
-        live_tree = _own_tree(live.pid)
-        if not live.profile_dir.is_dir():
-            raise unittest.SkipTest("live server did not create its profile directory")
+        live_launch = live.launch_browser()
+        obs["live"] = live_launch
 
-        # --- ORPHAN: a real server SIGKILLed with a browser running -----
-        # Ordered before the PREFIX case on purpose: every server reaps at
-        # startup, so a prefix directory created now would be swept by this
-        # server rather than by the reaper the test is actually measuring.
-        orphan_server = _Server(home)
-        orphan_server.initialize()
-        orphan_browser = orphan_server.launch_browser()
-        orphan_tree = _own_tree(orphan_server.pid)
-        orphan_dir = orphan_server.profile_dir
-        orphan_server_pid = orphan_server.pid
+        victim = _Server(home, bh_home)
+        cls.addClassCleanup(victim.close)
+        victim.initialize()
+        victim_launch = victim.launch_browser()
+        obs["victim"] = victim_launch
+        # Chrome's helpers; the daemon and the watchdog have deadlines of their own.
+        victim_tree = [
+            p for p in _own_tree(victim.pid)
+            if p not in (victim_launch.daemon, victim_launch.watchdog)
+        ]
 
-        orphan_server.signal(signal.SIGKILL)
-        orphan_server.proc.wait(timeout=15)  # reap the zombie: pid_exists must go False
-        orphan_server.close()
+        obs["before_kill"] = {
+            "chrome_alive": _alive(victim_launch.chrome),
+            "daemon_alive": _alive(victim_launch.daemon),
+            "watchdog_alive": _alive(victim_launch.watchdog),
+            "temp_dir_exists": victim_launch.temp_dir.is_dir(),
+        }
 
-        cls.observations["orphan_server_dead"] = not psutil.pid_exists(orphan_server_pid)
-        cls.observations["orphan_browser_alive_before_reap"] = _alive(orphan_browser)
-        cls.observations["orphan_dir_exists_before_reap"] = orphan_dir.exists()
+        victim.signal(signal.SIGKILL)
+        started = time.monotonic()
+        try:
+            obs["victim_returncode"] = victim.proc.wait(timeout=15)
+        except subprocess.TimeoutExpired:
+            obs["victim_returncode"] = None
+        obs["chrome_alive_right_after_kill"] = _alive(victim_launch.chrome)
 
-        if not cls.observations["orphan_browser_alive_before_reap"]:
-            raise unittest.SkipTest(
-                "the SIGKILLed server's browser died with it, so there is no orphan "
-                "to reap on this platform"
-            )
-
-        # --- PREFIX: a dead PID whose digits prefix the live server's ---
-        dead_prefix = _dead_digit_prefix(live.pid)
-        if dead_prefix is None:
-            raise unittest.SkipTest(
-                f"no digit prefix of live server pid {live.pid} is free even after "
-                "walking the PID counter; cannot build the PID-prefix collision "
-                "with real processes. Check kernel.pid_max — below the five-digit "
-                "range this test cannot be constructed on Linux, because every "
-                "shorter prefix is a kernel thread"
-            )
-        prefix_dir = profiles_root / f"{_PROFILE_PREFIX}{dead_prefix}"
-        prefix_browser = _launch_raw_chromium(prefix_dir)
-        prefix_tree = _own_tree(prefix_browser)
-
-        cls.observations["prefix_browser_alive_before_reap"] = _alive(prefix_browser)
-        cls.observations["live_browser_alive_before_reap"] = _alive(live_browser)
-
-        # --- REAPER: a newly started server -----------------------------
-        if psutil.pid_exists(dead_prefix):
-            raise unittest.SkipTest(
-                f"pid {dead_prefix} was reused before the reaper ran; rerun the suite"
-            )
-        reaper = _Server(home)
-        cls.addClassCleanup(reaper.close)
-        if reaper.pid == dead_prefix:
-            raise unittest.SkipTest(
-                f"the reaper server was assigned pid {dead_prefix}, the PID this test "
-                "needs to be dead; rerun the suite"
-            )
-
-        live_tree = _own_tree(live.pid)
         _wait_until(
-            lambda: (
-                not _alive(orphan_browser)
-                and not any(_alive(p) for p in orphan_tree)
-                and not orphan_dir.exists()
-                and not _alive(prefix_browser)
-                and not any(_alive(p) for p in prefix_tree)
-                and not prefix_dir.exists()
-            ),
-            timeout=60.0,
+            lambda: not _alive(victim_launch.chrome) and not any(_alive(p) for p in victim_tree),
+            timeout=10.0,
         )
-        # The reaper runs before the handshake; make sure the server really is up
-        # so a hang is reported as a hang rather than as a missed reap.
-        reaper.initialize()
+        obs["chrome_dead_after_s"] = time.monotonic() - started
+        obs["chrome_alive_after_10s"] = _alive(victim_launch.chrome)
+        obs["tree_alive_after_10s"] = [p for p in victim_tree if _alive(p)]
 
-        cls.observations.update(
-            live_pid=live.pid,
-            dead_prefix=dead_prefix,
-            orphan_server_pid=orphan_server_pid,
-            reaper_pid=reaper.pid,
-            orphan_browser_alive_after_reap=_alive(orphan_browser),
-            orphan_tree_alive_after_reap=[p for p in orphan_tree if _alive(p)],
-            orphan_dir_exists_after_reap=orphan_dir.exists(),
-            prefix_browser_alive_after_reap=_alive(prefix_browser),
-            prefix_tree_alive_after_reap=[p for p in prefix_tree if _alive(p)],
-            prefix_dir_exists_after_reap=prefix_dir.exists(),
-            live_browser_alive_after_reap=_alive(live_browser),
-            live_tree_dead_after_reap=[p for p in live_tree if not _alive(p)],
-            live_dir_exists_after_reap=live.profile_dir.exists(),
-            reaper_stderr=reaper.stderr_tail(2000),
-        )
+        _wait_until(lambda: not victim_launch.temp_dir.exists(), timeout=max(0.0, 10.0 - (time.monotonic() - started)))
+        obs["temp_dir_exists_after_10s"] = victim_launch.temp_dir.exists()
+        obs["temp_dir_survivors"] = _describe_survivors(victim_launch.temp_dir)
 
-    def test_setup_produced_a_real_orphan_and_a_real_prefix_collision(self):
-        """Guard the scenario itself: without these, 5 and 6 prove nothing."""
-        self.assertTrue(self.observations["orphan_server_dead"], "the SIGKILLed server is not gone")
+        _wait_until(lambda: not _alive(victim_launch.daemon), timeout=40.0, interval=0.5)
+        obs["daemon_alive_after_40s"] = _alive(victim_launch.daemon)
+        _wait_until(lambda: not _alive(victim_launch.watchdog), timeout=10.0)
+        obs["watchdog_alive_at_end"] = _alive(victim_launch.watchdog)
+
+        obs["live_after"] = {
+            "chrome_alive": _alive(live_launch.chrome),
+            "daemon_alive": _alive(live_launch.daemon),
+            "temp_dir_exists": live_launch.temp_dir.is_dir(),
+        }
+        try:
+            live.call_tool("browser_navigate", {"url": _data_url("<title>still here</title>")})
+            obs["live_title"] = json.loads(
+                live.call_tool("browser_evaluate", {"script": "document.title"})
+            )
+        except Exception as exc:
+            obs["live_title"] = f"<failed: {exc}>"
+        obs["live_stderr"] = live.stderr_tail(1500)
+        live.call_tool("browser_close_all")
+
+    def test_setup_produced_a_real_kill(self):
+        """Guard the scenario itself: without a real SIGKILL of a live session, the rest proves nothing."""
+        before = self.observations["before_kill"]
+        self.assertTrue(before["chrome_alive"], "the victim's Chrome was not running before the kill")
+        self.assertTrue(before["daemon_alive"], "the victim's daemon was not running before the kill")
+        self.assertTrue(before["watchdog_alive"], "the victim had no watchdog before the kill")
+        self.assertTrue(before["temp_dir_exists"], "the victim's temp profile did not exist before the kill")
+        self.assertEqual(-signal.SIGKILL, self.observations["victim_returncode"])
         self.assertTrue(
-            self.observations["orphan_browser_alive_before_reap"],
-            "no live orphan existed to reap",
-        )
-        self.assertTrue(
-            self.observations["orphan_dir_exists_before_reap"],
-            "the orphaned profile directory was already gone before the reaper ran",
-        )
-        self.assertTrue(
-            self.observations["prefix_browser_alive_before_reap"],
-            "the prefix-case browser never started",
-        )
-        self.assertTrue(
-            self.observations["live_browser_alive_before_reap"],
-            "the live server's browser never started",
-        )
-        self.assertTrue(
-            str(self.observations["live_pid"]).startswith(str(self.observations["dead_prefix"])),
-            "the dead pid is not a digit prefix of the live one — no collision to test",
+            self.observations["chrome_alive_right_after_kill"],
+            "Chrome died with its server, so nothing here exercises the watchdog",
         )
 
-    def test_reaper_terminates_a_real_orphaned_browser(self):
-        """A browser whose server was SIGKILLed must be killed by the next server."""
+    def test_two_servers_get_different_profile_dirs(self):
+        """Concurrent servers never share a profile, so never a SingletonLock."""
+        live, victim = self.observations["live"], self.observations["victim"]
+        self.assertNotEqual(
+            os.path.realpath(live.profile_dir), os.path.realpath(victim.profile_dir)
+        )
+        for launch in (live, victim):
+            self.assertTrue(launch.temp_dir.name.startswith(_TEMP_PROFILE_PREFIX), str(launch.profile_dir))
+
+    def test_watchdog_kills_the_orphaned_browser(self):
+        """Chrome and its helpers die within 10 s of their server's SIGKILL."""
         self.assertFalse(
-            self.observations["orphan_browser_alive_after_reap"],
-            f"orphaned browser of dead server {self.observations['orphan_server_pid']} "
-            f"survived the reaper; reaper stderr: {self.observations['reaper_stderr']}",
+            self.observations["chrome_alive_after_10s"],
+            "the SIGKILLed server's Chrome was still running 10 s later",
         )
         self.assertEqual(
-            [],
-            self.observations["orphan_tree_alive_after_reap"],
-            "orphaned browser helpers survived the reaper",
+            [], self.observations["tree_alive_after_10s"], "browser helpers survived the watchdog"
         )
 
-    def test_reaper_removes_the_orphaned_profile_directory(self):
-        """The ~50MB directory goes with the process it belonged to."""
+    def test_watchdog_removes_the_orphaned_profile_dir(self):
+        """The temp profile is removed within 10 s of the SIGKILL."""
         self.assertFalse(
-            self.observations["orphan_dir_exists_after_reap"],
-            "the orphaned profile directory survived the reaper",
+            self.observations["temp_dir_exists_after_10s"],
+            f"{self.observations['victim'].temp_dir} survived its server's SIGKILL; what is left: "
+            f"{self.observations['temp_dir_survivors']}",
         )
 
-    def test_reaper_does_not_kill_a_live_servers_browser(self):
-        """The reaper must never reach a browser whose owning server is running."""
-        self.assertTrue(
-            self.observations["live_browser_alive_after_reap"],
-            f"the reaper killed live server {self.observations['live_pid']}'s browser; "
-            f"reaper stderr: {self.observations['reaper_stderr']}",
+    def test_daemon_of_a_killed_server_exits(self):
+        """The browser-harness daemon is gone within 40 s, and so is the watchdog."""
+        self.assertFalse(
+            self.observations["daemon_alive_after_40s"],
+            "the SIGKILLed server's daemon was still running 40 s later",
         )
+        self.assertFalse(self.observations["watchdog_alive_at_end"], "the watchdog never finished")
+
+    def test_second_servers_browser_survives(self):
+        """Cleaning up after one server never reaches another server's browser."""
+        after = self.observations["live_after"]
+        self.assertTrue(after["chrome_alive"], "the live server's Chrome was killed")
+        self.assertTrue(after["daemon_alive"], "the live server's daemon was killed")
+        self.assertTrue(after["temp_dir_exists"], "the live server's profile was removed")
+
+    def test_second_server_still_drives_its_page(self):
+        """The live server still navigates and evaluates after the other one died."""
         self.assertEqual(
-            [],
-            self.observations["live_tree_dead_after_reap"],
-            "some of the live server's browser processes were killed by the reaper",
-        )
-        self.assertTrue(
-            self.observations["live_dir_exists_after_reap"],
-            "the reaper removed a live server's profile directory",
-        )
-
-    def test_reaping_a_pid_prefix_directory_spares_the_longer_pid(self):
-        """
-        session-<D> and session-<D…> are different directories, with real PIDs.
-
-        Reaping dead D must kill D's browser and leave live D… alone. A substring
-        test passes the first half and fails the second — which is exactly how
-        the shipped bug behaved.
-        """
-        self.assertFalse(
-            self.observations["prefix_browser_alive_after_reap"],
-            f"the browser on session-{self.observations['dead_prefix']} (dead owner) "
-            "was not reaped",
-        )
-        self.assertFalse(
-            self.observations["prefix_dir_exists_after_reap"],
-            f"session-{self.observations['dead_prefix']} survived the reaper",
-        )
-        self.assertTrue(
-            self.observations["live_browser_alive_after_reap"],
-            f"reaping session-{self.observations['dead_prefix']} also killed the browser on "
-            f"session-{self.observations['live_pid']} — the PID-prefix collision is back",
+            {"result": "still here"},
+            self.observations["live_title"],
+            f"live server stderr: {self.observations['live_stderr']}",
         )
 
 
@@ -1034,32 +1394,27 @@ def _playwright_processes() -> set[int]:
     """
     Every Playwright-Chromium PID on the machine right now.
 
-    Read-only: this counts, and never kills. Killing by pattern is exactly what
-    this suite refuses to do.
-
-    Recorded as a PID SET rather than a count on purpose. A raw before/after
-    count is not an answer to "did the suite leak?" — this machine runs an
-    unrelated chrome-headless-shell out of the same Playwright cache, and it
-    starting or stopping mid-run moves the count in both directions. The set
-    difference names exactly the processes that appeared and stayed.
+    Read-only: this counts, and never kills. A PID set rather than a count, so an
+    unrelated Playwright browser starting or stopping mid-run cannot move it; the
+    set difference names exactly what appeared and stayed.
     """
     import psutil
 
-    root = str(_playwright_cache_root())
+    root = os.path.realpath(_playwright_cache_root())
     found = set()
     for proc in psutil.process_iter(["pid", "exe"]):
         try:
             exe = proc.info.get("exe") or ""
         except Exception:
             continue
-        if exe.startswith(root):
+        if exe and os.path.realpath(exe).startswith(root):
             found.add(proc.info["pid"])
     return found
 
 
 def setUpModule():
     global _PLAYWRIGHT_PIDS_BEFORE
-    if _SKIP_REASON is not None:
+    if _UNAVAILABLE is not None:
         return
     _PLAYWRIGHT_PIDS_BEFORE = _playwright_processes()
     print(
@@ -1070,18 +1425,10 @@ def setUpModule():
 
 
 def tearDownModule():
-    if _SKIP_REASON is not None:
+    if _UNAVAILABLE is not None:
         return
     _terminate_all_owned()
-    for proc in _RAW_PROCS:  # collect exit statuses so nothing is left a zombie
-        try:
-            proc.wait(timeout=5)
-        except Exception:
-            pass
-    # Chrome's helpers take a moment to follow their parent down.
-    _wait_until(
-        lambda: not (_playwright_processes() - _PLAYWRIGHT_PIDS_BEFORE), timeout=15.0
-    )
+    _wait_until(lambda: not (_playwright_processes() - _PLAYWRIGHT_PIDS_BEFORE), timeout=15.0)
     after = _playwright_processes()
     new = sorted(after - _PLAYWRIGHT_PIDS_BEFORE)
     leaked = sorted(pid for pid in _OWNED_PIDS if _alive(pid))

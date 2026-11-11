@@ -6,7 +6,7 @@ user-invocable: false
 
 # Browser Use Core API
 
-Reference for the MCP tools exposed by the Browser Use plugin: the upstream Browser Use set plus eleven Magus-specific additions. Their full names are `mcp__plugin_browser-use_browser-use__<tool_name>`, as the examples below write them; an agent's `tools:` line uses the same full name. The parameters here were read from the live tool schemas. The authoritative list is whatever the server registers at runtime, so check there rather than counting this table.
+Reference for the 27 MCP tools the Browser Use plugin's own server exposes, built on browser-use 1.0. Their full names are `mcp__plugin_browser-use_browser-use__<tool_name>`, as the examples below write them; an agent's `tools:` line uses the same full name. The parameters here were read from the live tool schemas. The authoritative list is whatever the server registers at runtime, so check there rather than counting this table.
 
 ---
 
@@ -46,11 +46,10 @@ The server drives **one current browser**. Every page tool acts on it; none take
 > (e.g. `monaco.editor.getModels()[0].setValue('...')`), or `browser_focus` the
 > hidden input then `browser_keyboard`. See §3.19 and §3.22.
 
-> **Local HTML files: serve them, do not open them.** `browser_navigate` to a
-> `file://` URL reports "Navigated to" but leaves the page on `about:blank`
-> (measured: a screenshot of it is blank). Serve the directory and navigate to it:
-> `python3 -m http.server <port> --bind 127.0.0.1 --directory <dir>` in the
-> background, then `http://127.0.0.1:<port>/<file>.html`; stop the server when done.
+> **Element indices are Chrome node ids, not positions.** The `index` of each
+> entry in `browser_get_state`'s `interactive_elements` is the element's Chrome
+> `backendNodeId`: often a large number, never a 1..N count. It stays valid while
+> that element exists, and stops working when the page replaces it.
 
 ---
 
@@ -67,23 +66,23 @@ because only the sessions you record are yours to close.
 
 2. RECORD the session id
    mcp__plugin_browser-use_browser-use__browser_list_sessions()
-   → [{"session_id": "06ab70ef-…", "active": true, "age_minutes": 0.1, …}]
+   → [{"session_id": "5927ad6f594c497fa141e1beb2189883", "active": true, "age_minutes": 0.1, …}]
 
 3. INSPECT (indexed interactive elements)
    mcp__plugin_browser-use_browser-use__browser_get_state()
-   → {"url": "…", "title": "…", "tabs": […], "interactive_elements": [{"index": 19, "tag": "a", "text": "Learn more", …}], "viewport": {…}, "scroll": {…}}
+   → {"url": "…", "title": "…", "tabs": […], "interactive_elements": [{"index": 1834, "tag": "a", "text": "Learn more", …}], "viewport": {…}, "scroll": {…}}
 
 4. INTERACT
-   mcp__plugin_browser-use_browser-use__browser_click(index=19)          → "Clicked element 19"
-   mcp__plugin_browser-use_browser-use__browser_type(index=5, text="search query")
+   mcp__plugin_browser-use_browser-use__browser_click(index=1834)        → "Clicked element 1834"
+   mcp__plugin_browser-use_browser-use__browser_type(index=1790, text="search query")
 
 5. EXTRACT or VERIFY
    mcp__plugin_browser-use_browser-use__browser_extract_content(query="product prices")
    mcp__plugin_browser-use_browser-use__browser_screenshot()             (image shown to the model)
 
 6. CLOSE (ALWAYS — do not skip)
-   mcp__plugin_browser-use_browser-use__browser_close_session(session_id="06ab70ef-…")
-   → "Successfully closed session 06ab70ef-…"
+   mcp__plugin_browser-use_browser-use__browser_close_session(session_id="5927ad6f594c497fa141e1beb2189883")
+   → "Successfully closed session 5927ad6f594c497fa141e1beb2189883"
 ```
 
 **Rule**: Every code path must close the session it opened. If an error occurs
@@ -92,16 +91,16 @@ session you did not open: another task or the user can be using it.
 
 ### Automatic cleanup — the browser does not wait for you
 
-The server cleans up after itself while it runs, so a forgotten session costs
-disk and a stray Chrome for minutes, not for the days a Claude Code session can
-last:
+Each session's Chrome runs on its own temporary profile directory, which is
+deleted when that browser stops. A forgotten session costs a stray Chrome for
+minutes, not for the days a Claude Code session can last:
 
 | Trigger | What happens |
 |---|---|
-| `browser_close_session` / `browser_close_all` | Chrome is killed; once the last session is gone, this session's Chrome profile directory is deleted |
-| **10 minutes with no tool call on a session** | Same thing, automatically — the session is closed, Chrome killed, and the profile deleted if it was the last one |
-| Every 2 minutes | Profiles left behind by servers that have died are swept, along with any Chrome still running on them |
-| The `claude` process dies | The server notices it has been reparented, kills Chrome, deletes the profile, and exits |
+| `browser_close_session` / `browser_close_all` | That session's Chrome is stopped and its profile directory deleted |
+| **10 minutes with no tool call on a session** | Same thing, automatically: the session is closed (checked every 2 minutes) |
+| The `claude` process dies | The server notices it has been reparented, stops every browser it started, and exits |
+| The server itself is killed, even with SIGKILL | browser-use's watchdog stops that server's Chrome and deletes its profile |
 
 **Consequence you must plan for**: cookies, localStorage and login state live in
 that profile directory, so they do **not** survive the 10-minute idle timeout.
@@ -123,10 +122,16 @@ Open a URL in the current browser. Starts a browser if none is running.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `url` | string | Yes | Full URL including scheme. `file://` does not load; see §1 |
+| `url` | string | Yes | Full URL including scheme (`https://`, `http://`, `file://`, `data:`) |
 | `new_tab` | boolean | No | Open in a new tab (default: false) |
 
-**Returns**: text, `Navigated to: <url>`. It returns no session id; use `browser_list_sessions`.
+**Returns**: text, `Navigated to: <url>` (or `Opened new tab with URL: <url>`) once
+the new page has loaded. It waits up to 15 s; a page still loading then gets
+`(still loading after 15 s: the page may not be ready; check it with
+browser_get_state before acting on it)` appended to that line. It returns no
+session id; use `browser_list_sessions`. A navigation the browser cannot complete
+returns an error line instead, such as
+`Error: navigation to <url> failed: net::ERR_NAME_NOT_RESOLVED`.
 
 ---
 
@@ -138,7 +143,22 @@ The current page: URL, title, tabs, indexed interactive elements, viewport, page
 |-----------|------|----------|-------------|
 | `include_screenshot` | boolean | No | Also return a screenshot (default: false) |
 
-**Returns**: JSON with `url`, `title`, `tabs`, `interactive_elements` (each has `index`, `tag`, `text`, and `href` for links), `viewport`, `page`, `scroll`. Pass an element's `index` to `browser_click` or `browser_type`.
+**Returns**: JSON with `url`, `title`, `tabs` (`url` and `title` each; tab ids come
+from `browser_list_tabs`), `interactive_elements`, `viewport`, `page`, `scroll`, and
+`screenshot_dimensions` when a screenshot was asked for. Each element has `index`,
+`tag`, `text` (its accessible name, up to 100 characters), plus `placeholder` and
+`href` when it has them. Elements come in accessibility-tree order, and only
+controls are listed (links, buttons, form fields and similar roles).
+
+`index` is the element's Chrome `backendNodeId`, not its position in the list.
+Pass it to `browser_click` or `browser_type`.
+
+Controls inside iframes are listed too, after the main page's, frame by frame:
+same-origin, `srcdoc` and `about:blank` iframes. Their indexes work with
+`browser_click` and `browser_type` like any other. A **cross-site** iframe (another
+site, such as an embedded payment or login widget) runs in a separate browser
+process: its controls are not listed and have no index. Click them by coordinates
+from a screenshot, or open the iframe's URL with `browser_navigate`.
 
 ---
 
@@ -148,33 +168,43 @@ Click an element by index, or at viewport pixel coordinates.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `index` | integer | One of | Element index from `browser_get_state` |
+| `index` | integer | One of | Element `index` (a backendNodeId) from `browser_get_state` |
 | `coordinate_x`, `coordinate_y` | integer | One of | Viewport coordinates; pass both |
-| `new_tab` | boolean | No | Open any resulting navigation in a new tab |
+| `new_tab` | boolean | No | For a link, open its URL in a new tab instead of clicking it |
 
-**Returns**: text, `Clicked element <index>`.
+**Returns**: text, `Clicked element <index>` or `Clicked at coordinates (<x>, <y>)`.
+The click scrolls the element into view and aims at a point no other element covers.
 
 ---
 
 ### 3.4 `browser_type`
 
-Type into an input element. Clears existing text first; `text=""` only clears.
+Type into an input element. Replaces existing text; `text=""` only clears. Selects,
+date inputs and combobox fields are handled too.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `index` | integer | Yes | Input element index from `browser_get_state` |
+| `index` | integer | Yes | Element `index` (a backendNodeId) from `browser_get_state` |
 | `text` | string | Yes | Text to type |
+
+**Returns**: text, `Typed '<text>' into element <index>`. Text that looks like an
+email or a token is masked in the reply (`Typed <email> into element <index>`).
 
 ---
 
 ### 3.5 `browser_extract_content`
 
-Extract information from the current page with the agent's LLM.
+Extract information from the current page's text with the agent model, the one
+`browser_set_agent_model` or settings.json `agentModel` chooses (see the
+`browser-use:agent-model` skill). It needs that model's API key; without it the
+tool returns an error naming the variable to set. It reads the page that is open
+and never starts a browser: with no session it returns
+`Error: No browser session active. Navigate first (browser_navigate).`
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `query` | string | Yes | What to extract |
-| `extract_links` | boolean | No | Include links (default: false) |
+| `extract_links` | boolean | No | Include the page's links and their URLs (default: false) |
 
 ---
 
@@ -185,6 +215,9 @@ Extract information from the current page with the agent's LLM.
 | `selector` | string | No | CSS selector; omit for the whole page |
 
 **Returns**: the HTML as text, e.g. `<h1>Example Domain</h1>` for `selector="h1"`.
+A selector that matches nothing returns `No element found for selector: <selector>`.
+An invalid selector is an error result carrying the browser's own message, e.g.
+`SyntaxError: … '[[' is not a valid selector.`
 
 ---
 
@@ -206,7 +239,7 @@ returned to save. To get a file, use `browser_save_screenshot` (§3.24).
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `direction` | `"up"` or `"down"` | No | Default `"down"`; one viewport per call |
+| `direction` | `"up"` or `"down"` | No | Default `"down"`; 500 pixels per call (a mouse-wheel event at the viewport centre) |
 
 **Returns**: text, `Scrolled <direction>`.
 
@@ -214,13 +247,15 @@ returned to save. To get a file, use `browser_save_screenshot` (§3.24).
 
 ### 3.9 `browser_go_back`
 
-No parameters. **Returns**: text, `Navigated back`.
+No parameters. **Returns**: text, `Navigated back`. At the first entry of the tab's
+history it returns `Error: there is no previous page in this tab's history.`
 
 ---
 
 ### 3.10 `browser_list_tabs`
 
-No parameters. **Returns**: JSON list of `{"tab_id", "url", "title"}`; `tab_id` is 4 characters.
+No parameters. **Returns**: JSON list of `{"tab_id", "url", "title"}`; `tab_id` is
+the last 4 characters of the tab's target id.
 
 ---
 
@@ -230,6 +265,10 @@ No parameters. **Returns**: JSON list of `{"tab_id", "url", "title"}`; `tab_id` 
 |-----------|------|----------|-------------|
 | `tab_id` | string | Yes | 4-character id from `browser_list_tabs` |
 
+**Returns**: text, `Switched to tab <tab_id>: <url>`. The id matches any tab whose
+target id ends in it. When it matches two or more tabs, the tool returns an error
+listing their full ids; pass more characters of the one you mean.
+
 ---
 
 ### 3.12 `browser_close_tab`
@@ -237,6 +276,10 @@ No parameters. **Returns**: JSON list of `{"tab_id", "url", "title"}`; `tab_id` 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `tab_id` | string | Yes | 4-character id from `browser_list_tabs` |
+
+**Returns**: text, `Closed tab # <tab_id>, now on <url>`. Matching works as in
+`browser_switch_tab`. Closing the tab the tools are on moves them to the first tab
+left, or to a new blank tab when none is.
 
 ---
 
@@ -250,8 +293,8 @@ The list includes sessions other tasks opened.
 ### 3.14 `browser_close_session` and `browser_close_all`
 
 `browser_close_session(session_id=…)` closes one session and returns
-`Successfully closed session <id>`. `browser_close_all()` closes every session,
-including ones other tasks or the user opened: use it only when you know you own
+`Successfully closed session <id>`. `browser_close_all()` closes every session and
+returns `Closed <n> sessions`. It closes every one, including ones other tasks or the user opened: use it only when you know you own
 them all.
 
 ---
@@ -260,13 +303,22 @@ them all.
 
 Hand a task to Browser Use's own LLM agent. A last resort, after direct tools failed on a page more than once.
 
+The agent works in a **fresh local Chromium of its own**, never in the session the
+other tools drive and never in a cloud browser. It starts with no cookies or login
+state, so put whatever it needs into `task`. Its browser is stopped when the run ends.
+Like `browser_extract_content`, it checks the agent model's API key first: without
+it, the tool returns an error naming the variable and starts no browser.
+
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `task` | string | Yes | The goal, step-by-step detail, relevant data, and what earlier attempts tried |
 | `max_steps` | integer | No | Step limit (default: 100) |
-| `use_vision` | boolean | No | Use screenshots (default: true) |
-| `allowed_domains` | array | No | Domains the agent may visit; omit (or pass `[]`) for the server's configured defaults |
-| `model` | string | No | Agent LLM; defaults to the configured one (see `browser_set_agent_model`) |
+| `use_vision` | boolean | No | `false` keeps screenshots from the agent's model (default: true) |
+| `allowed_domains` | array | No | Domains the agent's browser may open, e.g. `example.com`, `*.example.com`; omit (or pass `[]`) for no restriction |
+| `model` | string | No | Model name for the configured agent provider, replacing its model for this run (see `browser-use:agent-model`) |
+
+**Returns**: text: `Task completed in <n> steps`, `Success: <true|false>`, then the
+final result and any errors the agent hit. It does not list the URLs the agent visited.
 
 **When NOT to use**: simple linear workflows (navigate → extract). Direct tools are faster and more reliable.
 
@@ -274,7 +326,8 @@ Hand a task to Browser Use's own LLM agent. A last resort, after direct tools fa
 
 ### 3.16 `browser_export_session`
 
-Save a session's **cookies** to a JSON file.
+Save a session's **cookies** to a JSON file: every cookie in that browser, for
+every site it visited, not only the current page's.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -301,7 +354,12 @@ Start a new browser session with the cookies from an exported file.
 | `import_path` | string | Yes | Path to the exported `.json` file |
 | `navigate_to` | string | No | URL to open after importing |
 
-**Returns**: `{"session_id": "…", "cookies_imported": N, "original_url": "…", "navigated_to": "…"}`
+**Returns**: `{"session_id": "…", "cookies_imported": N, "original_url": "…", "navigated_to": "…", "is_primary": true}`
+
+When no session is active, the imported one becomes the session the page tools
+drive (`is_primary: true`). Otherwise it runs beside the current one, and the page
+tools keep driving the current one. Either way its downloads go to
+`~/.config/browseruse/downloads`.
 
 ---
 
@@ -379,6 +437,12 @@ Press a single key or keyboard shortcut in the live page (CDP
 > — the CDP edit-command is attached for you). So `Meta+a` then `Delete` clears a
 > field, and `Meta+a` then `browser_keyboard(text=...)` replaces its contents.
 
+> **Printable keys type.** A single character with no `Meta`, `Control` or `Alt`
+> (`a`, `A`, `1`, `?`, a space or `Space`) types that character into the focused
+> field. `Shift+` types the shifted character on a US layout: `Shift+b` is `B`,
+> `Shift+1` is `!`. A chord such as `Meta+a` or `Control+c` stays a command and
+> types nothing. For more than a few characters, use `browser_keyboard(text=...)`.
+
 ---
 
 ### 3.21 `browser_keyboard`
@@ -390,7 +454,7 @@ type into a focused field or editor without needing an index).
 **Parameters**:
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `keys` | array | No | Shortcuts pressed in order, e.g. `["Meta+a","Delete"]`. |
+| `keys` | array | No | Keys pressed in order, e.g. `["Meta+a","Delete"]`, each as in `browser_press_key`: a printable key types its character. |
 | `text` | string | No | Literal text inserted after the keys. |
 
 Provide at least one of `keys` / `text`.
@@ -440,7 +504,8 @@ and the browser can never disagree. `chromium_source` says where it came from:
 {
   "python_version": "3.11.x",
   "python_executable": "/usr/bin/python3",
-  "browser_use": {"installed": true, "version": "0.12.5"},
+  "browser_use": {"installed": true, "version": "1.0.0"},
+  "browser_harness": {"installed": true, "version": "..."},
   "mcp": {"installed": true, "version": "..."},
   "playwright": {"installed": false, "version": null},
   "chromium_present": true,
@@ -516,16 +581,18 @@ mcp__plugin_browser-use_browser-use__browser_save_screenshot(output_path="/abs/o
 
 | Error | Cause | Fix |
 |-------|-------|-----|
-| `"session_not_found"` | Stale `session_id` or typo | Call `browser_list_sessions` to see active sessions |
-| `"session_not_found"` after a long pause | The session idled out after 10 minutes and was closed automatically | Start a new one with `browser_navigate`. Its login state went with the profile — `browser_import_session` if you exported it |
-| A click or type reports the index is not found | Element index is stale | Call `browser_get_state` again — DOM may have changed |
-| The page shows a block, captcha or 403 page | Site blocking headless browser | Try `retry_with_browser_use_agent` with `use_vision=True`, or use Browser Use Cloud |
+| `Session <id> not found` | Stale `session_id` or typo | Call `browser_list_sessions` to see active sessions |
+| `Session <id> not found` after a long pause | The session idled out after 10 minutes and was closed automatically | Start a new one with `browser_navigate`. Its login state went with the profile — `browser_import_session` if you exported it |
+| `Error: No browser session active` from `browser_evaluate`, `browser_focus`, the keyboard tools or `browser_save_screenshot` | These tools never start a browser | Call `browser_navigate` first |
+| `Error: navigation to <url> failed: net::…` | The URL did not resolve or load | Check the URL; the page stays where it was |
+| `No node with given id found` from a click or type | The page replaced that element, so its node id is gone | Call `browser_get_state` again and use the new `index` |
+| `tab id '<id>' matches 2 tabs` | Two tabs' ids end in the same 4 characters | Pass more characters of the tab's id, from the error text |
+| The page shows a block, captcha or 403 page | Site blocking an automated browser | Use a cloud session (`browser_start_cloud_session`); `retry_with_browser_use_agent` runs a local Chromium and meets the same block |
 | `interactive_elements` is empty | Page still loading | Call `browser_get_state` again; SPAs need time to render |
 | Agent hits `max_steps` | Task too complex or poorly described | Increase `max_steps` or rewrite the task description with more specific goals |
-| Page is `about:blank` after navigating to `file://` | browser-use does not load `file://` URLs | Serve the directory over `http://127.0.0.1` (see §1) |
 | Screenshot returns empty/blank | Page not finished rendering | Call `browser_scroll(direction="down")` to trigger rendering, then screenshot |
 | `browser_type` has no effect | Input not focused | Call `browser_click` on the input first, then `browser_type` |
 | Can't type into Monaco/CodeMirror | Editor has no indexable input | Use `browser_evaluate` (`setValue`) or `browser_focus` + `browser_keyboard` — not `browser_type` |
 | `browser_run_script` errors at once on `script_path` | Passed inline JS / a stream, not a `.py` file | Pass a real `.py` file; to run JS in the page use `browser_evaluate` |
 | `ModuleNotFoundError` in `run_script` | Subprocess interpreter lacks the deps | `run_script` doesn't share this env or browser; install deps in that interpreter — run `browser_doctor` to check |
-| Cached element `index` clicks the wrong thing | Indices are snapshot-scoped | Re-`get_state` immediately before use, or target by selector (`browser_focus`/`browser_evaluate`) |
+| A cached element `index` stops working after the page re-renders | The `index` is a node id, valid only while that node exists | Re-`get_state` after anything that re-renders the page, or target by selector (`browser_focus`/`browser_evaluate`) |

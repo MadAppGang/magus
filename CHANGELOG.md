@@ -4,6 +4,47 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [browser-use 2.0.0] - 2026-11-12
+
+### Changed
+
+- **The MCP server runs on browser-use 1.0.** browser-use 1.0 removed the classes the server
+  was built on, so the server is now its own MCP server over 1.0's `Browser` and the browser
+  harness's CDP channel. It keeps all 27 tools with the same names and parameters.
+- **An element index is now the element's backend node id.** Read indexes from
+  `browser_get_state` again after a page changes; an index from an older state can point at
+  nothing.
+- `browser_navigate` waits for the new document and reports when it is still loading after
+  15 s. `browser_navigate`, `browser_go_back` and an ambiguous tab id return an error instead
+  of a silent no-op.
+- `retry_with_browser_use_agent` runs in its own local Chromium and checks the provider's API
+  key before it starts one. Its output has no URLs line. The default gateway model is
+  `bu-fast`.
+- `browser_set_agent_model` builds the model when you set it, so a bad provider or key fails
+  there and not on the next retry. `anthropic` does not accept a `base_url`.
+- `~/.config/browseruse/config.json` is no longer read. Set the model with
+  `browser_set_agent_model` or the environment.
+
+### Fixed
+
+- `browser_get_html` with a selector returns the element's HTML.
+- `browser_get_state` lists controls inside same-site iframes, and their indexes work with
+  click and type. Cross-site iframes are still skipped.
+- `browser_export_session` exports the cookies of every origin, not only the current page.
+- `browser_press_key` and `browser_keyboard` type printable keys. Chords stay commands.
+- Closing a cloud session whose stop call failed reports an error and keeps the session, so
+  closing it again retries. Before, the session was forgotten while the cloud browser kept
+  running.
+- A non-primary imported session downloads to `~/.config/browseruse/downloads`, not
+  `~/Downloads`.
+
+### Migration notes
+
+- Profile directories the 1.x server created under `~/.config/browseruse/profiles/` are no
+  longer used. You can delete them.
+
+---
+
 ## [meroku 1.0.0] - 2026-11-10
 
 ### Added

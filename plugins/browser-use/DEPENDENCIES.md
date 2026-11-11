@@ -6,8 +6,11 @@ declares:
 
 ```python
 # requires-python = ">=3.11"
-# dependencies = ["browser-use==0.13.10", "mcp==2.1.1", "playwright==1.63.0"]
+# dependencies = ["browser-use==1.0.0", "mcp==2.3.0", "playwright==1.63.0"]
 ```
+
+browser-use 1.0.0 in turn pins `browser-harness==0.1.13` exactly, so that version comes
+with it.
 
 Every uv call on that env passes `--no-config`. Claude Code starts the server in
 your project, and uv would otherwise read that project's `uv.toml` or
@@ -52,16 +55,18 @@ cannot do this, because arguments after the script go to the script.
 
 ## Why these versions
 
-- **browser-use 0.13.10, pinned.** The plugin relies on `BrowserSession.kill()`,
-  the `executable_path` profile field (which upstream honours ahead of its own
-  browser discovery), `use_cloud`, and `ChatBrowserUse` (bu-latest), all present
-  since 0.13.1. The pin is the release the env resolves today, so a new upstream
-  release reaches users only through a plugin release that bumps it.
-- **mcp 2.1.1, pinned.** browser-use pins `mcp` exactly (0.13.10 pins
-  `mcp==2.1.1`), and the header names the same version. `mcp-server.py` still
-  detects which surface the installed SDK has
-  (`hasattr(server, "add_request_handler")`), so the 1.x surface keeps working
-  if a pin bump goes back to it.
+- **browser-use 1.0.0, pinned.** browser-use 1.0 ships no MCP server with page
+  tools, so `mcp-server.py` is a standalone mcp server that owns all 27 tools. It
+  uses `browser_use.Browser` (start, stop, `use_cloud`, `live_url`), the
+  accessibility helpers in `browser_use.ax` for clicking and typing by index,
+  `Agent`, and the `ChatAnthropic` / `ChatOpenAI` / `ChatBrowserUse` model classes.
+  Page commands go to Chrome as raw CDP through the browser-harness daemon each
+  `Browser` starts, over browser-harness's private IPC module (`_ipc`). That private
+  coupling is why the pin is exact: a new upstream release reaches users only
+  through a plugin release that bumps it, after the tests pass on it.
+- **mcp 2.3.0, pinned.** browser-use 1.0.0 pins `mcp==2.3.0` exactly, so no other
+  version can be installed beside it, and the header names the same one. The
+  server uses the mcp 2.x lowlevel `Server` only.
 - **playwright pinned.** browser-use drives Chrome over CDP and does not depend
   on Playwright, so the header declares it. Its install CLI decides which Chromium
   revision `magus doctor --fix` installs; `scripts/test_browser_env.py` fails a
@@ -69,14 +74,40 @@ cannot do this, because arguments after the script go to the script.
 
 The plugin launches the newest Chromium Playwright finished installing in its
 cache, of any revision, and refuses to fall back to any other browser. To drive a different build, set
-`CHROME_EXECUTABLE_PATH` to its binary.
+`CHROME_EXECUTABLE_PATH` to its binary. The path is always passed to browser-use:
+left to itself, browser-use 1.0 looks for `/Applications/Google Chrome.app` first
+and would drive the user's real Chrome.
+
+## Browser lifecycle
+
+browser-use 1.0 owns it. Each local session gets a temporary profile directory
+(`browser-use-chrome-*` under the system temp dir), and stopping the session kills
+Chrome's whole process group and deletes that directory. A watchdog process does the
+same if the server dies without stopping it, SIGKILL included. The server adds only a
+10-minute idle timeout and an exit when its parent `claude` process is gone.
+
+A stopped session's browser-harness daemon exits on its own about 20 to 30 seconds later.
+Its logs go under `$BH_HOME/tmp/` and are not rotated by the plugin.
+
+The daemon listens on a Unix socket under `$BH_HOME/runtime/`. `BH_HOME` defaults to
+`~/.config/browser-harness` (or `$XDG_CONFIG_HOME/browser-harness`). macOS caps that path near 104 bytes, so a very
+long `HOME` or `BH_HOME` makes the browser fail to start; point `BH_HOME` at a short
+directory if it does.
+
+Upgrading from a plugin built on browser-use 0.x: nothing is written under
+`~/.config/browseruse/profiles/` any more, and nothing sweeps it. Directories left there
+by earlier versions (`browser-use-user-data-dir-session-*` and `session-*`) are safe to
+delete. `~/.config/browseruse/config.json` is no longer read either: choose the agent
+model in settings.json (see the `browser-use:agent-model` skill).
 
 ## API keys
 
-- `ANTHROPIC_API_KEY` — the autonomous agent mode (`retry_with_browser_use_agent`).
-- `BROWSER_USE_API_KEY` — optional, Browser Use Cloud (CAPTCHA handling, proxy
-  rotation, stealth). Cloud task scripts also use the Node SDK: `bun add browser-use-node`.
-- `OPENAI_API_KEY` — optional fallback LLM.
+- `ANTHROPIC_API_KEY` — the default agent model, used by `retry_with_browser_use_agent`
+  and `browser_extract_content` unless another is configured.
+- `OPENAI_API_KEY` — optional, for the `openai` agent provider.
+- `BROWSER_USE_API_KEY` — optional, Browser Use Cloud sessions (CAPTCHA handling, proxy
+  rotation, stealth) and the `browser_use` agent provider, whose default model is
+  `bu-fast`. Cloud task scripts also use the Node SDK: `bun add browser-use-node`.
 
 ## Verification
 
@@ -84,3 +115,7 @@ cache, of any revision, and refuses to fall back to any other browser. To drive 
 uv run --no-config --script plugins/browser-use/scripts/mcp-server.py --test
 python3 plugins/browser-use/scripts/test_browser_env.py
 ```
+
+`--test` prints `browser-use version: 1.0.0` when the env is right. For live checks of the
+keyboard, focus and evaluate tools against real Chromium, see
+`scripts/manual-verify/README.md`.
