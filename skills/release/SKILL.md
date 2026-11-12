@@ -105,6 +105,31 @@ If the user edits anything, rewrite the JSON to disk (e.g. `/tmp/release-proposa
 with their changes applied. The JSON is the contract between `infer.ts`, `apply.ts`
 and `tag.ts`.
 
+### Step 2b — sweep model ids in each plugin
+
+Every release bumps the plugin's hard-coded model ids to the current generation. A
+default model goes stale without anyone noticing, and the user notices it before the
+tests do.
+
+1. Find every model id the plugin ships:
+   ```bash
+   git grep -n -i -E "claude-(opus|sonnet|haiku)-[0-9]|gpt-[0-9]|gemini-[0-9]|kimi|glm-[0-9]|grok-[0-9]" -- plugins/<name>
+   ```
+2. Keep a hit only if it is a shipped default, an example in a skill or doc, or a test that
+   asserts a default. Test inputs that are arbitrary strings can stay.
+3. Check each kept id against the live catalog. Use claudish `list_models` or
+   `search_models` for external models, and the `claude-api` skill for Anthropic ids.
+   Never check from memory.
+4. If an id is behind, bump it. Update the test that asserts it first, and see that test
+   fail. Then change the code.
+5. Name each bump in the CHANGELOG entry, for example "default model `X` → `Y`".
+6. Commit before Step 3, because `apply.ts` refuses a dirty tree.
+
+Where a skill does not need a pinned id, name the role instead (`LATEST_SONNET_MODEL`)
+and tell the reader to look up the live id. A role name cannot go stale. Image models
+are the exception: they stay pinned in `plugins/image/src/models.ts` and update only
+with that plugin (see CLAUDE.md, "Image Model Pinning").
+
 ### Step 3 — apply: bump and commit
 
 ```bash

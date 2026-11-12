@@ -13,7 +13,7 @@
  */
 
 import type { ClaudishRunRef } from '../../types'
-import { SHOW_PANE_ID, feedKey, isTerminal } from './domain'
+import { SHOW_PANE_ID, feedKey, isTerminal, viewedElsewhere } from './domain'
 import type { Host } from './host'
 import { activeTab, showTabs } from './layout'
 import { captureOpened } from './poll'
@@ -40,11 +40,12 @@ const tabs = new Map<string, TabScroll>()
 
 type Target = { ref: ClaudishRunRef; slot: string; replay: boolean }
 
-/** Where the tab's wheel goes: its open replay, else its child while the run is live and its feed takes scroll; null otherwise. */
+/** Where the tab's wheel goes: its open replay, else its child while the run is live and its feed takes scroll; null otherwise, and while another viewer holds the tab, whose screen a scroll would move. */
 async function targetOf(host: Host, id: string): Promise<Target | null> {
+  const view = await host.store.panes.read(id)
+  if (viewedElsewhere(view)) return null
   const replay = replayTarget(id)
   if (replay) return { ref: replay, slot: replay.token, replay: true }
-  const view = await host.store.panes.read(id)
   if (!view) return null
   const runs = await host.store.runs.read()
   const run = runs.list.find(r => r.id === view.runId)

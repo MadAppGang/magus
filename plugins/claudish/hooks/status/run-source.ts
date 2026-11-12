@@ -12,6 +12,7 @@ import type {
   ClaudishRunRef,
   ClaudishSlot,
   ClaudishSlotState,
+  ClaudishViewer,
 } from '../../types'
 
 /** What the model's claudish tool call was, as observed after it ran. Engine envelope already stripped. */
@@ -52,7 +53,8 @@ export type FeedAnswer =
   | { kind: 'unanswered'; reason: string }
 
 export type PollResult =
-  | { kind: 'ok'; slots: ClaudishSlot[] }
+  /** viewers: who holds each slot's view, by slot id; present only where the feed reports it */
+  | { kind: 'ok'; slots: ClaudishSlot[]; viewers?: Readonly<Record<string, ClaudishViewer>> }
   /** the feed spoke, but no row carries this run's per-start id (ref.token); or its row is too defective to list */
   | { kind: 'missing'; reason: string | null }
 
@@ -69,18 +71,18 @@ export type StopResult =
   | { kind: 'failed'; reason: string }
 
 export type CaptureResult =
-  /** a screen with seq ≥ 1; final = the pane is closed */
-  | { kind: 'frame'; frame: ClaudishFrame; final: boolean }
+  /** a screen with seq ≥ 1; final = the pane is closed; viewer: present only when the answer says who holds the view */
+  | { kind: 'frame'; frame: ClaudishFrame; final: boolean; viewer?: ClaudishViewer }
   /** nothing new, or seq 0 (no frame yet, or a pane that never spawned) */
-  | { kind: 'unchanged'; final: boolean }
+  | { kind: 'unchanged'; final: boolean; viewer?: ClaudishViewer }
   /** the run, session or slot is no longer retained */
   | { kind: 'gone' }
   /** any other error, a rejection, or an unparseable answer */
   | { kind: 'unavailable'; reason: string }
 
 export type ResizeResult =
-  /** the size claudish set, after its own clamping */
-  | { kind: 'resized'; cols: number; rows: number }
+  /** the size claudish set, after its own clamping; viewer: present only when the answer says who holds the view */
+  | { kind: 'resized'; cols: number; rows: number; viewer?: ClaudishViewer }
   /** the run, session or slot is no longer retained */
   | { kind: 'gone' }
   /** any other error (resize_unsupported included), a rejection, or an unparseable answer */
@@ -112,8 +114,8 @@ export type TranscriptResult =
   | { kind: 'failed'; reason: string }
 
 export type ReplayOpenResult =
-  /** the replay runs; it is addressed as a session, by this id */
-  | { kind: 'opened'; replayId: string; seq: number }
+  /** the replay runs; it is addressed as a session, by this id; viewer: present only when the answer says who holds the view */
+  | { kind: 'opened'; replayId: string; seq: number; viewer?: ClaudishViewer }
   /** the session has not finished letting go of its record yet (a slot is replayable a moment after it ends) */
   | { kind: 'notYet' }
   /** the run, session or slot is no longer retained */

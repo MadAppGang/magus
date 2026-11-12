@@ -40,6 +40,7 @@ import {
   paneId,
   slotAgent,
   slotKey,
+  viewBandText,
   type BadgeTone,
   type BatchAgent,
   type Group,
@@ -743,6 +744,8 @@ export type PaneBody =
   | { kind: 'note'; note: string }
   /** the transcript as text: whole lines (cont chains joined), lines dropped above them, why a read failed */
   | { kind: 'text'; lines: { kind: string; text: string }[]; dropped: number; note: string | null; final: boolean }
+  /** another viewer holds the tab: the band that takes it back, and why the last press did not */
+  | { kind: 'elsewhere'; text: string; note: string | null }
 
 /** `agent`: the line above the header naming the slot's agent; [] when it names none. */
 export type PaneModel = { agent: Segment[]; badge: Badge | null; header: Segment[]; body: PaneBody }
@@ -809,7 +812,8 @@ export function paneModel(view: ClaudishPaneView, runs: ClaudishRuns, fit: PaneF
     : ''
 
   let body: PaneBody
-  if (view.status === 'waiting') body = { kind: 'waiting' }
+  if (view.viewer?.kind === 'elsewhere') body = { kind: 'elsewhere', text: viewBandText(view.viewer.label), note: view.claimNote ?? null }
+  else if (view.status === 'waiting') body = { kind: 'waiting' }
   else if (view.status === 'unavailable') {
     const note = view.note === null || view.note === NO_CAPTURE_NOTE ? NO_CAPTURE_NOTE : `Live screen not available right now: ${view.note}`
     body = { kind: 'unavailable', note, numbers }

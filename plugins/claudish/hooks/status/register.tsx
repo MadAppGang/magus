@@ -10,7 +10,7 @@ import type { EngineInterface, Register, RenderElement } from 'claude-code'
 import { CLAUDISH_TOOL, makeClaudishSource, type McpCall } from './claudish-source'
 import { isCodexSession, makeAllowanceSource } from './allowance-source'
 import { capped, claimVia, rejected, toAccepted, type Host, type PressUi, type Store } from './host'
-import { CLIENT_SURFACES, FORECAST_PANE_ID, FORECAST_PANE_TITLE, SHOW_PANE_ID, feedKey, isTerminal } from './domain'
+import { CLIENT_SURFACES, FORECAST_PANE_ID, FORECAST_PANE_TITLE, SHOW_PANE_ID, feedKey, isTerminal, viewedElsewhere } from './domain'
 import { activeTab, bandModel, childSize, paneAgentRows, paneFit, paneModel, showTabs, wrapTabs } from './layout'
 import * as poll from './poll'
 import * as scroll from './scroll'
@@ -368,7 +368,7 @@ export const register: Register = (on, options) => {
     })
     const runsTree = model && bandTree(els, model, {
       stop: target => void controls.pressStop(press, bound, target),
-      show: target => void controls.pressShow(press, ui, bound, target).then(id => (void scroll.release(bound, id), poll.captureOpened(bound, id)), () => poll.ensureLoop(bound)),
+      show: target => void controls.pressShow(press, ui, bound, target).then(id => (void scroll.release(bound, id), poll.expandOpened(bound, id)), () => poll.ensureLoop(bound)),
       hide: () => void controls.pressHide(ui).then(() => scroll.release(bound, null)).catch(err => bound.debug(`claudish Hide failed: ${err instanceof Error ? err.message : String(err)}`)),
     }, palette, look)
     if (!top) return runsTree!
@@ -400,7 +400,9 @@ export const register: Register = (on, options) => {
     const textView = await read($, TEXT_VIEW)
     transcript.prune(new Set(tabs.map(t => t.id)))
     let toggle: ModeSwitch | null = null
-    if (active && view && model) {
+    // Held by another viewer, the tab draws only its band: no mode, no transcript read, no replay.
+    const collapsed = viewedElsewhere(view)
+    if (active && view && model && !collapsed) {
       const run = runs.list.find(r => r.id === view.runId)
       const slot = run?.slots.find(x => x.slot === view.slot)
       const support = run ? feeds[feedKey(run.ref)] : undefined
@@ -411,7 +413,7 @@ export const register: Register = (on, options) => {
       // A finished tab the visible panel draws on its screen: its real interface, opened only now.
       // The slot's own state, not the view's: a pane that never spawned reads ended while its session runs.
       const finished = (slot !== undefined && isTerminal(slot.state)) || (run?.settledAt ?? null) !== null
-      if (finished && canReplay && mode === 'screen' && run && support?.kind === 'speaks') replay.ensureReplay(bound, active.id, run.ref, view.slot, support.can.spans)
+      if (finished && canReplay && mode === 'screen' && run && support?.kind === 'speaks') replay.ensureReplay(bound, active.id, run.ref, view.slot, support.can.spans, support.can.viewer === true)
       if (canText) {
         const id = active.id
         toggle = { mode, press: m => void (m === 'text' ? scroll.release(bound, null) : Promise.resolve()).then(() => transcript.setMode(bound, id, m)).catch(err => bound.debug(`claudish Show mode failed: ${err instanceof Error ? err.message : String(err)}`)) }
@@ -425,9 +427,10 @@ export const register: Register = (on, options) => {
     }
     const press = bindStore($)
     return panelTree($.ui.resolve(e), tabs, strip, active?.id ?? null, model, fit.columns, palette,
-      target => void controls.pressTab(press, target).then(id => (void scroll.release(bound, id), poll.captureOpened(bound, id)), () => poll.ensureLoop(bound)),
+      target => void controls.pressTab(press, target).then(id => (void scroll.release(bound, id), poll.expandOpened(bound, id)), () => poll.ensureLoop(bound)),
       () => void controls.pressHide(bindPressUi($)).then(() => replay.closeAll(bound)).then(() => scroll.release(bound, null)).catch(err => bound.debug(`claudish Hide failed: ${err instanceof Error ? err.message : String(err)}`)),
-      toggle)
+      toggle,
+      active && collapsed ? () => void poll.takeView(bound, active.id).catch(err => bound.debug(`claudish Show take view failed: ${err instanceof Error ? err.message : String(err)}`)) : null)
   })
 
   // The person's wheel or scroll keys over the Show panel scroll the shown child's own transcript:

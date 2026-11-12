@@ -5,8 +5,12 @@
 // Names no claudish tool or field: the adapter behind host.source speaks claudish.
 
 import type { Frozen, Next, SessionEndInput, ToolCallInput, ToolCallResult } from 'claude-code'
-import type { ClaudishFeedSupport, ClaudishPaneView, ClaudishRun, ClaudishRuns } from '../../types'
+import type { ClaudishFeatures, ClaudishFeedSupport, ClaudishPaneView, ClaudishRun, ClaudishRuns } from '../../types'
 import {
+  CLAIM_NO_RESIZE,
+  CLAIM_NO_RUN,
+  CLAIM_NO_SIZE,
+  CLAIM_RUN_ENDED,
   FINAL_GRACE_MS,
   NO_CAPTURE_NOTE,
   NO_SCREEN_NOTE,
@@ -20,16 +24,19 @@ import {
   pruneStops,
   runId,
   sameData,
+  viewedElsewhere,
   withoutLedgerKeys,
   withoutRuns,
+  withoutViewer,
   type RunObservation,
 } from './domain'
 import * as allowancePoll from './allowance-poll'
 import { serverOfTool } from './claudish-source'
 import type { Host } from './host'
-import { replayHolds } from './replay'
+import { expandReplay, notePressOpen, pollCollapsed, replayHolds, stopTrackingViewer, takeReplayView } from './replay'
 import { activeTab, showTabs } from './layout'
 import type { FeedAnswer, PollBatch, ResizeResult } from './run-source'
+import { applyViewer, askOrder, forgetViewOrder, noteClaimRefused, settleClaim, type ClaimOutcome } from './view'
 import * as wake from './wake'
 
 // ── cadence ───────────────────────────────────────────────────────────────────
@@ -69,6 +76,10 @@ const askedSize = new Map<string, Size>()
 /** pane ids whose resize answer is still out. Another capture pass skips them: the pass that sent the
  *  resize captures the tab once the answer is back, so no capture shows the size before it. */
 const resizing = new Set<string>()
+/** pane ids with a press's claim under way: a second press on the tab sends nothing. */
+const claiming = new Set<string>()
+/** pane ids pressed before the panel had a size: their expand runs when the first size arrives. */
+const owedClaim = new Set<string>()
 
 type Size = { cols: number; rows: number }
 const sameSize = (a: Size | null | undefined, b: Size | null | undefined): boolean =>
@@ -82,7 +93,7 @@ export const SETTLE_CAPTURE_MS: readonly number[] = [250, 750]
 const RESIZE_ROUNDS = 3
 
 /** One resize, never rejecting and never longer than RESIZE_TIMEOUT_MS: either becomes a failed answer. */
-function resizeBounded(host: Host, ref: ClaudishRun['ref'], slot: string, size: Size): Promise<ResizeResult> {
+export function resizeBounded(host: Host, ref: ClaudishRun['ref'], slot: string, size: Size): Promise<ResizeResult> {
   return new Promise(resolve => {
     const timer = host.after(RESIZE_TIMEOUT_MS, () => resolve({ kind: 'failed', reason: 'no answer' }))
     host.source.resize(ref, slot, size.cols, size.rows).then(
@@ -95,23 +106,35 @@ function resizeBounded(host: Host, ref: ClaudishRun['ref'], slot: string, size: 
 /**
  * Resizes one session to the panel's size, once per size whatever the answer. The panel can move
  * again while an answer is out (a drag), so it asks for the newest size before returning.
+ * `tracksViewer`: the feed reports who holds the view, so the answer's holder is applied.
  */
-async function fitToPanel(host: Host, id: string, ref: ClaudishRun['ref'], slot: string): Promise<void> {
+async function fitToPanel(host: Host, id: string, ref: ClaudishRun['ref'], slot: string, tracksViewer: boolean): Promise<void> {
   for (let round = 0; round < RESIZE_ROUNDS; round++) {
     const size = panelSize
     if (!size || sameSize(askedSize.get(id), size)) return
     askedSize.set(id, size) // a refusal is not retried until the size moves
     resizing.add(id)
+    const asked = askOrder()
     const rs = await resizeBounded(host, ref, slot, size).finally(() => resizing.delete(id))
     if (rs.kind === 'failed') host.debug(`claudish Show resize to ${size.cols}x${size.rows} failed: ${rs.reason}`)
+    if (tracksViewer && rs.kind === 'resized' && rs.viewer) {
+      await applyViewer(host, id, rs.viewer, asked)
+      if (rs.viewer.kind === 'elsewhere') return
+    }
   }
+}
+
+/** Whether a capture pass may fit this tab: where the feed reports a holder, only the shown tab this Claude Code holds, since a resize takes the view. */
+function viewAllowsFit(can: ClaudishFeatures, view: ClaudishPaneView, isShown: boolean): boolean {
+  return can.viewer !== true || (isShown && view.viewer?.kind === 'here')
 }
 
 /**
  * Every running session takes the panel's last size, shown or not and panel open or not, so a
  * session that ends before anyone opens it was already drawing at that size: an ended screen can
  * no longer redraw. The size is the session's, so a session forgets it only when it is no longer
- * running.
+ * running. A feed that reports who holds each view is never fitted here: a resize takes the view,
+ * and nobody asked for that.
  */
 async function fitLive(host: Host, runs: ClaudishRuns, feeds: Readonly<Record<string, ClaudishFeedSupport>>): Promise<void> {
   const live = new Set<string>()
@@ -124,8 +147,8 @@ async function fitLive(host: Host, runs: ClaudishRuns, feeds: Readonly<Record<st
       live.add(id)
       // A run whose server is not answering would only spend the 5 s bound; it is asked once it answers.
       if (run.settledAt !== null || run.unreachableSince !== null) continue
-      if (support?.kind !== 'speaks' || !support.can.resize || resizing.has(id)) continue
-      fits.push(fitToPanel(host, id, run.ref, slot.slot))
+      if (support?.kind !== 'speaks' || !support.can.resize || support.can.viewer === true || resizing.has(id)) continue
+      fits.push(fitToPanel(host, id, run.ref, slot.slot, false))
     }
   }
   // All at once: one slow answer must not hold the tick's captures behind every other session.
@@ -145,9 +168,11 @@ export function panelSizeNow(): Size | null {
 
 export function notePanelSize(host: Host, size: Size, shownId: string | null): void {
   if (sameSize(panelSize, size)) return
+  const owed = shownId !== null && owedClaim.has(shownId)
   panelSize = size
+  owedClaim.clear()
   if (shownId === null) return ensureLoop(host)
-  void captureOpened(host, shownId)
+  void (owed ? expandOpened(host, shownId) : captureOpened(host, shownId))
   // The session redraws a moment after its resize answer, so the capture right after can still
   // show the old drawing; these catch the redraw instead of the next tick, a second or two later.
   for (const ms of SETTLE_CAPTURE_MS) host.after(ms, () => void captureOpened(host, shownId, false))
@@ -355,6 +380,77 @@ export async function captureOpened(host: Host, id: string, kick = true): Promis
   if (kick) ensureLoop(host)
 }
 
+/** The resize a press sends for a live tab: not held back by the size memo, since a same-size call still takes the view. A child no longer kept ends the tab. */
+async function claimLive(host: Host, id: string, ref: ClaudishRun['ref'], slot: string, size: Size): Promise<ClaimOutcome> {
+  resizing.add(id)
+  askedSize.set(id, size)
+  const answer = await resizeBounded(host, ref, slot, size).finally(() => resizing.delete(id))
+  const outcome = await settleClaim(host, id, answer)
+  if (outcome === 'gone') {
+    await host.store.panes.update(id, endView)
+    lastAttemptAt.delete(id)
+    terminalSeenAt.delete(id)
+    ensureLoop(host)
+  }
+  return outcome
+}
+
+/** Claims a live tab a press just expanded, where its feed reports who holds it. A tab another viewer holds only draws its band: taking it is the band's press alone. */
+async function claimOnExpand(host: Host, id: string): Promise<void> {
+  const view = await host.store.panes.read(id)
+  if (!view) return
+  const run = (await host.store.runs.read()).list.find(r => r.id === view.runId)
+  const support = run ? (await host.store.feeds.read())[feedKey(run.ref)] : undefined
+  if (!run || support?.kind !== 'speaks' || support.can.viewer !== true || !support.can.resize || viewedElsewhere(view)) return
+  const slot = run.slots.find(s => s.slot === view.slot)
+  if ((slot && isTerminal(slot.state)) || run.settledAt !== null) return notePressOpen(id)
+  if (!(await panelOpen(host))) return
+  if (panelSize === null) {
+    owedClaim.add(id)
+    return
+  }
+  await claimLive(host, id, run.ref, view.slot, panelSize)
+}
+
+/**
+ * A press expanded this tab (Show, or a tab press). Where its feed reports who holds it, an expand
+ * takes the view unless another viewer holds it; then its first screen is captured. Never rejects.
+ */
+export async function expandOpened(host: Host, id: string): Promise<void> {
+  if (!claiming.has(id)) {
+    claiming.add(id)
+    try {
+      await (replayHolds(id) ? expandReplay(host, id) : claimOnExpand(host, id))
+    } catch (err) {
+      host.debug(`claudish Show expand failed: ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      claiming.delete(id)
+    }
+  }
+  await captureOpened(host, id)
+}
+
+/** The press on a collapsed tab's band: takes the view from whoever holds it, then shows the tab again. */
+export async function takeView(host: Host, id: string): Promise<void> {
+  if (claiming.has(id)) return
+  claiming.add(id)
+  try {
+    if (replayHolds(id)) return await takeReplayView(host, id)
+    const view = await host.store.panes.read(id)
+    if (!view) return
+    const run = (await host.store.runs.read()).list.find(r => r.id === view.runId)
+    if (!run) return await noteClaimRefused(host, id, CLAIM_NO_RUN)
+    const slot = run.slots.find(s => s.slot === view.slot)
+    if (run.settledAt !== null || (slot && isTerminal(slot.state))) return await noteClaimRefused(host, id, CLAIM_RUN_ENDED)
+    const support = (await host.store.feeds.read())[feedKey(run.ref)]
+    if (support?.kind !== 'speaks' || !support.can.resize) return await noteClaimRefused(host, id, CLAIM_NO_RESIZE)
+    if (panelSize === null) return await noteClaimRefused(host, id, CLAIM_NO_SIZE)
+    if ((await claimLive(host, id, run.ref, view.slot, panelSize)) === 'taken') await captureOpened(host, id)
+  } finally {
+    claiming.delete(id)
+  }
+}
+
 async function panelOpen(host: Host): Promise<boolean> {
   return (await host.panes()).some(p => p.id === SHOW_PANE_ID && p.isPlaced)
 }
@@ -390,6 +486,7 @@ export async function tick(host: Host): Promise<void> {
     feedsNow = await host.store.feeds.read()
     const feeds0 = feedsNow
     const watched = runsNow.list.filter(r => isWatched(r, feeds0))
+    const listAsked = askOrder()
     const batch = watched.length > 0 ? await host.source.poll(watched.map(r => ({ id: r.id, ref: r.ref }))) : EMPTY_BATCH
 
     const at = now
@@ -423,7 +520,9 @@ export async function tick(host: Host): Promise<void> {
 
     await fitLive(host, runsNow, feedsNow)
     open = await syncTabs(host, runsNow, feedsNow)
+    await applyListViewers(host, batch, runsNow, listAsked)
     tabs = await captures(host, open, runsNow, feedsNow, now)
+    tabs.capturing += await pollCollapsed(host) // a collapsed replay's only signal is its own capture
 
     const polled = [...batch.feeds.values()]
     loop.failures = polled.length > 0 && polled.every(a => BAD_ANSWERS.has(a.kind)) ? loop.failures + 1 : 0
@@ -447,6 +546,25 @@ export async function tick(host: Host): Promise<void> {
       loop.phase = 'idle'
     } else {
       schedule(host, delay(watchedNow, tabs.shownLive, now))
+    }
+  }
+}
+
+/**
+ * The holders a list answer reported, onto the tabs of its runs. A row says nothing about a replay
+ * that has taken over its tab, and a finished slot's holder lingers after it ended, so neither is read.
+ */
+async function applyListViewers(host: Host, batch: PollBatch, runs: ClaudishRuns, asked: number): Promise<void> {
+  for (const run of runs.list) {
+    const result = batch.runs.get(run.id)
+    if (result?.kind !== 'ok' || !result.viewers) continue
+    for (const [slotId, viewer] of Object.entries(result.viewers)) {
+      const id = paneId(run.id, slotId)
+      if (replayHolds(id)) continue
+      const slot = run.slots.find(s => s.slot === slotId)
+      if (!slot || isTerminal(slot.state)) continue
+      const view = await host.store.panes.read(id)
+      if (view && view.status !== 'ended') await applyViewer(host, id, viewer, asked)
     }
   }
 }
@@ -483,6 +601,8 @@ async function syncTabs(host: Host, runs: ClaudishRuns, feeds: Readonly<Record<s
   for (const id of [...seeded]) {
     if (ids.has(id)) continue
     seeded.delete(id)
+    forgetViewOrder(id)
+    owedClaim.delete(id)
     await host.store.panes.update(id, () => null)
   }
   for (const t of tabs) {
@@ -499,6 +619,25 @@ async function syncTabs(host: Host, runs: ClaudishRuns, feeds: Readonly<Record<s
 // ── captures: the panel's tabs, open or closed ───────────────────────────────────────────────
 
 type TabsOutcome = { shownLive: boolean; capturing: number }
+
+const endView = (v: ClaudishPaneView | null): ClaudishPaneView | null =>
+  v ? withoutViewer({ ...v, status: 'ended', note: v.frame ? null : NO_SCREEN_NOTE }) : v
+
+/** The tab as a capture pass reads it: a feed that stopped reporting holders leaves no band behind it. */
+async function viewAfterFeedLoss(
+  host: Host,
+  id: string,
+  runs: ClaudishRuns,
+  feeds: Readonly<Record<string, ClaudishFeedSupport>>,
+): Promise<ClaudishPaneView | null> {
+  const view = await host.store.panes.read(id)
+  if (!view || withoutViewer(view) === view) return view
+  const run = runs.list.find(r => r.id === view.runId)
+  const support = run ? feeds[feedKey(run.ref)] : undefined
+  if (support?.kind === 'speaks' && support.can.viewer === true) return view
+  stopTrackingViewer(id)
+  return host.store.panes.update(id, v => (v ? withoutViewer(v) : v))
+}
 
 /**
  * Captures every open tab that is due (architecture §3.4, "Captures"). Returns whether
@@ -521,10 +660,8 @@ async function captures(
     for (const id of [...lastAttemptAt.keys()]) if (!openIds.has(id)) lastAttemptAt.delete(id)
     for (const id of [...terminalSeenAt.keys()]) if (!openIds.has(id)) terminalSeenAt.delete(id)
   }
-  const end = (v: ClaudishPaneView | null): ClaudishPaneView | null =>
-    v ? { ...v, status: 'ended', note: v.frame ? null : NO_SCREEN_NOTE } : v
   for (const p of open) {
-    const view = await host.store.panes.read(p.id)
+    const view = await viewAfterFeedLoss(host, p.id, runs, feeds)
     // An ended tab with no screen is asked once more when it is opened: claudish keeps a closed
     // pane's last screen, so the answer is that screen, not a guess that none exists.
     const retry = !everyTab && view?.status === 'ended' && view.frame === null
@@ -542,7 +679,7 @@ async function captures(
     }
     const run = runs.list.find(r => r.id === view.runId)
     if (!run) {
-      await host.store.panes.update(p.id, end)
+      await host.store.panes.update(p.id, endView)
       continue
     }
     const support = feeds[feedKey(run.ref)]
@@ -550,6 +687,13 @@ async function captures(
       if (view.status !== 'unavailable' || view.note !== NO_CAPTURE_NOTE) {
         await host.store.panes.update(p.id, v => (v ? { ...v, status: 'unavailable', note: NO_CAPTURE_NOTE } : v))
       }
+      continue
+    }
+    if (support.can.viewer === true && viewedElsewhere(view)) {
+      lastAttemptAt.delete(p.id) // expansion captures on the very next pass
+      terminalSeenAt.delete(p.id)
+      const held = run.slots.find(s => s.slot === view.slot)
+      if ((held && isTerminal(held.state)) || run.settledAt !== null) await host.store.panes.update(p.id, endView)
       continue
     }
     if (retry) {
@@ -574,29 +718,38 @@ async function captures(
     lastAttemptAt.set(p.id, now)
     // Fit the child to the panel before reading its screen, so this capture already shows it reflowed.
     // A finished slot is left as it is: its pane no longer redraws.
-    if (support.can.resize && !(slot && isTerminal(slot.state))) await fitToPanel(host, p.id, run.ref, view.slot)
+    if (support.can.resize && !(slot && isTerminal(slot.state)) && viewAllowsFit(support.can, view, p.isShown)) await fitToPanel(host, p.id, run.ref, view.slot, support.can.viewer === true)
+    const asked = askOrder()
     const r = await host.source.capture(run.ref, view.slot, view.frame?.seq ?? 0, support.can.spans)
     let ended = false
     switch (r.kind) {
       case 'frame':
         // A finished slot whose pane keeps redrawing still ends at the grace: nothing else would stop it.
         ended = r.final || graceOver
-        await host.store.panes.update(p.id, v => (v ? { ...v, status: ended ? 'ended' : 'live', frame: r.frame, note: null } : v))
+        await host.store.panes.update(p.id, v => {
+          if (!v) return v
+          const next: ClaudishPaneView = { ...v, status: ended ? 'ended' : 'live', frame: r.frame, note: null }
+          return ended ? withoutViewer(next) : next
+        })
         break
       case 'unchanged':
         if (r.final || graceOver) {
           ended = true
-          await host.store.panes.update(p.id, end)
+          await host.store.panes.update(p.id, endView)
         }
         break
       case 'gone':
         ended = true
-        await host.store.panes.update(p.id, end)
+        await host.store.panes.update(p.id, endView)
         break
       case 'unavailable':
         ended = graceOver
-        await host.store.panes.update(p.id, v => (graceOver ? end(v) : v ? { ...v, status: 'unavailable', note: r.reason } : v))
+        await host.store.panes.update(p.id, v => (graceOver ? endView(v) : v ? { ...v, status: 'unavailable', note: r.reason } : v))
         break
+    }
+    // A finished slot's holder lingers after it ended, and says nothing about its last screen.
+    if (support.can.viewer === true && !ended && (r.kind === 'frame' || r.kind === 'unchanged') && r.viewer && !(slot && isTerminal(slot.state))) {
+      await applyViewer(host, p.id, r.viewer, asked)
     }
     if (ended) {
       out.capturing -= 1

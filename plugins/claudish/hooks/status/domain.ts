@@ -7,6 +7,7 @@ import type {
   ClaudishEarlier,
   ClaudishFeedSupport,
   ClaudishLedger,
+  ClaudishPaneView,
   ClaudishRecentStep,
   ClaudishRun,
   ClaudishRunKind,
@@ -17,6 +18,7 @@ import type {
   ClaudishStopRequest,
   ClaudishTrailKind,
   ClaudishTrailStep,
+  ClaudishViewer,
   ClaudishWait,
 } from '../../types'
 
@@ -252,6 +254,45 @@ export function sameData(a: unknown, b: unknown): boolean {
   const ak = Object.keys(ao)
   const bk = Object.keys(bo)
   return ak.length === bk.length && ak.every(k => Object.prototype.hasOwnProperty.call(bo, k) && sameData(ao[k], bo[k]))
+}
+
+// ── who holds a tab's view ───────────────────────────────────────────────────
+
+export const VIEW_LABEL_MAX = 40
+export const VIEW_LABEL_UNKNOWN = 'another window'
+/** Why a press on the band made no call. */
+export const CLAIM_NO_RUN = 'its run is no longer listed'
+export const CLAIM_RUN_ENDED = 'its run has ended'
+export const CLAIM_NO_RESIZE = 'this claudish cannot resize it'
+export const CLAIM_NO_SIZE = 'the panel has no size yet'
+
+/** The tab is collapsed: another viewer holds it. */
+export function viewedElsewhere(v: ClaudishPaneView | null | undefined): boolean {
+  return v?.viewer?.kind === 'elsewhere'
+}
+
+export function viewBandText(label: string): string {
+  return `viewing in ${label}`
+}
+
+/** Sets the viewer; a note survives only while still elsewhere under the same label. The same object when nothing changes. */
+export function withViewer(v: ClaudishPaneView, viewer: ClaudishViewer): ClaudishPaneView {
+  const keepNote = v.claimNote !== undefined && viewer.kind === 'elsewhere' && v.viewer?.kind === 'elsewhere' && v.viewer.label === viewer.label
+  if (sameData(v.viewer, viewer) && (keepNote || v.claimNote === undefined)) return v
+  const { claimNote, ...rest } = v
+  return { ...rest, viewer, ...(keepNote ? { claimNote } : {}) }
+}
+
+/** Drops viewer and claimNote; the same object when it has neither. */
+export function withoutViewer(v: ClaudishPaneView): ClaudishPaneView {
+  if (v.viewer === undefined && v.claimNote === undefined) return v
+  const { viewer: _viewer, claimNote: _claimNote, ...rest } = v
+  return rest
+}
+
+/** Sets claimNote on a collapsed tab; the same object on any other. */
+export function withClaimNote(v: ClaudishPaneView, note: string): ClaudishPaneView {
+  return !viewedElsewhere(v) || v.claimNote === note ? v : { ...v, claimNote: note }
 }
 
 // ── runs ──────────────────────────────────────────────────────────────────────

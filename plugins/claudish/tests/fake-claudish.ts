@@ -46,6 +46,8 @@ export const FAKE_CLAUDE_DIR = `${FAKE_HOME}/.claude`
 export type ListOverride = { text: string; isError?: boolean } | { deny: string }
 
 export type FakeOptions = {
+  /** Optional view-protocol answers at the MCP boundary; unset preserves every existing fake path. */
+  viewAnswer?: (call: Recorded) => ListOverride | undefined | Promise<ListOverride | undefined>
   /** answer as claudish 10.3.0 did */
   precontract?: boolean
   /** contract_version 2 on every list answer */
@@ -332,6 +334,11 @@ export function fakeClaudish(on: On, clock: MockClock, options: FakeOptions = {}
     const args = (e.args ?? {}) as Json
     calls.push({ server: e.server, tool: e.tool, args, at: now() })
     if (!(SERVERS as readonly string[]).includes(e.server)) return { deny: `unknown server ${e.server}` }
+
+    if (options.viewAnswer) {
+      const answer = await options.viewAnswer({ server: e.server, tool: e.tool, args, at: now() })
+      if (answer) return 'deny' in answer ? { deny: answer.deny } : { value: text(answer.text, answer.isError === true) }
+    }
 
     if (e.tool === 'allowance_status') {
       await options.beforeAllowance?.()

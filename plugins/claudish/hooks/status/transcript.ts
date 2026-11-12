@@ -11,7 +11,7 @@
  */
 
 import type { ClaudishShowMode, ClaudishTextView } from '../../types'
-import { SHOW_PANE_ID, feedKey, isTerminal } from './domain'
+import { SHOW_PANE_ID, feedKey, isTerminal, viewedElsewhere } from './domain'
 import type { Host } from './host'
 import { activeTab, showTabs } from './layout'
 import { replayFailed } from './replay'
@@ -68,10 +68,10 @@ export function appendLines(into: TextLine[], page: readonly TranscriptLine[]): 
 
 type Target = { id: string; read: (since: TranscriptCursor | null) => Promise<TranscriptResult> }
 
-/** The tab's transcript reader, while its feed announces the transcript capability; null otherwise. */
+/** The tab's transcript reader, while its feed announces the transcript capability and no other viewer holds the tab; null otherwise. */
 async function targetOf(host: Host, id: string): Promise<Target | null> {
   const view = await host.store.panes.read(id)
-  if (!view) return null
+  if (!view || viewedElsewhere(view)) return null
   const run = (await host.store.runs.read()).list.find(r => r.id === view.runId)
   if (!run) return null
   const support = (await host.store.feeds.read())[feedKey(run.ref)]
@@ -132,6 +132,7 @@ export async function refresh(host: Host, id: string): Promise<void> {
     st.timer?.cancel()
     st.timer = null
     for (let page = 0; page < TEXT_PAGES_PER_READ; page++) {
+      if (page > 0 && viewedElsewhere(await host.store.panes.read(id))) break
       const r = await t.read(st.cursor)
       if (r.kind !== 'lines') {
         const note = r.kind === 'gone' ? 'claudish no longer keeps this session' : `transcript unavailable: ${r.reason}`

@@ -11,8 +11,8 @@
 // waking: it reports what the server answered.
 
 import type { McpToolResult } from 'claude-code'
-import type { ClaudishColor, ClaudishFrame, ClaudishRecentStep, ClaudishRunKind, ClaudishRunRef, ClaudishSlot, ClaudishSlotState, ClaudishStyleSpan } from '../../types'
-import { STYLE_SPANS_PER_LINE, feedKey, sanitize } from './domain'
+import type { ClaudishColor, ClaudishFrame, ClaudishRecentStep, ClaudishRunKind, ClaudishRunRef, ClaudishSlot, ClaudishSlotState, ClaudishStyleSpan, ClaudishViewer } from '../../types'
+import { STYLE_SPANS_PER_LINE, VIEW_LABEL_MAX, VIEW_LABEL_UNKNOWN, feedKey, sanitize } from './domain'
 import type {
   CallSeen,
   CaptureResult,
@@ -256,13 +256,13 @@ function classify(result: McpToolResult | Error, rowsKey: 'runs' | 'sessions'): 
   const rows = body[rowsKey]
   if (!Array.isArray(rows)) return { answer: { kind: 'garbled', reason: `answer has no ${rowsKey} array` }, rows: none }
   // 7. speaks. `allowance` is present only when announced: a trigger to re-probe, never support itself.
-  // `scroll` is present only when announced too, so a feed without it reads exactly as before it existed.
+  // `scroll` and `view` are present only when announced too, so a feed without them reads exactly as before they existed.
   const capture = has('capture') && has('capture_since_seq')
   return {
     answer: {
       kind: 'speaks',
       version: 1,
-      can: { cancel: has('cancel'), capture, spans: capture && has('capture_spans'), resize: capture && has('resize'), ...(capture && has('scroll') ? { scroll: true } : {}), ...(has('transcript') ? { transcript: true } : {}), ...(capture && has('replay') ? { replay: true } : {}), ...(has('allowance') ? { allowance: true } : {}) },
+      can: { cancel: has('cancel'), capture, spans: capture && has('capture_spans'), resize: capture && has('resize'), ...(capture && has('scroll') ? { scroll: true } : {}), ...(has('transcript') ? { transcript: true } : {}), ...(capture && has('replay') ? { replay: true } : {}), ...(has('allowance') ? { allowance: true } : {}), ...(has('view') ? { viewer: true } : {}) },
     },
     rows: rows.filter(isObject),
   }
@@ -334,24 +334,46 @@ function mapSlot(row: Json): ClaudishSlot | null {
   }
 }
 
-/** A watched run's row, matched by its own per-start id, exactly. */
-function pollResult(kind: ClaudishRunKind, rows: readonly Json[], token: string): PollResult {
+/** The claudish holder that names this Claude Code; every other value, known or not, is another viewer. */
+const HOLDER_HERE = 'claude_code'
+
+function viewerOf(raw: unknown): ClaudishViewer {
+  if (!isObject(raw) || typeof raw.holder !== 'string') return { kind: 'nobody' }
+  if (raw.holder === HOLDER_HERE) return { kind: 'here' }
+  const label = typeof raw.label === 'string' ? sanitize(raw.label, VIEW_LABEL_MAX) : ''
+  return { kind: 'elsewhere', label: label === '' ? VIEW_LABEL_UNKNOWN : label }
+}
+
+/** The `view` of a capture, resize or replay-open body; nothing where the body has no such key. */
+function viewerField(body: Json): { viewer?: ClaudishViewer } {
+  return 'view' in body ? { viewer: viewerOf(body.view) } : {}
+}
+
+/** Each listed slot's holder by slot id. A row with no `view` key says nobody holds it. */
+function viewersOf(rows: readonly (readonly [Json, ClaudishSlot])[]): { viewers: Record<string, ClaudishViewer> } {
+  return { viewers: Object.fromEntries(rows.map(([row, slot]) => [slot.slot, viewerOf(row.view)])) }
+}
+
+/** A watched run's row, matched by its own per-start id, exactly. `tracksViewer`: the feed announced who holds each view. */
+function pollResult(kind: ClaudishRunKind, rows: readonly Json[], token: string, tracksViewer: boolean): PollResult {
   if (kind === 'panel') {
     const row = rows.find(r => r.run_id === token)
     if (!row) return { kind: 'missing', reason: null }
     if (!Array.isArray(row.slots)) return { kind: 'missing', reason: 'run row has no slots array' }
     const slots: ClaudishSlot[] = []
+    const seen: (readonly [Json, ClaudishSlot])[] = []
     for (const s of row.slots) {
       const mapped = isObject(s) ? mapSlot(s) : null
       if (!mapped) return { kind: 'missing', reason: 'a slot row has no slot id' }
       slots.push(mapped)
+      seen.push([s as Json, mapped])
     }
-    return { kind: 'ok', slots }
+    return { kind: 'ok', slots, ...(tracksViewer ? viewersOf(seen) : {}) }
   }
   const row = rows.find(r => r.session_id === token)
   if (!row) return { kind: 'missing', reason: null }
   const mapped = mapSlot(row)
-  return mapped ? { kind: 'ok', slots: [mapped] } : { kind: 'missing', reason: 'session row has no slot id' }
+  return mapped ? { kind: 'ok', slots: [mapped], ...(tracksViewer ? viewersOf([[row, mapped]]) : {}) } : { kind: 'missing', reason: 'session row has no slot id' }
 }
 
 // ── stop ──────────────────────────────────────────────────────────────────────
@@ -387,7 +409,7 @@ function resizeResult(result: McpToolResult | Error): ResizeResult {
   if (!body) return { kind: 'failed', reason: 'resize answer is not a JSON object' }
   const { cols, rows } = body
   return typeof cols === 'number' && typeof rows === 'number'
-    ? { kind: 'resized', cols, rows }
+    ? { kind: 'resized', cols, rows, ...viewerField(body) }
     : { kind: 'failed', reason: 'resize answer has no cols and rows' }
 }
 
@@ -452,7 +474,7 @@ function replayOpenResult(result: McpToolResult | Error): ReplayOpenResult {
   if (!body) return { kind: 'failed', reason: 'replay answer is not a JSON object' }
   const { replay_id: replayId, seq } = body
   return typeof replayId === 'string' && replayId !== '' && typeof seq === 'number'
-    ? { kind: 'opened', replayId, seq }
+    ? { kind: 'opened', replayId, seq, ...viewerField(body) }
     : { kind: 'failed', reason: 'replay answer has no replay_id or seq' }
 }
 
@@ -523,7 +545,8 @@ function captureResult(result: McpToolResult | Error, withSpans: boolean): Captu
   const body = parseObject(text)
   if (!body) return { kind: 'unavailable', reason: 'capture answer is not a JSON object' }
   const final = body.final === true
-  if (body.unchanged === true) return { kind: 'unchanged', final }
+  const viewer = viewerField(body)
+  if (body.unchanged === true) return { kind: 'unchanged', final, ...viewer }
   const { seq, cols, rows, lines } = body
   if (typeof seq !== 'number' || !Number.isInteger(seq) || seq < 0
     || typeof cols !== 'number' || !Number.isInteger(cols) || cols < 1
@@ -531,7 +554,7 @@ function captureResult(result: McpToolResult | Error, withSpans: boolean): Captu
     || !Array.isArray(lines) || !lines.every(l => typeof l === 'string')) {
     return { kind: 'unavailable', reason: 'capture answer is malformed' }
   }
-  if (seq === 0) return { kind: 'unchanged', final }
+  if (seq === 0) return { kind: 'unchanged', final, ...viewer }
   const kept = (lines as string[]).slice(0, rows).map(l => cleanLine(l, cols))
   while (kept.length < rows) kept.push('')
   const cur = isObject(body.cursor) ? body.cursor : null
@@ -548,7 +571,7 @@ function captureResult(result: McpToolResult | Error, withSpans: boolean): Captu
     const styles = lines.length === rows ? decodeSpans(body.spans, rows, cols) : undefined
     if (styles) frame.styles = styles
   }
-  return { kind: 'frame', frame, final }
+  return { kind: 'frame', frame, final, ...viewer }
 }
 
 // ── wording the wake text borrows ────────────────────────────────────────────
@@ -621,7 +644,8 @@ export function makeClaudishSource(call: McpCall): RunFeeds {
         const { answer: feed, rows } = classify(answer, kind === 'panel' ? 'runs' : 'sessions')
         feeds.set(key, feed)
         if (feed.kind !== 'speaks') return
-        for (const w of watched) results.set(w.id, pollResult(kind, rows, w.ref.token))
+        const tracksViewer = feed.can.viewer === true
+        for (const w of watched) results.set(w.id, pollResult(kind, rows, w.ref.token, tracksViewer))
       }))
       return { feeds, runs: results }
     },

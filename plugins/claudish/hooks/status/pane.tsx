@@ -1,6 +1,6 @@
 // The Show panel: a pure tree builder over showTabs and paneModel. Its actions are picking a tab,
-// the Screen / Text switch and Hide: the child's screen stays read-only (no Input anywhere; the only
-// Buttons are the tabs, the switch and Hide).
+// the Screen / Text switch, Hide and the band that takes a tab's view back: the child's screen stays
+// read-only (no Input anywhere; the only Buttons are the tabs, the switch, Hide and that band).
 // Every frame colour arrives already spelled from layout.ts; the header and notes use theme keys.
 
 import type { RenderElement } from 'claude-code'
@@ -86,12 +86,13 @@ export function panelTree(
   select: (target: SlotTarget) => void,
   hide: () => void,
   toggle: ModeSwitch | null = null,
+  claim: (() => void) | null = null,
 ): RenderElement {
   const { Box, Text } = els
   return (
     <Box flexDirection="column">
       {tabStrip(els, tabs, strip, active, columns, palette, select, hide)}
-      {model ? paneTree(els, model, palette, toggle) : <Text wrap="truncate-end" dimColor>No run to show.</Text>}
+      {model ? paneTree(els, model, palette, toggle, claim) : <Text wrap="truncate-end" dimColor>No run to show.</Text>}
     </Box>
   ) as RenderElement
 }
@@ -130,8 +131,9 @@ function textBody(els: Els, body: Extract<PaneModel['body'], { kind: 'text' }>):
 }
 
 /** One tab's body: the slot's agent when it names one, a header row (with the Screen / Text switch
- *  where claudish can give the transcript), then the child's screen or its transcript, or why there is none. */
-export function paneTree(els: Els, model: PaneModel, palette: Palette, toggle: ModeSwitch | null = null): RenderElement {
+ *  where claudish can give the transcript), then the child's screen or its transcript, or why there is none.
+ *  While another viewer holds the tab, the body is one band; pressing it takes the view back. */
+export function paneTree(els: Els, model: PaneModel, palette: Palette, toggle: ModeSwitch | null = null, claim: (() => void) | null = null): RenderElement {
   const { Box, Text } = els
   const body = model.body
   const header = segmentsText(els, model.header, model.badge ? badgeParts(els, palette, model.badge, ` ${model.badge.code.padEnd(CODE_CELLS - 2)} `, ` ${model.badge.runtime.padStart(RUNTIME_CELLS - 2)} `) : [])
@@ -149,6 +151,8 @@ export function paneTree(els: Els, model: PaneModel, palette: Palette, toggle: M
         )
         : header}
       {body.kind === 'text' && textBody(els, body)}
+      {body.kind === 'elsewhere' && (claim ? button(els, 'view-band', body.text, { color: 'suggestion', bold: true }, claim) : <Text wrap="truncate-end" dimColor>{body.text}</Text>)}
+      {body.kind === 'elsewhere' && body.note !== null && <Text wrap="truncate-end" color="warning">{`Could not take the view: ${body.note}`}</Text>}
       {body.kind === 'waiting' && <Text wrap="truncate-end" dimColor>Waiting for the first screen…</Text>}
       {body.kind === 'unavailable' && <Text wrap="truncate-end" dimColor>{body.note}</Text>}
       {body.kind === 'unavailable' && body.numbers !== '' && <Text wrap="truncate-end" dimColor>{body.numbers}</Text>}

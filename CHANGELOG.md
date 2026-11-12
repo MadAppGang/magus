@@ -4,6 +4,23 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [magus 7.12.2] - 2026-11-12
+
+### Fixed
+
+- **A plugin installed or removed in the magus TUI is written to the project's profile at
+  once (MTL-425).** In a project with magus profiles, installing a plugin at PROJECT scope
+  from the Plugins tab enabled it for Claude Code but left `.claude/profiles.json`
+  unchanged, so there was nothing to commit. The next `magus update` then added it,
+  printing `Added <plugin> to profile "<name>"`. The TUI now records each install, update
+  and uninstall in the active profile as it happens, so `git status` shows the change
+  straight away and a later `magus update` reports nothing. A removal already wrote the
+  profile, but the next `magus update` repeated it as a `Removed` line and rewrote the
+  project settings; that no longer happens either. USER and LOCAL installs still never
+  reach the shared profile.
+
+---
+
 ## [browser-use 2.0.1] - 2026-11-12
 
 ### Changed

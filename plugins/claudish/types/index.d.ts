@@ -27,7 +27,14 @@ export type ClaudishRunRef = {
  *  (and on a feed recorded before this field). A trigger to re-probe only: allowance_status decides support. */
 /** scroll: the feed takes scroll_session / team(mode:"scroll"); transcript: transcript_session / team(mode:"transcript").
  *  Each is present only when announced, so a feed state stored before it existed reads the same. */
-export type ClaudishFeatures = { cancel: boolean; capture: boolean; spans: boolean; resize: boolean; scroll?: boolean; transcript?: boolean; replay?: boolean; allowance?: boolean }
+/** viewer: the feed reports who holds each item's live view. Present only when announced. */
+export type ClaudishFeatures = { cancel: boolean; capture: boolean; spans: boolean; resize: boolean; scroll?: boolean; transcript?: boolean; replay?: boolean; allowance?: boolean; viewer?: boolean }
+
+/** Who holds an item's live view. here: this Claude Code. elsewhere: another viewer, named by a display-safe label of 1 to 40 characters. nobody: no one. */
+export type ClaudishViewer =
+  | { kind: 'nobody' }
+  | { kind: 'here' }
+  | { kind: 'elsewhere'; label: string }
 
 export type ClaudishFeedSupport =
   | { kind: 'probing'; strikes: number }
@@ -154,6 +161,10 @@ export type ClaudishPaneView = {
   status: 'waiting' | 'live' | 'unavailable' | 'ended'
   frame: ClaudishFrame | null
   note: string | null
+  /** who holds this tab's view; absent where its feed does not report one */
+  viewer?: ClaudishViewer
+  /** why the last press on the band did not take the view; only while the tab is collapsed */
+  claimNote?: string
 }
 
 /** armed: the first press, until the confirm window ends. sending: the cancel is out, its answer not
