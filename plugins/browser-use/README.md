@@ -18,7 +18,12 @@ evaluation, keyboard and focus primitives, and a configurable agent brain LLM.
 
 The MCP server is a Python script that uv runs in its own pinned environment (browser-use
 1.0; see [DEPENDENCIES.md](./DEPENDENCIES.md)), and it drives Playwright's Chromium.
-`magus doctor --fix` installs what is missing. Before your first real task:
+`magus doctor --fix` installs what is missing.
+
+A session that never touches a browser costs little: Claude Code starts a small front
+process that answers the MCP handshake and the tool list itself. The full server starts on
+the first browser call and stops again after 10 idle minutes when no browser is open; the
+next call starts it again. Before your first real task:
 
 ```
 browser_doctor

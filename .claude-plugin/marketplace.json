@@ -617,7 +617,7 @@
       "name": "browser-use",
       "source": "./plugins/browser-use",
       "description": "Full-platform browser automation through its own MCP server: navigation, clicks and typing, live-page JS eval, keyboard and focus, file screenshots, session export and a configurable agent LLM, on local or cloud browsers. Runs Playwright's own Chromium, never your real Chrome. Ships 6 skills.",
-      "version": "2.0.1",
+      "version": "2.1.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -639,6 +639,15 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "2.1.0",
+          "date": "2026-11-12",
+          "kinds": [
+            "Changed",
+            "Fixed"
+          ],
+          "summary": "The full MCP server starts only when a browser tool is called"
+        },
         {
           "version": "2.0.1",
           "date": "2026-11-12",
@@ -668,15 +677,6 @@
             "Fixed"
           ],
           "summary": "Installing uv no longer edits your shell rc file behind magus's back"
-        },
-        {
-          "version": "1.9.0",
-          "date": "2026-10-06",
-          "kinds": [
-            "Changed",
-            "Added"
-          ],
-          "summary": "The server starts through uv run --script"
         }
       ]
     },

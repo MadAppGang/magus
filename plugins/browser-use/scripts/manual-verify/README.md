@@ -1,7 +1,8 @@
 # Live checks against real Chromium
 
-These scripts start the plugin's MCP server as a subprocess, exactly as `.mcp.json`
-does, and call its tools over stdio against a real Chromium. They check what the
+These scripts start the plugin's full MCP server as a subprocess (`mcp-server.py`
+without `--lazy`, so no front sits in between) and call its tools over stdio against a
+real Chromium. They check what the
 unit suite cannot: that the CDP commands behind `browser_evaluate`, `browser_focus`,
 `browser_press_key` and `browser_keyboard` actually act on a page. They are not run
 in CI. Run them by hand after changing those code paths.

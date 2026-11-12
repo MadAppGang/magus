@@ -1,8 +1,8 @@
 # Browser Use Plugin — Dependencies
 
 The MCP server is a PEP 723 script. `.mcp.json` launches it with
-`uv run --no-config --script`, and uv builds the Python environment its header
-declares:
+`uv run --no-config --script scripts/mcp-server.py --lazy`, and uv builds the Python
+environment its header declares:
 
 ```python
 # requires-python = ">=3.11"
@@ -28,6 +28,32 @@ magus doctor --fix
 ```
 
 No magus-cli yet? `bun add -g magus-cli`, then `magus doctor --fix`.
+
+## Process model
+
+`--lazy` starts the front (`scripts/mcp_front.py`), which imports only the Python standard
+library. It answers `initialize`, `server/discover`, `ping` and `tools/list` from
+`scripts/mcp_front_snapshot.json`, so an idle session holds about 20 MB instead of the
+full server's 95 MB. The first request it cannot answer itself, normally the first browser
+tool call, starts the full server (`mcp-server.py` without the flag) as the front's child,
+in the same env, and from then on the front relays JSON-RPC both ways.
+
+The front stops the child when nothing has been in flight for 10 minutes and the child
+holds no browser session (`browser_list_sessions` is empty): it closes the child's stdin,
+then sends SIGTERM, then SIGKILL, to that child only. The next call starts a new one.
+`BROWSER_USE_IDLE_STOP_SECONDS` overrides the 10 minutes, for tests. If the child dies,
+every request it was handling gets a JSON-RPC error and the next call starts a new child.
+On stdin EOF, SIGTERM, SIGINT, SIGHUP or the death of its own parent, the front stops the
+child the same way and exits.
+
+The snapshot is generated from the live full server. Regenerate it after changing a tool,
+the `mcp` pin or the `browser-use` pin, with an interpreter that has the pinned
+dependencies:
+
+```bash
+python3 plugins/browser-use/scripts/write_front_snapshot.py           # rewrite it
+python3 plugins/browser-use/scripts/write_front_snapshot.py --check   # exit 1 if stale
+```
 
 ## What is declared, and how each is checked
 
@@ -84,7 +110,8 @@ browser-use 1.0 owns it. Each local session gets a temporary profile directory
 (`browser-use-chrome-*` under the system temp dir), and stopping the session kills
 Chrome's whole process group and deletes that directory. A watchdog process does the
 same if the server dies without stopping it, SIGKILL included. The server adds only a
-10-minute idle timeout and an exit when its parent `claude` process is gone.
+10-minute idle timeout and an exit when its parent process is gone. Under `.mcp.json` that
+parent is the lazy front; started directly, it is whatever launched it.
 
 A stopped session's browser-harness daemon exits on its own about 20 to 30 seconds later.
 Its logs go under `$BH_HOME/tmp/` and are not rotated by the plugin.

@@ -28,8 +28,8 @@ does not do:
     cannot be resolved is a hard error naming `magus doctor --fix`.
   - Send downloads to ~/.config/browseruse/downloads. Chrome's default,
     ~/Downloads, is TCC-protected on macOS.
-  - Stop sessions idle for 10 minutes, and exit when the parent `claude`
-    process is gone.
+  - Stop sessions idle for 10 minutes, and exit when the parent process (the
+    lazy front, or `claude` when started directly) is gone.
   - Keep stdout for JSON-RPC alone: nothing the server, browser_use or
     browser_harness prints may reach it.
   - Suppress the macOS Python "rocket" dock icon.
@@ -37,6 +37,13 @@ does not do:
 Usage (via .mcp.json): uv builds the env this file's PEP 723 header declares.
 `--no-config` keeps a uv.toml or pyproject.toml in the project it runs in out of
 that env.
+    uv run --no-config --script /path/to/mcp-server.py --lazy
+
+`--lazy` runs the small stdlib-only front in mcp_front.py instead: it answers the
+handshake and `tools/list` itself, starts this file without the flag as its child
+on the first browser call, and stops that child after 10 idle minutes once it
+holds no browser. Without `--lazy` this file is the full server, which is how the
+tests and scripts/manual-verify start it:
     uv run --no-config --script /path/to/mcp-server.py
 
 Test mode (full imports):
@@ -60,6 +67,25 @@ import browser_env  # noqa: E402
 for _flag in browser_env.CHECK_FLAGS:
     if _flag in sys.argv[1:]:
         sys.exit(browser_env.check(_flag))
+
+# The lazy front imports only the standard library, so it is handed the process
+# before the dock workaround and every heavy import. On POSIX the interpreter is
+# replaced (same pid) by one that runs mcp_front.py alone: compiling this file's
+# source has already cost several MB of resident memory the front would keep.
+if "--lazy" in sys.argv[1:]:
+    _server_path = os.path.abspath(__file__)
+    if os.name == "posix":
+        import subprocess  # noqa: E402
+
+        _front_path = os.path.join(os.path.dirname(_server_path), "mcp_front.py")
+        _flags = getattr(subprocess, "_args_from_interpreter_flags", list)()
+        try:
+            os.execv(sys.executable, [sys.executable, *_flags, _front_path, _server_path])
+        except OSError as _exc:
+            print(f"browser-use front: could not re-exec ({_exc}); running in this process", file=sys.stderr)
+    import mcp_front  # noqa: E402
+
+    sys.exit(mcp_front.main(server_path=_server_path))
 
 # Hide Python from macOS dock — Homebrew's framework Python shows a rocket icon
 # for every process. We call NSApplication.setActivationPolicy_(Prohibited) via
@@ -1215,9 +1241,10 @@ class MagusBrowserServer:
         # Per-session agent-LLM override set via browser_set_agent_model. When
         # None, the resolver falls back to settings.json config then _DEFAULT_LLM.
         self._session_llm_override: LLMChoice | None = None
-        # The `claude` process that spawned us. os.getppid() changes the instant
-        # the kernel reparents us, which is how the maintenance loop notices a
-        # SIGKILLed parent — see _exit_if_parent_died().
+        # The process that spawned us: the lazy front, or `claude` when started
+        # directly. os.getppid() changes the instant the kernel reparents us,
+        # which is how the maintenance loop notices a SIGKILLed parent — see
+        # _exit_if_parent_died().
         self._parent_pid = os.getppid()
 
     # ------------------------------------------------------------------

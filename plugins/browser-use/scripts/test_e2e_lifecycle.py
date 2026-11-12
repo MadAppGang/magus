@@ -1384,6 +1384,196 @@ class TestServerKilledHard(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# Lazy front: real Chromium survives idle and is cleaned up on every exit path
+# ---------------------------------------------------------------------------
+
+# A driver may inject only the documented front seams. SABOTAGE above still
+# applies to the full-server child, so its browser/profile controls remain usable.
+FRONT_SABOTAGE: str | None = None
+
+
+@unittest.skipIf(
+    _UNAVAILABLE is not None and not os.environ.get("CI"),
+    f"E2E unavailable: {_UNAVAILABLE}",
+)
+class TestLazyFrontBrowserLifecycle(unittest.TestCase):
+    """Each method owns a fresh front, child, browser and isolated environment."""
+
+    def setUp(self):
+        if _UNAVAILABLE is not None:
+            self.fail(f"CI must satisfy the real-browser prerequisites: {_UNAVAILABLE}")
+        # Imports are deferred to avoid circular imports with the existing
+        # stdio suite, which consumes this file's environment constants.
+        import test_mcp_front as wire
+        self.wire = wire
+        self.env = wire._clean_env(self)
+        self.env.update(
+            PLAYWRIGHT_BROWSERS_PATH=str(_playwright_cache_root()),
+            BROWSER_USE_IDLE_STOP_SECONDS="2",
+        )
+
+    def _world(self, *, through_uv=False, shim_parent=False):
+        wire = self.wire
+        patch = FRONT_SABOTAGE or ""
+        if SABOTAGE is not None:
+            child_launcher = Path(self.env["HOME"]) / "browser-child-launcher.py"
+            child_launcher.write_text(_LAUNCHER_TEMPLATE.format(
+                scripts=str(_SCRIPTS_DIR), server=str(_SERVER_PATH), sabotage=SABOTAGE,
+            ))
+            argv = [sys.executable, str(child_launcher)]
+            patch += f"\nmcp_front.Front.child_argv = lambda self: {argv!r}\n"
+        if through_uv:
+            self.assertFalse(patch, "literal uv topology must use the shipped command")
+            argv = wire._literal_argv(self)
+        else:
+            argv = wire._front_argv(patch if patch else None)
+        pid_file = Path(self.env["HOME"]) / "browser-front-pid"
+        if shim_parent:
+            argv = wire._shim_argv(argv, pid_file)
+        client = wire._Proc(self, argv, self.env)
+        client.initialize()
+        if shim_parent:
+            self.assertTrue(wire._wait(pid_file.is_file, 5), "shim did not publish its child PID")
+            front_pid = int(pid_file.read_text())
+        elif through_uv:
+            self.assertTrue(wire._wait(lambda: bool(client.children()), 10))
+            front_children = client.children()
+            self.assertEqual(1, len(front_children), front_children)
+            front_pid = next(iter(front_children))
+        else:
+            front_pid = client.pid
+        reply = client.tool("browser_navigate", {"url": "about:blank"}, timeout=120)
+        self.assertIn("result", reply, reply)
+        self.assertFalse(reply["result"].get("isError"), reply)
+        full_children = client.children(front_pid)
+        self.assertEqual(1, len(full_children), full_children)
+        child_pid = next(iter(full_children))
+        roles = {}
+
+        def classified():
+            roles.clear()
+            for pid in client.children(child_pid):
+                roles.setdefault(_role(pid), []).append(pid)
+            return all(roles.get(role) for role in ("chrome", "daemon", "watchdog"))
+
+        self.assertTrue(wire._wait(classified, 10),
+                        f"no real browser tree: {roles}; {client.stderr_text()[-2000:]}")
+        chrome = roles["chrome"][0]
+        profiles = _user_data_dir_args(chrome)
+        self.assertEqual(1, len(profiles), profiles)
+        launch = _Launch(chrome, roles["daemon"][0], roles["watchdog"][0], Path(profiles[0]))
+
+        def cleanup_profile():
+            # Stop processes before removing an owned profile, even on a failed
+            # assertion or an intentionally broken browser-stop control.
+            try:
+                client.close()
+            finally:
+                shutil.rmtree(launch.temp_dir, ignore_errors=True)
+        self.addCleanup(cleanup_profile)
+        self.assertTrue(launch.profile_dir.is_dir())
+        self.assertTrue(launch.temp_dir.name.startswith(_TEMP_PROFILE_PREFIX))
+        sessions_reply = client.tool("browser_list_sessions")
+        self.assertIn("result", sessions_reply, sessions_reply)
+        sessions = json.loads(sessions_reply["result"]["content"][0]["text"])
+        self.assertEqual(1, len(sessions))
+        pids = client.record_tree() | {client.pid}
+        return {
+            "client": client, "front": front_pid, "child": child_pid, "launch": launch,
+            "pids": pids, "session": sessions[0]["session_id"],
+        }
+
+    def _survivors(self, world):
+        table = self.wire._process_table()
+        client = world["client"]
+        return sorted(
+            pid for pid in world["pids"]
+            if pid in table and not table[pid][1].startswith("Z")
+            and table[pid][3] == client.owned[pid]
+        )
+
+    def _assert_cleaned(self, world, timeout=40):
+        launch = world["launch"]
+        self.assertTrue(
+            self.wire._wait(
+                lambda: not self._survivors(world) and not launch.temp_dir.exists(), timeout,
+            ),
+            f"survivors: {self._survivors(world)}; profile: "
+            f"{_describe_survivors(launch.temp_dir)}; "
+            f"stderr: {world['client'].stderr_text()[-2000:]}",
+        )
+        world["client"].proc.wait(timeout=5)
+        self.assertFalse(launch.temp_dir.exists())
+
+    def test_open_browser_blocks_idle_until_closed(self):
+        # REQ-4, REQ-8, REQ-19; TEST-34 / V5.
+        world = self._world()
+        client, launch = world["client"], world["launch"]
+        # No MCP traffic during this observation: browser ownership alone must
+        # retain the child for five complete idle intervals.
+        time.sleep(10)
+        self.assertTrue(self.wire._is_alive(world["child"], client.owned[world["child"]]))
+        self.assertTrue(self.wire._is_alive(launch.chrome, client.owned[launch.chrome]))
+        self.assertTrue(launch.profile_dir.is_dir())
+        listed = client.tool("browser_list_sessions")
+        sessions = json.loads(listed["result"]["content"][0]["text"])
+        self.assertEqual([world["session"]], [s["session_id"] for s in sessions])
+        self.assertEqual({world["child"]}, client.children(world["front"]))
+        closed = client.tool("browser_close_all", timeout=120)
+        self.assertIn("result", closed, closed)
+        self.assertFalse(closed["result"].get("isError"), closed)
+        self.assertTrue(self.wire._wait(
+            lambda: not self.wire._is_alive(world["child"], client.owned[world["child"]]), 75,
+        ), client.stderr_text()[-2000:])
+        self.assertIsNone(client.proc.poll(), "front died with its idle child")
+        self.assertTrue(self.wire._wait(
+            lambda: not self.wire._is_alive(launch.chrome, client.owned[launch.chrome])
+            and not launch.temp_dir.exists(), 40,
+        ), _describe_survivors(launch.temp_dir))
+
+    def test_stdin_eof_front_cleans_browser_profile(self):
+        # REQ-6, REQ-18; TEST-35 / V7 with a real browser.
+        world = self._world()
+        world["client"].proc.stdin.close()
+        self._assert_cleaned(world)
+
+    def test_sigterm_front_cleans_browser_profile(self):
+        # REQ-6, REQ-18; TEST-36 / V7 with a real browser.
+        world = self._world()
+        world["client"].signal_owned(world["front"], signal.SIGTERM)
+        self._assert_cleaned(world)
+
+    def test_parent_death_front_cleans_browser_profile(self):
+        # REQ-6, REQ-18; TEST-37. Open pipes isolate the getppid mechanism.
+        world = self._world(shim_parent=True)
+        client = world["client"]
+        client.signal_owned(client.pid, signal.SIGKILL)
+        client.proc.wait(timeout=5)
+        self._assert_cleaned(world)
+        self.assertFalse(client.proc.stdin.closed)
+
+    def test_sigkill_front_cleans_browser_profile(self):
+        # REQ-6, REQ-18; TEST-38 / architecture M6.
+        world = self._world()
+        client = world["client"]
+        client.signal_owned(world["front"], signal.SIGKILL)
+        self.assertEqual(-signal.SIGKILL, client.proc.wait(timeout=5))
+        self._assert_cleaned(world, timeout=40)
+
+    def test_uv_stop_sequence_cleans_browser_profile(self):
+        # REQ-6, REQ-8, REQ-18; TEST-39. Signal only uv, never a group.
+        world = self._world(through_uv=True)
+        client = world["client"]
+        for delay, signum in (
+            (0, signal.SIGINT), (0.1, signal.SIGTERM), (0.4, signal.SIGKILL),
+        ):
+            if delay:
+                time.sleep(delay)
+            client.signal_owned(client.pid, signum)
+        self._assert_cleaned(world)
+
+
+# ---------------------------------------------------------------------------
 # Stray-process guard
 # ---------------------------------------------------------------------------
 

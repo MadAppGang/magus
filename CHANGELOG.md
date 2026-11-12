@@ -4,7 +4,19 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
-## [magus 7.12.2] - 2026-11-12
+## [browser-use 2.1.0] - 2026-11-12
+
+### Changed
+
+- **The full MCP server starts only when a browser tool is called.** Each Claude Code session
+  now starts a light front process (about 22 MB) that answers the opening handshake and the tool
+  list itself. The first tool call starts the full server (about 100 MB) as its child. Before,
+  every session kept the full server running from start to end, even when it never used a browser.
+- **The full server stops after 10 minutes idle with no open browser session**, and starts again
+  on the next tool call. It never stops while a browser session is open.
+- **The child exits with the front.** On `/exit`, on a killed Claude Code, or on a crash, the
+  front stops the child it started, and the browser goes with it. It never touches a process it
+  did not start.
 
 ### Fixed
 

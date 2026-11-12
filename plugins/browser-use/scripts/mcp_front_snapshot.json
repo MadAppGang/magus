@@ -1,0 +1,1094 @@
+{
+  "generatedBy": "python3 plugins/browser-use/scripts/write_front_snapshot.py",
+  "legacy": {
+    "fallbackVersion": "2025-11-25",
+    "initialize": {
+      "capabilities": {
+        "tools": {
+          "listChanged": false
+        }
+      },
+      "serverInfo": {
+        "name": "browser-use",
+        "version": "1.0.0"
+      }
+    },
+    "notInitializedError": {
+      "code": -32602,
+      "data": "",
+      "message": "Invalid request parameters"
+    },
+    "toolsList": {
+      "tools": [
+        {
+          "description": "Navigate to a URL in the browser",
+          "inputSchema": {
+            "properties": {
+              "new_tab": {
+                "default": false,
+                "description": "Whether to open in a new tab",
+                "type": "boolean"
+              },
+              "url": {
+                "description": "The URL to navigate to",
+                "type": "string"
+              }
+            },
+            "required": [
+              "url"
+            ],
+            "type": "object"
+          },
+          "name": "browser_navigate"
+        },
+        {
+          "description": "Click an element by index or at specific viewport coordinates. Use index for elements from browser_get_state, or coordinate_x/coordinate_y for pixel-precise clicking.",
+          "inputSchema": {
+            "properties": {
+              "coordinate_x": {
+                "description": "X coordinate in pixels from the left edge of the viewport. Must be used together with coordinate_y. Provide this OR index.",
+                "type": "integer"
+              },
+              "coordinate_y": {
+                "description": "Y coordinate in pixels from the top edge of the viewport. Must be used together with coordinate_x. Provide this OR index.",
+                "type": "integer"
+              },
+              "index": {
+                "description": "The element's index from browser_get_state's interactive_elements (a Chrome backendNodeId, stable while the element exists). Provide this OR coordinate_x+coordinate_y.",
+                "type": "integer"
+              },
+              "new_tab": {
+                "default": false,
+                "description": "Open a clicked link in a new tab instead of clicking it",
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          },
+          "name": "browser_click"
+        },
+        {
+          "description": "Type text into an input field. Clears existing text by default; pass text=\"\" to clear only.",
+          "inputSchema": {
+            "properties": {
+              "index": {
+                "description": "The element's index from browser_get_state's interactive_elements (a Chrome backendNodeId, stable while the element exists).",
+                "type": "integer"
+              },
+              "text": {
+                "description": "The text to type. Pass an empty string (\"\") to clear the field without typing.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "index",
+              "text"
+            ],
+            "type": "object"
+          },
+          "name": "browser_type"
+        },
+        {
+          "annotations": {
+            "readOnlyHint": true
+          },
+          "description": "Get the current state of the page including all interactive elements. Each element's index is a Chrome backendNodeId; pass it to browser_click or browser_type.",
+          "inputSchema": {
+            "properties": {
+              "include_screenshot": {
+                "default": false,
+                "description": "Whether to include a screenshot of the current page",
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          },
+          "name": "browser_get_state"
+        },
+        {
+          "description": "Extract structured content from the current page based on a query. Uses the agent model (browser_set_agent_model / settings.json agentModel).",
+          "inputSchema": {
+            "properties": {
+              "extract_links": {
+                "default": false,
+                "description": "Whether to include links in the extraction",
+                "type": "boolean"
+              },
+              "query": {
+                "description": "What information to extract from the page",
+                "type": "string"
+              }
+            },
+            "required": [
+              "query"
+            ],
+            "type": "object"
+          },
+          "name": "browser_extract_content"
+        },
+        {
+          "annotations": {
+            "readOnlyHint": true
+          },
+          "description": "Get the raw HTML of the current page or a specific element by CSS selector",
+          "inputSchema": {
+            "properties": {
+              "selector": {
+                "description": "Optional CSS selector to get HTML of a specific element. If omitted, returns full page HTML.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "name": "browser_get_html"
+        },
+        {
+          "annotations": {
+            "readOnlyHint": true
+          },
+          "description": "Take a screenshot of the current page. Returns viewport metadata as text and the screenshot as an image.",
+          "inputSchema": {
+            "properties": {
+              "full_page": {
+                "default": false,
+                "description": "Whether to capture the full scrollable page or just the visible viewport",
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          },
+          "name": "browser_screenshot"
+        },
+        {
+          "description": "Scroll the page",
+          "inputSchema": {
+            "properties": {
+              "direction": {
+                "default": "down",
+                "description": "Direction to scroll",
+                "enum": [
+                  "up",
+                  "down"
+                ],
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "name": "browser_scroll"
+        },
+        {
+          "description": "Go back to the previous page",
+          "inputSchema": {
+            "properties": {},
+            "type": "object"
+          },
+          "name": "browser_go_back"
+        },
+        {
+          "annotations": {
+            "readOnlyHint": true
+          },
+          "description": "List all open tabs",
+          "inputSchema": {
+            "properties": {},
+            "type": "object"
+          },
+          "name": "browser_list_tabs"
+        },
+        {
+          "description": "Switch to a different tab",
+          "inputSchema": {
+            "properties": {
+              "tab_id": {
+                "description": "4 Character Tab ID of the tab to switch to",
+                "type": "string"
+              }
+            },
+            "required": [
+              "tab_id"
+            ],
+            "type": "object"
+          },
+          "name": "browser_switch_tab"
+        },
+        {
+          "description": "Close a tab",
+          "inputSchema": {
+            "properties": {
+              "tab_id": {
+                "description": "4 Character Tab ID of the tab to close",
+                "type": "string"
+              }
+            },
+            "required": [
+              "tab_id"
+            ],
+            "type": "object"
+          },
+          "name": "browser_close_tab"
+        },
+        {
+          "description": "Retry a task using the browser-use agent, in a fresh local Chromium of its own. Only use this as a last resort if you fail to interact with a page multiple times.",
+          "inputSchema": {
+            "properties": {
+              "allowed_domains": {
+                "description": "Domains the agent's browser may open (security feature), e.g. 'example.com' or '*.example.com'. Omit, or pass an empty list, for no restriction.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "max_steps": {
+                "default": 100,
+                "description": "Maximum number of steps an agent can take.",
+                "type": "integer"
+              },
+              "model": {
+                "description": "Model name for the configured agent provider, replacing its configured model for this run.",
+                "type": "string"
+              },
+              "task": {
+                "description": "The high-level goal and detailed step-by-step description of the task the AI browser agent needs to attempt, along with any relevant data needed to complete the task and info about previous attempts.",
+                "type": "string"
+              },
+              "use_vision": {
+                "default": true,
+                "description": "Whether the agent's model sees screenshots. false keeps them from the model.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "task"
+            ],
+            "type": "object"
+          },
+          "name": "retry_with_browser_use_agent"
+        },
+        {
+          "annotations": {
+            "readOnlyHint": true
+          },
+          "description": "List all active browser sessions with their details and last activity time",
+          "inputSchema": {
+            "properties": {},
+            "type": "object"
+          },
+          "name": "browser_list_sessions"
+        },
+        {
+          "description": "Close a specific browser session by its ID",
+          "inputSchema": {
+            "properties": {
+              "session_id": {
+                "description": "The browser session ID to close (get from browser_list_sessions)",
+                "type": "string"
+              }
+            },
+            "required": [
+              "session_id"
+            ],
+            "type": "object"
+          },
+          "name": "browser_close_session"
+        },
+        {
+          "description": "Close all active browser sessions and clean up resources",
+          "inputSchema": {
+            "properties": {},
+            "type": "object"
+          },
+          "name": "browser_close_all"
+        },
+        {
+          "description": "Export browser session state (cookies) to a JSON file. Useful for saving authenticated sessions to re-use in future Claude Code sessions via browser_import_session.",
+          "inputSchema": {
+            "properties": {
+              "output_path": {
+                "description": "Full path to write the .json file.",
+                "type": "string"
+              },
+              "session_id": {
+                "description": "Session ID to export.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "session_id",
+              "output_path"
+            ],
+            "type": "object"
+          },
+          "name": "browser_export_session"
+        },
+        {
+          "description": "Import a previously exported browser session (cookies) into a new session. Enables re-authentication across Claude Code sessions without logging in again. The new session becomes the one the page tools drive when none is active.",
+          "inputSchema": {
+            "properties": {
+              "import_path": {
+                "description": "Path to the exported session .json file.",
+                "type": "string"
+              },
+              "navigate_to": {
+                "description": "URL to navigate to after import (optional).",
+                "type": "string"
+              }
+            },
+            "required": [
+              "import_path"
+            ],
+            "type": "object"
+          },
+          "name": "browser_import_session"
+        },
+        {
+          "description": "Run a saved STANDALONE Python script as a subprocess. This does NOT run JavaScript and does NOT share the active browser session — the subprocess gets a fresh Python interpreter that must independently have `browser-use`/`playwright` installed and would drive its OWN, separate browser. To run JavaScript inside the page the other tools are already driving, use browser_evaluate instead. To edit a code editor (Monaco/CodeMirror) or send keystrokes, use browser_evaluate, browser_focus, and browser_press_key. Use this tool only for self-contained automation scripts that intentionally launch their own browser. Fails fast with a clear error if a required module is missing (rather than hanging until the timeout).",
+          "inputSchema": {
+            "properties": {
+              "args": {
+                "default": [],
+                "description": "Command-line arguments to pass to the script.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "script_path": {
+                "description": "Absolute path to the standalone .py script to run.",
+                "type": "string"
+              },
+              "timeout_seconds": {
+                "default": 300,
+                "description": "Maximum execution time in seconds. Defaults to 300.",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "script_path"
+            ],
+            "type": "object"
+          },
+          "name": "browser_run_script"
+        },
+        {
+          "description": "Run JavaScript IN THE LIVE PAGE the other browser tools are driving and return its result. This is the in-page eval escape hatch — it executes against the current session via CDP Runtime.evaluate, so it can read/modify the DOM, call framework hooks, read localStorage, and drive code editors that expose no normal input element. Example for a Monaco editor: `monaco.editor.getModels()[0].setValue('new text')`. The script is run as an expression; a bare `return` is also accepted (it is wrapped in a function for you), and a returned Promise is awaited. The result must be JSON-serializable to be returned.",
+          "inputSchema": {
+            "properties": {
+              "script": {
+                "description": "JavaScript to evaluate in the page. May be an expression (`document.title`) or statements ending in `return ...`.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "script"
+            ],
+            "type": "object"
+          },
+          "name": "browser_evaluate"
+        },
+        {
+          "description": "Press a single key or keyboard shortcut in the live page via CDP Input.dispatchKeyEvent. Supports modifiers with '+' (e.g. 'Meta+a' for select-all, 'Control+a' on Linux/Windows, 'Enter', 'Escape', 'Tab', 'Backspace', 'Delete', 'ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight'). Use this for clearing a field (Meta+a then Delete), submitting (Enter), dismissing modals (Escape), or any keyboard-driven editor. To insert literal text rather than press a key, use browser_keyboard with `text`.",
+          "inputSchema": {
+            "properties": {
+              "count": {
+                "default": 1,
+                "description": "How many times to press the key. Defaults to 1.",
+                "type": "integer"
+              },
+              "key": {
+                "description": "Key or shortcut, e.g. 'Enter', 'Escape', 'Meta+a', 'ArrowDown'. Modifiers: Meta/Cmd, Control/Ctrl, Alt, Shift.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "key"
+            ],
+            "type": "object"
+          },
+          "name": "browser_press_key"
+        },
+        {
+          "description": "Send a batch of keystrokes and/or literal text to the live page via CDP, in order. `keys` is a list of shortcuts pressed one after another (e.g. ['Meta+a','Delete'] to clear a field); `text` is literal text inserted via Input.insertText (the reliable way to type into focused inputs and code editors, since it does not require an indexed element). Provide either or both — keys are pressed first, then text is inserted. Pair with browser_focus to target a hidden or synthetic input first.",
+          "inputSchema": {
+            "properties": {
+              "keys": {
+                "default": [],
+                "description": "Shortcuts to press in order, e.g. ['Meta+a','Delete'].",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "text": {
+                "description": "Literal text to insert after the keys (via Input.insertText).",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "name": "browser_keyboard"
+        },
+        {
+          "description": "Focus a DOM element by CSS selector in the live page, so it can then receive browser_keyboard / browser_press_key input. Unlike browser_type (which needs an `index` from browser_get_state's interactive-element list), this targets ANY element by selector — including the hidden/synthetic inputs that code editors use (e.g. Monaco's `textarea.inputarea`) which never appear in the index list. Returns whether an element matched and was focused.",
+          "inputSchema": {
+            "properties": {
+              "selector": {
+                "description": "CSS selector of the element to focus, e.g. 'textarea.inputarea'.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "selector"
+            ],
+            "type": "object"
+          },
+          "name": "browser_focus"
+        },
+        {
+          "description": "Capture the live page the other browser tools are driving and WRITE it to a PNG file. browser_screenshot only shows the image to the model; use this when a file on disk is needed (pixel diffs, design references, attachments). Captures via CDP Page.captureScreenshot. Returns the path, byte count and pixel size.",
+          "inputSchema": {
+            "properties": {
+              "full_page": {
+                "default": false,
+                "description": "Capture the whole scrollable page instead of the viewport.",
+                "type": "boolean"
+              },
+              "output_path": {
+                "description": "Absolute path of the .png file to write. Parent directories are created.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "output_path"
+            ],
+            "type": "object"
+          },
+          "name": "browser_save_screenshot"
+        },
+        {
+          "description": "Preflight diagnosis of this plugin's environment. Reports the Python version, whether browser-use / browser-harness / mcp / playwright are installed, whether a Chromium/Chrome executable is present, and which provider API keys are set — turning silent failures (a 300s run_script hang, ModuleNotFoundError) into a one-call diagnosis. Takes no arguments.",
+          "inputSchema": {
+            "properties": {},
+            "type": "object"
+          },
+          "name": "browser_doctor"
+        },
+        {
+          "description": "Start a Browser Use CLOUD browser session (remote, stealth, CAPTCHA-capable). Requires BROWSER_USE_API_KEY. Returns session_id, cdp_url, and a live_url you can open to watch the remote browser. If no session is active, the cloud session becomes the one the page tools drive.",
+          "inputSchema": {
+            "properties": {
+              "navigate_to": {
+                "description": "URL to navigate to after the cloud session starts (optional).",
+                "type": "string"
+              }
+            },
+            "required": [],
+            "type": "object"
+          },
+          "name": "browser_start_cloud_session"
+        },
+        {
+          "description": "Choose which LLM the browser agent (retry_with_browser_use_agent) and browser_extract_content reason with, for the rest of this session. Overrides any settings.json config. Providers: 'anthropic', 'openai', 'openai_compatible' (any OpenAI-API-compatible endpoint — requires base_url), 'browser_use' (Browser Use gateway models such as bu-fast). 'anthropic' takes no base_url. api_key_env names an ENVIRONMENT VARIABLE that holds the key — never pass a secret directly. The model is built at once, so a bad choice is reported here, and applies from the next call on.",
+          "inputSchema": {
+            "properties": {
+              "api_key_env": {
+                "description": "Name of the environment variable holding the API key (NOT the key itself). Defaults to the provider's standard var.",
+                "type": "string"
+              },
+              "base_url": {
+                "description": "Base URL for the API. Required for 'openai_compatible'; optional override for 'openai' and 'browser_use'.",
+                "type": "string"
+              },
+              "model": {
+                "description": "Model name for the chosen provider.",
+                "type": "string"
+              },
+              "provider": {
+                "description": "LLM provider id.",
+                "enum": [
+                  "anthropic",
+                  "openai",
+                  "openai_compatible",
+                  "browser_use"
+                ],
+                "type": "string"
+              },
+              "temperature": {
+                "description": "Sampling temperature (only used by openai/openai_compatible).",
+                "type": "number"
+              }
+            },
+            "required": [
+              "provider",
+              "model"
+            ],
+            "type": "object"
+          },
+          "name": "browser_set_agent_model"
+        }
+      ]
+    },
+    "versions": [
+      "2024-11-05",
+      "2025-03-26",
+      "2025-06-18",
+      "2025-11-25"
+    ]
+  },
+  "modern": {
+    "discover": {
+      "_meta": {
+        "io.modelcontextprotocol/serverInfo": {
+          "name": "browser-use",
+          "version": "1.0.0"
+        }
+      },
+      "cacheScope": "private",
+      "capabilities": {
+        "tools": {
+          "listChanged": false
+        }
+      },
+      "resultType": "complete",
+      "supportedVersions": [
+        "2026-07-28"
+      ],
+      "ttlMs": 0
+    },
+    "initializeRefused": {
+      "code": -32022,
+      "message": "connection is serving the 2026-07-28 protocol; the initialize handshake is not accepted"
+    },
+    "pingError": {
+      "code": -32601,
+      "data": "ping",
+      "message": "Method not found"
+    },
+    "toolsList": {
+      "_meta": {
+        "io.modelcontextprotocol/serverInfo": {
+          "name": "browser-use",
+          "version": "1.0.0"
+        }
+      },
+      "cacheScope": "private",
+      "resultType": "complete",
+      "tools": [
+        {
+          "description": "Navigate to a URL in the browser",
+          "inputSchema": {
+            "properties": {
+              "new_tab": {
+                "default": false,
+                "description": "Whether to open in a new tab",
+                "type": "boolean"
+              },
+              "url": {
+                "description": "The URL to navigate to",
+                "type": "string"
+              }
+            },
+            "required": [
+              "url"
+            ],
+            "type": "object"
+          },
+          "name": "browser_navigate"
+        },
+        {
+          "description": "Click an element by index or at specific viewport coordinates. Use index for elements from browser_get_state, or coordinate_x/coordinate_y for pixel-precise clicking.",
+          "inputSchema": {
+            "properties": {
+              "coordinate_x": {
+                "description": "X coordinate in pixels from the left edge of the viewport. Must be used together with coordinate_y. Provide this OR index.",
+                "type": "integer"
+              },
+              "coordinate_y": {
+                "description": "Y coordinate in pixels from the top edge of the viewport. Must be used together with coordinate_x. Provide this OR index.",
+                "type": "integer"
+              },
+              "index": {
+                "description": "The element's index from browser_get_state's interactive_elements (a Chrome backendNodeId, stable while the element exists). Provide this OR coordinate_x+coordinate_y.",
+                "type": "integer"
+              },
+              "new_tab": {
+                "default": false,
+                "description": "Open a clicked link in a new tab instead of clicking it",
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          },
+          "name": "browser_click"
+        },
+        {
+          "description": "Type text into an input field. Clears existing text by default; pass text=\"\" to clear only.",
+          "inputSchema": {
+            "properties": {
+              "index": {
+                "description": "The element's index from browser_get_state's interactive_elements (a Chrome backendNodeId, stable while the element exists).",
+                "type": "integer"
+              },
+              "text": {
+                "description": "The text to type. Pass an empty string (\"\") to clear the field without typing.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "index",
+              "text"
+            ],
+            "type": "object"
+          },
+          "name": "browser_type"
+        },
+        {
+          "annotations": {
+            "readOnlyHint": true
+          },
+          "description": "Get the current state of the page including all interactive elements. Each element's index is a Chrome backendNodeId; pass it to browser_click or browser_type.",
+          "inputSchema": {
+            "properties": {
+              "include_screenshot": {
+                "default": false,
+                "description": "Whether to include a screenshot of the current page",
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          },
+          "name": "browser_get_state"
+        },
+        {
+          "description": "Extract structured content from the current page based on a query. Uses the agent model (browser_set_agent_model / settings.json agentModel).",
+          "inputSchema": {
+            "properties": {
+              "extract_links": {
+                "default": false,
+                "description": "Whether to include links in the extraction",
+                "type": "boolean"
+              },
+              "query": {
+                "description": "What information to extract from the page",
+                "type": "string"
+              }
+            },
+            "required": [
+              "query"
+            ],
+            "type": "object"
+          },
+          "name": "browser_extract_content"
+        },
+        {
+          "annotations": {
+            "readOnlyHint": true
+          },
+          "description": "Get the raw HTML of the current page or a specific element by CSS selector",
+          "inputSchema": {
+            "properties": {
+              "selector": {
+                "description": "Optional CSS selector to get HTML of a specific element. If omitted, returns full page HTML.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "name": "browser_get_html"
+        },
+        {
+          "annotations": {
+            "readOnlyHint": true
+          },
+          "description": "Take a screenshot of the current page. Returns viewport metadata as text and the screenshot as an image.",
+          "inputSchema": {
+            "properties": {
+              "full_page": {
+                "default": false,
+                "description": "Whether to capture the full scrollable page or just the visible viewport",
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          },
+          "name": "browser_screenshot"
+        },
+        {
+          "description": "Scroll the page",
+          "inputSchema": {
+            "properties": {
+              "direction": {
+                "default": "down",
+                "description": "Direction to scroll",
+                "enum": [
+                  "up",
+                  "down"
+                ],
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "name": "browser_scroll"
+        },
+        {
+          "description": "Go back to the previous page",
+          "inputSchema": {
+            "properties": {},
+            "type": "object"
+          },
+          "name": "browser_go_back"
+        },
+        {
+          "annotations": {
+            "readOnlyHint": true
+          },
+          "description": "List all open tabs",
+          "inputSchema": {
+            "properties": {},
+            "type": "object"
+          },
+          "name": "browser_list_tabs"
+        },
+        {
+          "description": "Switch to a different tab",
+          "inputSchema": {
+            "properties": {
+              "tab_id": {
+                "description": "4 Character Tab ID of the tab to switch to",
+                "type": "string"
+              }
+            },
+            "required": [
+              "tab_id"
+            ],
+            "type": "object"
+          },
+          "name": "browser_switch_tab"
+        },
+        {
+          "description": "Close a tab",
+          "inputSchema": {
+            "properties": {
+              "tab_id": {
+                "description": "4 Character Tab ID of the tab to close",
+                "type": "string"
+              }
+            },
+            "required": [
+              "tab_id"
+            ],
+            "type": "object"
+          },
+          "name": "browser_close_tab"
+        },
+        {
+          "description": "Retry a task using the browser-use agent, in a fresh local Chromium of its own. Only use this as a last resort if you fail to interact with a page multiple times.",
+          "inputSchema": {
+            "properties": {
+              "allowed_domains": {
+                "description": "Domains the agent's browser may open (security feature), e.g. 'example.com' or '*.example.com'. Omit, or pass an empty list, for no restriction.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "max_steps": {
+                "default": 100,
+                "description": "Maximum number of steps an agent can take.",
+                "type": "integer"
+              },
+              "model": {
+                "description": "Model name for the configured agent provider, replacing its configured model for this run.",
+                "type": "string"
+              },
+              "task": {
+                "description": "The high-level goal and detailed step-by-step description of the task the AI browser agent needs to attempt, along with any relevant data needed to complete the task and info about previous attempts.",
+                "type": "string"
+              },
+              "use_vision": {
+                "default": true,
+                "description": "Whether the agent's model sees screenshots. false keeps them from the model.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "task"
+            ],
+            "type": "object"
+          },
+          "name": "retry_with_browser_use_agent"
+        },
+        {
+          "annotations": {
+            "readOnlyHint": true
+          },
+          "description": "List all active browser sessions with their details and last activity time",
+          "inputSchema": {
+            "properties": {},
+            "type": "object"
+          },
+          "name": "browser_list_sessions"
+        },
+        {
+          "description": "Close a specific browser session by its ID",
+          "inputSchema": {
+            "properties": {
+              "session_id": {
+                "description": "The browser session ID to close (get from browser_list_sessions)",
+                "type": "string"
+              }
+            },
+            "required": [
+              "session_id"
+            ],
+            "type": "object"
+          },
+          "name": "browser_close_session"
+        },
+        {
+          "description": "Close all active browser sessions and clean up resources",
+          "inputSchema": {
+            "properties": {},
+            "type": "object"
+          },
+          "name": "browser_close_all"
+        },
+        {
+          "description": "Export browser session state (cookies) to a JSON file. Useful for saving authenticated sessions to re-use in future Claude Code sessions via browser_import_session.",
+          "inputSchema": {
+            "properties": {
+              "output_path": {
+                "description": "Full path to write the .json file.",
+                "type": "string"
+              },
+              "session_id": {
+                "description": "Session ID to export.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "session_id",
+              "output_path"
+            ],
+            "type": "object"
+          },
+          "name": "browser_export_session"
+        },
+        {
+          "description": "Import a previously exported browser session (cookies) into a new session. Enables re-authentication across Claude Code sessions without logging in again. The new session becomes the one the page tools drive when none is active.",
+          "inputSchema": {
+            "properties": {
+              "import_path": {
+                "description": "Path to the exported session .json file.",
+                "type": "string"
+              },
+              "navigate_to": {
+                "description": "URL to navigate to after import (optional).",
+                "type": "string"
+              }
+            },
+            "required": [
+              "import_path"
+            ],
+            "type": "object"
+          },
+          "name": "browser_import_session"
+        },
+        {
+          "description": "Run a saved STANDALONE Python script as a subprocess. This does NOT run JavaScript and does NOT share the active browser session — the subprocess gets a fresh Python interpreter that must independently have `browser-use`/`playwright` installed and would drive its OWN, separate browser. To run JavaScript inside the page the other tools are already driving, use browser_evaluate instead. To edit a code editor (Monaco/CodeMirror) or send keystrokes, use browser_evaluate, browser_focus, and browser_press_key. Use this tool only for self-contained automation scripts that intentionally launch their own browser. Fails fast with a clear error if a required module is missing (rather than hanging until the timeout).",
+          "inputSchema": {
+            "properties": {
+              "args": {
+                "default": [],
+                "description": "Command-line arguments to pass to the script.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "script_path": {
+                "description": "Absolute path to the standalone .py script to run.",
+                "type": "string"
+              },
+              "timeout_seconds": {
+                "default": 300,
+                "description": "Maximum execution time in seconds. Defaults to 300.",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "script_path"
+            ],
+            "type": "object"
+          },
+          "name": "browser_run_script"
+        },
+        {
+          "description": "Run JavaScript IN THE LIVE PAGE the other browser tools are driving and return its result. This is the in-page eval escape hatch — it executes against the current session via CDP Runtime.evaluate, so it can read/modify the DOM, call framework hooks, read localStorage, and drive code editors that expose no normal input element. Example for a Monaco editor: `monaco.editor.getModels()[0].setValue('new text')`. The script is run as an expression; a bare `return` is also accepted (it is wrapped in a function for you), and a returned Promise is awaited. The result must be JSON-serializable to be returned.",
+          "inputSchema": {
+            "properties": {
+              "script": {
+                "description": "JavaScript to evaluate in the page. May be an expression (`document.title`) or statements ending in `return ...`.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "script"
+            ],
+            "type": "object"
+          },
+          "name": "browser_evaluate"
+        },
+        {
+          "description": "Press a single key or keyboard shortcut in the live page via CDP Input.dispatchKeyEvent. Supports modifiers with '+' (e.g. 'Meta+a' for select-all, 'Control+a' on Linux/Windows, 'Enter', 'Escape', 'Tab', 'Backspace', 'Delete', 'ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight'). Use this for clearing a field (Meta+a then Delete), submitting (Enter), dismissing modals (Escape), or any keyboard-driven editor. To insert literal text rather than press a key, use browser_keyboard with `text`.",
+          "inputSchema": {
+            "properties": {
+              "count": {
+                "default": 1,
+                "description": "How many times to press the key. Defaults to 1.",
+                "type": "integer"
+              },
+              "key": {
+                "description": "Key or shortcut, e.g. 'Enter', 'Escape', 'Meta+a', 'ArrowDown'. Modifiers: Meta/Cmd, Control/Ctrl, Alt, Shift.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "key"
+            ],
+            "type": "object"
+          },
+          "name": "browser_press_key"
+        },
+        {
+          "description": "Send a batch of keystrokes and/or literal text to the live page via CDP, in order. `keys` is a list of shortcuts pressed one after another (e.g. ['Meta+a','Delete'] to clear a field); `text` is literal text inserted via Input.insertText (the reliable way to type into focused inputs and code editors, since it does not require an indexed element). Provide either or both — keys are pressed first, then text is inserted. Pair with browser_focus to target a hidden or synthetic input first.",
+          "inputSchema": {
+            "properties": {
+              "keys": {
+                "default": [],
+                "description": "Shortcuts to press in order, e.g. ['Meta+a','Delete'].",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "text": {
+                "description": "Literal text to insert after the keys (via Input.insertText).",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "name": "browser_keyboard"
+        },
+        {
+          "description": "Focus a DOM element by CSS selector in the live page, so it can then receive browser_keyboard / browser_press_key input. Unlike browser_type (which needs an `index` from browser_get_state's interactive-element list), this targets ANY element by selector — including the hidden/synthetic inputs that code editors use (e.g. Monaco's `textarea.inputarea`) which never appear in the index list. Returns whether an element matched and was focused.",
+          "inputSchema": {
+            "properties": {
+              "selector": {
+                "description": "CSS selector of the element to focus, e.g. 'textarea.inputarea'.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "selector"
+            ],
+            "type": "object"
+          },
+          "name": "browser_focus"
+        },
+        {
+          "description": "Capture the live page the other browser tools are driving and WRITE it to a PNG file. browser_screenshot only shows the image to the model; use this when a file on disk is needed (pixel diffs, design references, attachments). Captures via CDP Page.captureScreenshot. Returns the path, byte count and pixel size.",
+          "inputSchema": {
+            "properties": {
+              "full_page": {
+                "default": false,
+                "description": "Capture the whole scrollable page instead of the viewport.",
+                "type": "boolean"
+              },
+              "output_path": {
+                "description": "Absolute path of the .png file to write. Parent directories are created.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "output_path"
+            ],
+            "type": "object"
+          },
+          "name": "browser_save_screenshot"
+        },
+        {
+          "description": "Preflight diagnosis of this plugin's environment. Reports the Python version, whether browser-use / browser-harness / mcp / playwright are installed, whether a Chromium/Chrome executable is present, and which provider API keys are set — turning silent failures (a 300s run_script hang, ModuleNotFoundError) into a one-call diagnosis. Takes no arguments.",
+          "inputSchema": {
+            "properties": {},
+            "type": "object"
+          },
+          "name": "browser_doctor"
+        },
+        {
+          "description": "Start a Browser Use CLOUD browser session (remote, stealth, CAPTCHA-capable). Requires BROWSER_USE_API_KEY. Returns session_id, cdp_url, and a live_url you can open to watch the remote browser. If no session is active, the cloud session becomes the one the page tools drive.",
+          "inputSchema": {
+            "properties": {
+              "navigate_to": {
+                "description": "URL to navigate to after the cloud session starts (optional).",
+                "type": "string"
+              }
+            },
+            "required": [],
+            "type": "object"
+          },
+          "name": "browser_start_cloud_session"
+        },
+        {
+          "description": "Choose which LLM the browser agent (retry_with_browser_use_agent) and browser_extract_content reason with, for the rest of this session. Overrides any settings.json config. Providers: 'anthropic', 'openai', 'openai_compatible' (any OpenAI-API-compatible endpoint — requires base_url), 'browser_use' (Browser Use gateway models such as bu-fast). 'anthropic' takes no base_url. api_key_env names an ENVIRONMENT VARIABLE that holds the key — never pass a secret directly. The model is built at once, so a bad choice is reported here, and applies from the next call on.",
+          "inputSchema": {
+            "properties": {
+              "api_key_env": {
+                "description": "Name of the environment variable holding the API key (NOT the key itself). Defaults to the provider's standard var.",
+                "type": "string"
+              },
+              "base_url": {
+                "description": "Base URL for the API. Required for 'openai_compatible'; optional override for 'openai' and 'browser_use'.",
+                "type": "string"
+              },
+              "model": {
+                "description": "Model name for the chosen provider.",
+                "type": "string"
+              },
+              "provider": {
+                "description": "LLM provider id.",
+                "enum": [
+                  "anthropic",
+                  "openai",
+                  "openai_compatible",
+                  "browser_use"
+                ],
+                "type": "string"
+              },
+              "temperature": {
+                "description": "Sampling temperature (only used by openai/openai_compatible).",
+                "type": "number"
+              }
+            },
+            "required": [
+              "provider",
+              "model"
+            ],
+            "type": "object"
+          },
+          "name": "browser_set_agent_model"
+        }
+      ],
+      "ttlMs": 0
+    },
+    "versions": [
+      "2026-07-28"
+    ]
+  },
+  "source": {
+    "browser-use": "1.0.0",
+    "mcp": "2.3.0"
+  }
+}
