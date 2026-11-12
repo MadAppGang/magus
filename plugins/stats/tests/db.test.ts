@@ -35,7 +35,13 @@ describe("db", () => {
     }
   });
 
-  function makeSession(id: string, project = "/test/project", date = "2026-03-26"): SessionMetrics {
+  function today(offsetDays = 0): string {
+    return new Date(Date.now() - offsetDays * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
+  }
+
+  function makeSession(id: string, project = "/test/project", date = today()): SessionMetrics {
     return {
       session_id: id,
       date,
@@ -228,8 +234,8 @@ describe("db", () => {
     insertSession(db, metrics);
     insertToolCalls(db, metrics.tool_calls, "old-session");
 
-    // Insert a recent session
-    const recent = makeSession("recent-session", "/test/project", "2026-03-26");
+    // Insert a recent session (use today so it's never stale)
+    const recent = makeSession("recent-session", "/test/project", today());
     insertSession(db, recent);
 
     const { deletedCount } = deleteOldSessions(db, 90);
