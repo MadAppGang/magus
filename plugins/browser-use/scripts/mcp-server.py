@@ -380,7 +380,7 @@ _PROVIDER_REGISTRY: dict[str, ProviderSpec] = {
 # Default when nothing is configured: Anthropic's flagship, key from the env.
 _DEFAULT_LLM = LLMChoice(
     provider="anthropic",
-    model="claude-sonnet-5",
+    model="claude-sonnet-5-5",
     api_key_env="ANTHROPIC_API_KEY",
     temperature=None,
 )

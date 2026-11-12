@@ -1692,12 +1692,12 @@ class TestBuildLLM(unittest.TestCase):
 
     def test_anthropic_drops_temperature(self):
         with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-ant-xyz"}):
-            llm = self._build(provider="anthropic", model="claude-sonnet-5", temperature=0.9)
+            llm = self._build(provider="anthropic", model="claude-sonnet-5-5", temperature=0.9)
         self.assertIsInstance(llm, _RecordingAnthropic)
-        self.assertEqual(llm.init_kwargs, {"model": "claude-sonnet-5", "api_key": "sk-ant-xyz"})
+        self.assertEqual(llm.init_kwargs, {"model": "claude-sonnet-5-5", "api_key": "sk-ant-xyz"})
 
     def test_a_missing_key_is_passed_as_none(self):
-        llm = self._build(provider="anthropic", model="claude-sonnet-5")
+        llm = self._build(provider="anthropic", model="claude-sonnet-5-5")
         self.assertIn("api_key", llm.init_kwargs)
         self.assertIsNone(llm.init_kwargs["api_key"])
 
@@ -1771,12 +1771,12 @@ class TestSetAgentModelTool(unittest.IsolatedAsyncioTestCase):
         return await self.server._execute_tool("browser_set_agent_model", args)
 
     async def test_stores_the_override(self):
-        payload = json.loads(await self._set(provider="anthropic", model="claude-sonnet-5"))
+        payload = json.loads(await self._set(provider="anthropic", model="claude-sonnet-5-5"))
         self.assertEqual(payload, {
-            "provider": "anthropic", "model": "claude-sonnet-5", "base_url": None,
+            "provider": "anthropic", "model": "claude-sonnet-5-5", "base_url": None,
             "applied_to_live_session": False,
         })
-        self.assertEqual(self.server._session_llm_override.model, "claude-sonnet-5")
+        self.assertEqual(self.server._session_llm_override.model, "claude-sonnet-5-5")
 
     async def test_reports_a_live_session(self):
         browser = _FakeBrowser()
@@ -2054,9 +2054,9 @@ class TestResolveConfiguredLLM(unittest.TestCase):
                if k not in ("CLAUDE_PROJECT_DIR", "BROWSER_USE_API_KEY")}
         with patch.dict(os.environ, env, clear=True):
             self.assertIsNone(self.server._resolve_configured_llm())
-        # _DEFAULT_LLM is anthropic/claude-sonnet-5
+        # _DEFAULT_LLM is anthropic/claude-sonnet-5-5
         self.assertEqual(_mod._DEFAULT_LLM.provider, "anthropic")
-        self.assertEqual(_mod._DEFAULT_LLM.model, "claude-sonnet-5")
+        self.assertEqual(_mod._DEFAULT_LLM.model, "claude-sonnet-5-5")
 
     def test_legacy_shim_only_browser_use_api_key(self):
         with patch.dict(os.environ, self._env(BROWSER_USE_API_KEY="bu-key"), clear=True):
@@ -2166,7 +2166,7 @@ class TestResolveConfiguredLLM(unittest.TestCase):
         with patch.dict(os.environ, self._env(ANTHROPIC_API_KEY="sk-ant"), clear=True):
             llm = self.server._resolve_agent_llm()
         self.assertIsInstance(llm, _real_chat_anthropic())
-        self.assertEqual(llm.model, "claude-sonnet-5")
+        self.assertEqual(llm.model, "claude-sonnet-5-5")
 
 
 # ---------------------------------------------------------------------------

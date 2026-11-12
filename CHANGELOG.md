@@ -4,6 +4,15 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [browser-use 2.0.1] - 2026-11-12
+
+### Changed
+
+- **The retry agent's default model is `claude-sonnet-5-5`.** It was `claude-sonnet-5`. The default
+  applies when no model is set with `browser_set_agent_model` and no Browser Use key is set.
+
+---
+
 ## [browser-use 2.0.0] - 2026-11-12
 
 ### Changed

@@ -617,7 +617,7 @@
       "name": "browser-use",
       "source": "./plugins/browser-use",
       "description": "Full-platform browser automation through its own MCP server: navigation, clicks and typing, live-page JS eval, keyboard and focus, file screenshots, session export and a configurable agent LLM, on local or cloud browsers. Runs Playwright's own Chromium, never your real Chrome. Ships 6 skills.",
-      "version": "2.0.0",
+      "version": "2.0.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -639,6 +639,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "2.0.1",
+          "date": "2026-11-12",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "The retry agent's default model is claude-sonnet-5-5"
+        },
         {
           "version": "2.0.0",
           "date": "2026-11-12",
@@ -669,11 +677,6 @@
             "Added"
           ],
           "summary": "The server starts through uv run --script"
-        },
-        {
-          "version": "1.8.0",
-          "date": "2026-09-27",
-          "summary": "Browser_save_screenshot writes the page to a PNG file. browser_screenshot shows the image to\u2026"
         }
       ]
     },

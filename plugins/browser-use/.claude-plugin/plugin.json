@@ -1,6 +1,6 @@
 {
   "name": "browser-use",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Full-platform browser automation through its own MCP server: navigation, clicks and typing, live-page JS eval, keyboard and focus, file screenshots, session export and a configurable agent LLM, on local or cloud browsers. Runs Playwright's own Chromium, never your real Chrome. Ships 6 skills.",
   "author": {
     "name": "Jack Rudenko",
