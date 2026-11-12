@@ -93,6 +93,8 @@ They come from the user and hold for the whole session. The briefing states them
   log template to fill in as each agreed command runs.
 - Read `../yaml/SKILL.md` only when the fix is (c), or when a cause points at a YAML
   value: how to change an env YAML safely, and which fields force replacement.
+- Read `../extend/references/places.md` only when the failure is in `custom/`: a hook's
+  `variables.tf`, or a custom file referencing a meroku module or output.
 - Read `../meroku/SKILL.md` only when you need the pipeline itself: YAML → migrations →
   templates → `env/<env>/` → Terraform, the commands, and the project layout.
 

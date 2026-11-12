@@ -1,6 +1,6 @@
 ---
 name: meroku
-description: Explains how meroku turns an env YAML into Terraform on AWS, with its commands, project layout and naming. Use when working in a meroku project.
+description: Explains how meroku turns an env YAML into Terraform on AWS: commands, project layout, naming. Use when working in a meroku project.
 ---
 
 # How a meroku project works
@@ -46,6 +46,9 @@ meroku bug) meroku itself.
 | `.meroku/` | local state; `.meroku/claude/` holds Fix with AI briefings. Ignores itself in git | meroku |
 | `dns.yaml` | root zone and delegation records from DNS setup | meroku |
 
+Where new infrastructure goes, and what each `custom/` place needs (a `README.md` in every
+custom folder): read `../extend/SKILL.md`.
+
 An edit to `infrastructure/` is lost on the next `meroku update`. It is a stop-gap at
 most, and only when the user asks for one. A symlinked `infrastructure/` points at a
 meroku checkout; change that checkout with git instead.
@@ -83,5 +86,6 @@ unexpected (hex at the end, words missing), or a change would rename something.
 
 - A failed meroku operation or a Fix with AI briefing: read `../troubleshoot/SKILL.md`.
 - Changing the env YAML: read `../yaml/SKILL.md`.
+- Adding an AWS resource meroku does not create: read `../extend/SKILL.md`.
 - Design notes for a feature: `infrastructure/ai_docs/` in the project, when the copy
   carries it.

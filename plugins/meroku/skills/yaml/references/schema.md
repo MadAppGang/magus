@@ -112,3 +112,7 @@ single `ses.domain_name` form still renders. Ownership rules: `dangerous-fields.
 Terraform that the YAML cannot express goes in `custom/terraform/_shared/*.tf` (every
 env) or `custom/terraform/<env>/*.tf`, which meroku appends to the generated `main.tf`.
 `env/<env>/_bridge.tf` exposes the module outputs to that code as `local.bridge`.
+
+Before writing any of it, read `../../extend/SKILL.md`: it checks meroku's default first,
+picks between `custom/terraform/`, the `custom/pre/` hook and the `custom/post/` hook, and
+writes the `README.md` every custom folder needs.

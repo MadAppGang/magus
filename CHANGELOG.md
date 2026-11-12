@@ -4,6 +4,31 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [meroku 1.1.0] - 2026-11-12
+
+### Added
+
+- **`meroku:extend` decides where new AWS infrastructure goes in a meroku project.** It
+  checks meroku's own default first, in the project's own `infrastructure/env/main.hbs`;
+  a feature this copy lacks is named as coming in a later meroku release, with the sign to
+  look for once it lands, and never written as a YAML key. When meroku is close but missing
+  something, it picks one of three places beside meroku's code: `custom/terraform/<env>/`
+  (or `_shared/`), the `custom/pre/` hook, whose `backend_env_vars` output is the only one
+  meroku reads, or the `custom/post/` hook, which receives meroku's outputs. A meroku pull
+  request comes last, only for a change every project would turn on. It never copies a
+  meroku module, and writes a `README.md` in every custom folder: what it adds, why
+  meroku's default cannot do it, why it is not a meroku pull request, and when it can be
+  deleted. Written against meroku 5.6.
+- The other three skills point at it: `meroku` from the project layout, `yaml` when the YAML
+  cannot express a resource, `troubleshoot` when a failure is in `custom/`.
+
+### Changed
+
+- The `meroku` and `yaml` skill descriptions are shorter, to pay back listing budget for the
+  new skill. What each skill does is unchanged.
+
+---
+
 ## [dev 9.7.0] - 2026-11-12
 
 ### Added

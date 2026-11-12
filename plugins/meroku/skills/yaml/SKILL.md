@@ -1,6 +1,6 @@
 ---
 name: yaml
-description: Reads and changes a meroku env YAML safely, naming any change that forces resource replacement. Use when editing dev.yaml, prod.yaml or any env YAML.
+description: Changes a meroku env YAML safely, naming any change that forces resource replacement. Use when editing dev.yaml, prod.yaml or any env YAML.
 ---
 
 # Changing a meroku env YAML
@@ -68,6 +68,8 @@ which helper wraps it.
   `project`, `env`, any `name`, `bucket_postfix`, `region`, the state keys, `domain` or
   `ses` zones and records, `postgres.aurora`, `ecr_strategy`, or the backend health
   check and circuit breaker.
+- The YAML cannot express the resource: read `../extend/SKILL.md` before writing any
+  Terraform.
 
 ## Never
 

@@ -1,7 +1,7 @@
 {
   "name": "meroku",
-  "version": "1.0.0",
-  "description": "Skills for Claude Code sessions opened by meroku's Fix with AI: troubleshoot a failed meroku operation from its briefing, change an environment YAML safely, and understand how meroku turns that YAML into Terraform. Investigates read-only and asks before any write.",
+  "version": "1.1.0",
+  "description": "Skills for Claude Code in a meroku project: troubleshoot a failed meroku operation from its Fix with AI briefing, change an environment YAML safely, place new AWS infrastructure beside meroku's own, and understand how the YAML becomes Terraform. Investigates read-only and asks before any write.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
@@ -15,13 +15,15 @@
     "aws",
     "infrastructure",
     "troubleshooting",
-    "yaml"
+    "yaml",
+    "custom-terraform"
   ],
   "category": "development",
   "skills": [
     "./skills/troubleshoot",
     "./skills/yaml",
-    "./skills/meroku"
+    "./skills/meroku",
+    "./skills/extend"
   ],
   "compatibility": {
     "claudeCode": ">=0.1.0"

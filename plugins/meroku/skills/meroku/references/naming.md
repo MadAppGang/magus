@@ -32,7 +32,7 @@ templates; only caps up to 80 go through the cascade.
 
 | # | Form | Example |
 |---|---|---|
-| 1 | the legacy name, verbatim | `myapp-service-api-tg-dev` |
+| 1 | the name as deployed today, verbatim | `myapp-service-api-tg-dev` |
 | 2 | `project` + identity + `env`, decoration dropped | `myapp-orders-sync-dev` |
 | 3 | identity + 8 hex characters of md5 over project, env and identity | `payments-4f2a9c1e` |
 
@@ -44,7 +44,7 @@ templates; only caps up to 80 go through the cascade.
   share an account.
 - A required suffix (`.fifo`, the bucket postfix) is counted against the limit and never
   cut.
-- A brand-new resource type has no legacy form and starts at form 2.
+- A brand-new resource type has no deployed name to keep and starts at form 2.
 
 ## What this means in practice
 
