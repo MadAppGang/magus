@@ -193,7 +193,7 @@ skills:
           another claudish team from a panel slot would hand every slot the same judge.
           Otherwise continue with the next step.</step>
         <step>Run Procedure A, Steps 1–5: resolve JUDGE_MODEL, write `${JUDGE_DIR}/input.md`
-          naming the image paths in order (reference first), `team(mode="run", …,
+          naming the image paths in order (reference first), `team(mode="run", task_type="design-review", …,
           require_pattern="\"overallScore\"")`, poll `status` to settled (ceiling 10 min),
           read `response-<slot>.md`, take its ```json block as SEMANTIC_DIFF.
           JUDGED_BY = "${JUDGE_MODEL} via claudish team".</step>

@@ -72,6 +72,7 @@ images, or Pattern 1 + Pattern 2 for one image>
 
 ```
 team(mode="run",
+     task_type="design-review",
      path="${JUDGE_DIR}",
      models=["${JUDGE_MODEL}"],
      input_file="${JUDGE_DIR}/input.md",

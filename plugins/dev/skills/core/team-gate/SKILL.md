@@ -7,7 +7,7 @@ disable-model-invocation: true
 # Team gate: a gate is passed when its ballots have been read
 
 The 2026-09-12 transcript audit (`ai-docs/dev-workflow-gate-audit-2026-09-12.md`) found
-that `team(mode="run")` returning `{"started": true}` was being treated as the gate
+that a `team` run returning `{"started": true}` was being treated as the gate
 passing, that panels which came back `partial` (`1/4`, `2/5` succeeded) were treated as
 complete, and that gates were skipped without a word. This procedure closes all three.
 Every gate site in `/dev:dev`, `/dev:fix` and `/dev:audit` follows it; none restates it.
@@ -72,8 +72,12 @@ named input file) and call:
 
 ```
 team(mode="run", path=<gate dir>, models=[...], input_file=<gate dir>/prompt.md,
+     task_type=<the site's task_type>,
      require_pattern=<the line the brief mandates>, min_output_bytes=400, agent=<if any>)
 ```
+
+Each gate site passes its own `task_type` (`plan-review`, `code-review`,
+`root-cause-review`, `audit`), and a re-run of a failed slot passes the same value.
 
 Never pass `input` beside `input_file`. The tool rejects the pair with
 `Pass input_file or input, not both`, and the audit counted 32 gate calls lost to exactly

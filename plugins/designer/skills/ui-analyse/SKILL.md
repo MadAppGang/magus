@@ -276,7 +276,7 @@ screenshot exists to read.
 
 By default the judging is done by a model other than the one running the agent. The
 procedure — resolve the newest Gemini Pro (or the top GPT tier) live, write the image
-paths into a brief, `team(mode="run")`, poll `status` until settled, read
+paths into a brief, `team(mode="run", task_type="design-review")`, poll `status` until settled, read
 `response-<slot>.md`, fall back to a local `Read` only when the judge fails and say so in
 the header — is Procedure A of `designer:review-services`. It works from inside a
 subagent because `team` is polled, not awaited on a channel. Point the brief at the

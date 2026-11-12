@@ -269,7 +269,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "9.6.2",
+      "version": "9.7.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -309,6 +309,14 @@
       "strict": true,
       "releases": [
         {
+          "version": "9.7.0",
+          "date": "2026-11-12",
+          "kinds": [
+            "Added"
+          ],
+          "summary": "Every claudish panel and session the dev commands start names its kind of work"
+        },
+        {
           "version": "9.6.2",
           "date": "2026-11-07",
           "kinds": [
@@ -336,11 +344,6 @@
           "version": "9.5.1",
           "date": "2026-10-23",
           "summary": "The CLI review route, used when claudish is absent, reads each reviewer's screen from a\u2026"
-        },
-        {
-          "version": "9.5.0",
-          "date": "2026-10-22",
-          "summary": "The internal code reviewer runs in its own session, never as a subagent of the session that\u2026"
         }
       ]
     },
@@ -686,7 +689,7 @@
       "name": "designer",
       "source": "./plugins/designer",
       "description": "UI design validation. Compares a rendered screen against its reference by pixel diff, then reviews the result for spacing, hierarchy and design-system consistency.",
-      "version": "0.11.1",
+      "version": "0.12.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -709,6 +712,14 @@
       "strict": true,
       "releases": [
         {
+          "version": "0.12.0",
+          "date": "2026-11-12",
+          "kinds": [
+            "Added"
+          ],
+          "summary": "The design judge and the review panel name their kind of work"
+        },
+        {
           "version": "0.11.1",
           "date": "2026-10-20",
           "summary": "Sharp moves from ^0.33.0 to ^0.35.5, which closes the three high-severity Dependabot alerts\u2026"
@@ -730,11 +741,6 @@
           "version": "0.9.1",
           "date": "2026-09-25",
           "summary": "/designer:create-style drops its task-list steps, compare no longer passes a flag the script\u2026"
-        },
-        {
-          "version": "0.9.0",
-          "date": "2026-09-24",
-          "summary": "/designer:review --panel \"<model>,\u2026\" runs the same comparison through several external vision\u2026"
         }
       ]
     },

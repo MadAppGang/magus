@@ -194,7 +194,7 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, mcp__plugin_claudish_claudis
          `internal` slot of one panel call, beside the externals when `MODELS:`
          names any:
          ```
-         claudish team(mode="run", path="${AUDIT_PATH}",
+         claudish team(mode="run", task_type="audit", path="${AUDIT_PATH}",
            models=["internal", a, b, c],
            agent="dev:reviewer",
            input_file="${AUDIT_PATH}/prompt.md",

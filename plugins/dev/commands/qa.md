@@ -115,6 +115,7 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, Write, Glob, Grep, mcp__plugi
        create_session(
          model = <resolved id>,
          agent = "qa-engineer",                  // the sandbox's own copy, from phase 0
+         task_type = "qa",                       // the kind of work, in one short word
          work_dir = "${SESSION_PATH}/qa/sandbox",
          timeout_seconds = 900,
          prompt = <the writer prompt below, with sandbox-relative paths>
@@ -165,7 +166,7 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, Write, Glob, Grep, mcp__plugi
     in the writer's sandbox. Each use is a new session with the same model and the same
     sandbox; the earlier session has ended. Start it with the same `create_session`
     arguments step 3 uses: `model` = the writer's resolved id, `agent = "qa-engineer"`,
-    `work_dir` = the sandbox, the same timeout. Take only those arguments. Do not reset
+    `task_type` = `"qa"`, `work_dir` = the sandbox, the same timeout. Take only those arguments. Do not reset
     the sandbox, and do not apply step 3's hash check: the sandbox holds the writer's
     tests, and an analysis that finds only IMPLEMENTATION_ISSUE changes no test file.
     It is used for:

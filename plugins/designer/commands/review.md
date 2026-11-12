@@ -97,7 +97,7 @@ agent: review
   same judge. Start the panel in the same message as the Step 3 dispatch:
 
   ```
-  team(mode="run", path="{PANEL_DIR}",
+  team(mode="run", task_type="design-review", path="{PANEL_DIR}",
     models=[<the resolved model IDs>],
     agent="designer:review",
     input_file="{PANEL_DIR}/prompt.md",

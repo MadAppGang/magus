@@ -101,6 +101,7 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, Skill, Glob, Grep, EnterPlanM
       (`claudish:claudish-usage` resolves the models; pass no `agent`):
       - `mode`: `"run"`; `path`: a new directory under `$(pwd)/ai-docs/sessions/` (`team` refuses
         a path outside its working directory, or one that already holds a session)
+      - `task_type="plan"`: the same kind as `/multimodel:team --type plan`
       - `input`: the plan slot prompt below, with `{TASK}` = `Architect: {$ARGUMENTS}.`
       - `require_pattern`: `## Proposal[\s\S]*## Trade-offs`
       - `efforts`: from the `planning` column of `list_models` → **Recommended effort by task
@@ -548,7 +549,8 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, Skill, Glob, Grep, EnterPlanM
         </step>
         <step>
           If models selected:
-          Launch parallel architecture reviews via claudish `team` MCP tool:
+          Launch parallel architecture reviews via claudish `team` MCP tool, passing
+          `task_type="plan-review"`:
           - Internal: architect
           - External: Selected models
 

@@ -247,7 +247,7 @@ a code-review scale that no plan reviewer was asked to use.
                 and return a brief summary."
      )
      ---
-     claudish team(mode="run", path=${SESSION_PATH}/reviews/plan-review,
+     claudish team(mode="run", task_type="plan-review", path=${SESSION_PATH}/reviews/plan-review,
        models=[{model1}, {model2}, ...],
        input_file=${SESSION_PATH}/reviews/plan-review/prompt.md,
        require_pattern="\*\*Verdict\*\*: (PASS|CONDITIONAL|FAIL)",

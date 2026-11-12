@@ -597,7 +597,7 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep, Write, Edit, Ski
 
           Models 2+3 — External models via claudish MCP team tool:
           ```
-          claudish team(mode="run", path=${SESSION_PATH},
+          claudish team(mode="run", task_type="root-cause-review", path=${SESSION_PATH},
             models=[MODELS from config.json — skip this call when "none"],
             input_file=${SESSION_PATH}/vote-prompt-root-cause.md,
             require_pattern="VERDICT:")
@@ -991,7 +991,7 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep, Write, Edit, Ski
 
         External models — only when MODELS is not "none" — via claudish MCP team tool:
         ```
-        claudish team(mode="run", path=${SESSION_PATH},
+        claudish team(mode="run", task_type="code-review", path=${SESSION_PATH},
           models=[MODELS from config.json],
           input_file=${SESSION_PATH}/vote-prompt-patch.md,
           require_pattern="VERDICT:")
@@ -1032,7 +1032,7 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep, Write, Edit, Ski
         ```
         Then, in the same message as the vote panel:
         ```
-        claudish team(mode="run", path=${SESSION_PATH}/patch-review-internal,
+        claudish team(mode="run", task_type="code-review", path=${SESSION_PATH}/patch-review-internal,
           models=["internal"],
           agent="dev:reviewer",
           input_file=${SESSION_PATH}/patch-review-internal/prompt.md,

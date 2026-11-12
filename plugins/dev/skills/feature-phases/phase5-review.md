@@ -129,7 +129,7 @@ second lock on the same door.
 with no externals the call still runs, as `models=["internal"]`:
 
 ```
-claudish team(mode="run", path=${GATE_DIR},
+claudish team(mode="run", task_type="code-review", path=${GATE_DIR},
   models=["internal", ...selectedModels.models],
   agent="dev:reviewer",
   input_file=${GATE_DIR}/prompt.md,

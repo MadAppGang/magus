@@ -4,6 +4,31 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [dev 9.7.0] - 2026-11-12
+
+### Added
+
+- **Every claudish panel and session the dev commands start names its kind of work.** Each
+  `team` run call and each `create_session` call passes `task_type`: `plan` (architect's own
+  proposals), `plan-review`, `code-review`, `root-cause-review` (`/dev:fix`'s first vote),
+  `audit`, `qa` (the blind test writer), `brainstorm`, and `debug` / `implement` in the
+  agent-coordination examples. claudish 14.20.0 or later shows it on every slot and session
+  row and in the herdr panel's run header. An older claudish ignores it, and nothing about
+  how a slot runs changes.
+
+---
+
+## [designer 0.12.0] - 2026-11-12
+
+### Added
+
+- **The design judge and the review panel name their kind of work.** Procedure A's judge,
+  the `/designer:review` panel and the self-check of `designer:ui` pass
+  `task_type="design-review"` on their claudish `team` call. claudish 14.20.0 or later shows
+  it on every slot row and in the herdr panel's run header; an older claudish ignores it.
+
+---
+
 ## [multimodel 6.2.0] - 2026-11-12
 
 ### Added

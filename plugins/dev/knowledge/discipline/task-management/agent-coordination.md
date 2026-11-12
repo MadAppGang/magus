@@ -80,7 +80,7 @@ When delegating to external models, use claudish MCP tools:
 
 **For single-model tasks:**
 ```
-create_session(model="<model ID from list_models>",
+create_session(model="<model ID from list_models>", task_type="debug",
   prompt="Analyze the React component rendering performance issue in Dashboard.tsx.
 
   Context:
@@ -96,6 +96,7 @@ create_session(model="<model ID from list_models>",
 **For multi-model parallel tasks:**
 ```
 team(mode="run", path=SESSION_DIR,
+  task_type="code-review",   # names the kind of work in one short word
   models=["internal", "<model A>", "<model B>"],   # IDs from list_models, never from memory
   input_file=`${SESSION_DIR}/input.md`,
   require_pattern=<regex for the shape PROMPT mandates>)
@@ -284,7 +285,7 @@ Success Criteria:
 
 **Example:**
 ```
-session = create_session(model="<fast coding model from list_models>",
+session = create_session(model="<fast coding model from list_models>", task_type="implement",
   prompt="Refactor 10 components for React 19...")
 result = get_output(session.session_id)   # after the completed notification
 
@@ -349,7 +350,7 @@ Constraints:
 
 ```go
 // ✓ CORRECT: Fast refactoring with an external model
-// create_session(model="<fast coding model from list_models>", prompt=...)
+// create_session(model="<fast coding model from list_models>", task_type="implement", prompt=...)
 
 Refactor 15 handler functions in handlers/ to use consistent error handling pattern.
 
