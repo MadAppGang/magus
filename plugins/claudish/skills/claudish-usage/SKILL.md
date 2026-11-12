@@ -464,8 +464,15 @@ team(mode="run", path=SESSION_DIR,
   models=[...resolved models, native names included...],
   input_file=`${SESSION_DIR}/input.md`,
   require_pattern=<regex for the shape the prompt mandates>,
-  agent=RESOLVED_AGENT)
+  agent=RESOLVED_AGENT,
+  task_type=<label, optional>)
 ```
+
+`task_type` (claudish 14.20.0+, optional on `team` and `create_session`) labels the run with
+the kind of work, such as `judge`, `research` or `implement`. It must match
+`^[a-z][a-z0-9-]{0,23}$`; any other value is refused with `invalid_args`. It appears as
+`task_type` on every slot and session row and in the herdr panel's run header, and changes
+nothing about how a slot runs. Absent, it is `null`.
 
 It returns a slot map, not results:
 
@@ -578,7 +585,7 @@ equivalent and must poll.**
 
 ```
 create_session(model, prompt, timeout_seconds, agent, claude_flags, work_dir,
-               effort, user_required_model, user_required_provider)
+               effort, task_type, user_required_model, user_required_provider)
   → session_id
 ```
 

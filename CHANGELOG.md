@@ -4,6 +4,28 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [multimodel 6.2.0] - 2026-11-12
+
+### Added
+
+- **`/team` names its task type on every claudish call.** Each `team` run call (both shared
+  rounds included) and each `create_session` call passes `task_type`: judge, research, plan,
+  debug, brainstorm, implement, test or collaborate. claudish 14.20.0 or later shows it on
+  every slot and session row and in the herdr panel's run header. An older claudish ignores
+  it, and nothing about how a slot runs changes.
+
+---
+
+## [claudish 2.17.1] - 2026-11-12
+
+### Changed
+
+- **The `claudish-usage` skill lists `task_type`** on `team` and `create_session` (claudish
+  14.20.0 or later): an optional label for the kind of work, matching
+  `^[a-z][a-z0-9-]{0,23}$`, shown on slot and session rows and in the herdr panel.
+
+---
+
 ## [browser-use 2.1.0] - 2026-11-12
 
 ### Changed

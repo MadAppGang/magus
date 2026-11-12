@@ -327,11 +327,17 @@ native and external alike — so there is no second dispatch to issue alongside 
 claudish team(mode="run", path=SESSION_DIR,
   models=[...ALL resolved models, exactly as Step 1e produced them...],
   input_file=`${SESSION_DIR}/input.md`,
+  task_type=TYPE,               # the literal type name: judge, research, plan, debug or brainstorm
   require_pattern=PATTERN,      # the type's row of the Task types table
   efforts=EFFORTS,              # Step 1f; always passed, {} when nothing has an entry
   agent=RESOLVED_AGENT,         # omit when Step 1e resolved none
   claude_flags=CLAUDE_FLAGS)
 ````
+
+**`task_type` names the run's type on every `team` and `create_session` call**, always the
+literal type name from Step 1 (`task-type.json`'s `type`). claudish 14.20.0 or later shows it
+on each slot and session row and in the herdr panel's run header; an older claudish ignores
+it. It labels the run and changes nothing about how a slot runs.
 
 CLAUDE_FLAGS is exactly as Step 1f left it for judge. For research, plan, debug and
 brainstorm, append `--disallowedTools Edit,Write,NotebookEdit`: slots run with permissions
@@ -487,8 +493,8 @@ Exactly two rounds, unless round 1 has nothing to discuss.
 1. `mkdir -p <SESSION_DIR>/rounds/1 <SESSION_DIR>/rounds/2`. Write the type's round 1 prompt
    (Knowledge; shared runs add the no-self-naming line) to `rounds/1/input.md`.
 2. Round 1: Step 2's `team` call with `path=<SESSION_DIR>/rounds/1` and
-   `input_file=<SESSION_DIR>/rounds/1/input.md`, the type's pattern, EFFORTS, the agent if
-   any, and `--disallowedTools Edit,Write,NotebookEdit`. Write the returned `slots` map to
+   `input_file=<SESSION_DIR>/rounds/1/input.md`, `task_type=TYPE`, the type's pattern, EFFORTS,
+   the agent if any, and `--disallowedTools Edit,Write,NotebookEdit`. Write the returned `slots` map to
    `rounds/1/slots.json`. Then Step 2b and 2c on round 1, through its settled `status`
    call. Round 2 never starts before that call shows round 1 settled.
 3. Usable round 1 answers: slots whose state is `COMPLETED`. None → stop, INCONCLUSIVE, no
@@ -507,7 +513,8 @@ Exactly two rounds, unless round 1 has nothing to discuss.
    can alter its evidence. Write the round 2 template's head (everything above the answers)
    to `rounds/2/head.md` and its tail to `rounds/2/tail.md`, then
    `cat <SESSION_DIR>/rounds/2/head.md <SESSION_DIR>/rounds/2/answers.md <SESSION_DIR>/rounds/2/tail.md > <SESSION_DIR>/rounds/2/input.md`.
-5. Round 2: the same `team` call on `path=<SESSION_DIR>/rounds/2` with the same models —
+5. Round 2: the same `team` call on `path=<SESSION_DIR>/rounds/2` with the same models and
+   the same `task_type` —
    including a model whose round 1 slot failed: it can still respond — and the pattern
    `## Responses[\s\S]*` followed by the type's own pattern. Write its `slots` map to
    `rounds/2/slots.json`. Step 2b and 2c again.
@@ -732,6 +739,7 @@ claudish create_session(
   model=<model>,
   prompt="Read <SESSION_DIR>/input.md and do what it says.",   # test: the full text of that slot's task.md, not a pointer to it. qa-engineer reads only the paths its prompt names and the file claudish delivers the prompt in
   agent=<RESOLVED_AGENT>,      # the local name when W1 copied the agent: "qa-engineer" (test), AGENT_NAME (implement)
+  task_type=<TYPE>,            # "implement" or "test", as Step 2 says
   work_dir=<slot folder>,      # test: <sb>
   effort=<Step 1f>,            # omit when Step 1f gives none
   claude_flags=<CLAUDE_FLAGS plus Step 1f's --effort for this slot>,
@@ -939,6 +947,7 @@ For turn `n` of N, model `M_n` (`TESTED_0` is TREE_0):
      model=<M_n>,
      prompt="Read <SESSION_DIR>/turn-<n>.md and do what it says.",
      agent=<RESOLVED_AGENT>,
+     task_type="collaborate",     # as Step 2 says
      work_dir=<top>/<PREFIX>,     # <top> when PREFIX is empty: the caller's own folder
      effort=<Step 1f>,            # omit when Step 1f gives none
      claude_flags=<CLAUDE_FLAGS plus Step 1f's --effort for this slot plus --settings <SESSION_DIR>/deny-git.json>,

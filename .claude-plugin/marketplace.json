@@ -75,7 +75,7 @@
       "name": "claudish",
       "source": "./plugins/claudish",
       "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting, manages async sessions, and shows the session's runs live above the prompt, with stop and live-screen tabs. Required by code-search, dev, multimodel and designer.",
-      "version": "2.17.0",
+      "version": "2.17.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -95,6 +95,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "2.17.1",
+          "date": "2026-11-12",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "The claudish-usage skill lists task_type on team and create_session (claudish 14.20.0 or\u2026"
+        },
         {
           "version": "2.17.0",
           "date": "2026-11-10",
@@ -126,15 +134,6 @@
             "Changed"
           ],
           "summary": "The claudish-usage skill's Team Mode Integration names the judge type of /team"
-        },
-        {
-          "version": "2.15.0",
-          "date": "2026-11-06",
-          "kinds": [
-            "Added",
-            "Fixed"
-          ],
-          "summary": "A finished tab of the Show panel draws the session's real Claude Code screen again, and it\u2026"
         }
       ]
     },
@@ -206,7 +205,7 @@
       "name": "multimodel",
       "source": "./plugins/multimodel",
       "description": "Multi-model collaboration and orchestration. Runs one task across several AI models under a task type (judge, research, plan, debug, brainstorm, implement, test, collaborate), each with its own result, or delegates it to one model running a full Claude Code session.",
-      "version": "6.1.0",
+      "version": "6.2.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -230,6 +229,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "6.2.0",
+          "date": "2026-11-12",
+          "kinds": [
+            "Added"
+          ],
+          "summary": "/team names its task type on every claudish call"
+        },
         {
           "version": "6.1.0",
           "date": "2026-11-07",
@@ -255,11 +262,6 @@
           "version": "5.9.0",
           "date": "2026-10-22",
           "summary": "Multi-model-validation seats the internal reviewer as the internal slot in every code-review\u2026"
-        },
-        {
-          "version": "5.8.1",
-          "date": "2026-10-21",
-          "summary": "/team asks for a missing scope with AskUserQuestion, never in plain text, so \"/team look at\u2026"
         }
       ]
     },
