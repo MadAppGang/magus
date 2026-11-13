@@ -810,7 +810,7 @@
       "name": "madbench",
       "source": "./plugins/madbench",
       "description": "Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. Carries madbench's own skills with /madbench:madbench as the entry point, checks them against the installed madbench, and runs benches in a visible pane through the madbench:bench agent.",
-      "version": "0.12.5",
+      "version": "0.12.6",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -832,6 +832,14 @@
       "strict": true,
       "releases": [
         {
+          "version": "0.12.6",
+          "date": "2026-11-14",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "The madbench skills are synced to madbench 0.57.2, so /madbench:madbench and the bench agent\u2026"
+        },
+        {
           "version": "0.12.5",
           "date": "2026-10-27",
           "summary": "The madbench skills are synced to madbench 0.56.0, so /madbench:madbench and the bench agent\u2026"
@@ -850,11 +858,6 @@
           "version": "0.12.2",
           "date": "2026-10-21",
           "summary": "The madbench skills are synced to madbench 0.49.0, so /madbench:madbench and the bench agent\u2026"
-        },
-        {
-          "version": "0.12.1",
-          "date": "2026-10-20",
-          "summary": "The madbench skills are synced to madbench 0.47.0, so /madbench:madbench and the operator see\u2026"
         }
       ]
     },

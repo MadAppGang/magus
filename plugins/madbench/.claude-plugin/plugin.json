@@ -1,6 +1,6 @@
 {
   "name": "madbench",
-  "version": "0.12.5",
+  "version": "0.12.6",
   "description": "Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. Carries madbench's own skills with /madbench:madbench as the entry point, checks them against the installed madbench, and runs benches in a visible pane through the madbench:bench agent.",
   "author": {
     "name": "MadAppGang",
@@ -67,14 +67,14 @@
           {
             "via": "release",
             "repo": "MadAppGang/madbench-releases",
-            "tag": "v0.56.0",
+            "tag": "v0.57.2",
             "asset": "madbench_{os}_{arch}.tar.gz",
             "binary": "madbench",
             "sha256": {
-              "darwin_amd64": "897c635dfc85c192326120e1789bb5ad9567739af044a25195de443a81ed75b5",
-              "darwin_arm64": "222c4708ebe602407b05ce8b0c3f55bda9427d0cfa969211f53805b676cb17f4",
-              "linux_amd64": "69eedccb97d6b8d42eff1fca46a3c7a39264e9b5fec2e3b86cf346feaec3f36f",
-              "linux_arm64": "1d4ebc40713265038a1eb1643522bfe1442c37f623845bce404665436f7b281a"
+              "darwin_amd64": "b2c0ec8fa626d9c29d75d2eae1ad66b3e837988073585f75f10f5e30cf1189e0",
+              "darwin_arm64": "4eba5d8c717330e8dd0190231271937eb637b47e2d65002a4be2b5b5806de03a",
+              "linux_amd64": "2c7c94d81baff7a77e2161591b6de3d31c2881808fed3f1dc16c7071bf3b2bff",
+              "linux_arm64": "5cfa34f4b029800f4956fcc94e9db155271a5dedbba70ea0069f763afbe10d7a"
             }
           }
         ]

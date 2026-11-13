@@ -4,6 +4,19 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [madbench 0.12.6] - 2026-11-14
+
+### Changed
+
+- **The madbench skills are synced to madbench 0.57.2**, so /madbench:madbench and the bench
+  agent describe the harness that is installed. The schema reference now says a Scenario's
+  `harness.args` is refused on a bench that declares the `mock` or `demo` harness, and that a
+  claude-code bench moved onto either with `--harness` runs without them.
+  `madbench skills --check` reports `current`. Where Homebrew is not used (Linux), the plugin
+  installs madbench v0.57.2 when madbench is missing, not v0.56.0.
+
+---
+
 ## [meroku 1.1.0] - 2026-11-12
 
 ### Added
