@@ -95,6 +95,19 @@
 
 ---
 
+## [madbench 0.12.7] - 2026-11-14
+
+### Changed
+
+- **The madbench skills are synced to madbench 0.58.0**, so /madbench:madbench and the bench
+  agent describe the harness that is installed. The schema reference and checks catalog now
+  say that a Check's `metric:` name binds in the top-level `metrics:` expressions as a sample,
+  so `mean(<name>)` reads it, and that a Check without `metric:` binds no name there.
+  `madbench skills --check` reports `current`. Where Homebrew is not used (Linux), the plugin
+  installs madbench v0.58.0 when madbench is missing, not v0.57.2.
+
+---
+
 ## [madbench 0.12.6] - 2026-11-14
 
 ### Changed

@@ -175,8 +175,8 @@ as green. Full table in `harness-and-sandbox.md` §9.
 
 Every check returns `Score` in **[0,1] where higher is always better** — even for
 lower-is-better metrics. Raw values belong in `Evidence`, never in the primary score. Name a
-score with `metric:` (defaults to the check `type`); that name is what the top-level
-`metrics:` expressions read (`mean(accuracy)`).
+score with `metric:`; that name is what the top-level `metrics:` expressions read
+(`mean(accuracy)`). A Check without `metric:` binds no name there.
 
 At the Scenario level there is **no partial credit**: a Scenario passes iff every top-level
 check passes (a composite counts as one — put partial credit INSIDE an `assert-set`).

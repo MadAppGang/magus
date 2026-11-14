@@ -53,8 +53,8 @@ Harness ever runs.
 | `config` | free-form config map; **no in-tree check reads it** |
 | `weight` | multiplier when this Check is a composite child; unset → 1.0 |
 | `threshold` | the **Expectation** — the bar the score (or raw metric) must clear |
-| `metric` | the name this Check's normalized score binds under in the top-level `metrics:` expressions (`mean(accuracy)`); defaults to `type` (`docs/metrics.md:27`, `:36`) |
-| `metrics` | sample-stage expressions this Check **pushes** into the Scenario's row — `score`, `pass`, `reason`, `evidence` in scope (`docs/metrics.md:29-31`, `:59-62`); see `schema.md` §8 |
+| `metric` | the name this Check's normalized score binds under in the top-level `metrics:` expressions (`mean(accuracy)`). Only an explicit `metric:` binds; the `scores` line falls back to `type`, the expressions do not. A name an entry writes (or a dotted name inside it), a built-in (`cost`, `tokens`, `turns`, `duration`) and an aggregate function name do not bind; `review` beside `review.depth` is refused at load (`docs/metrics.md#a-checks-metric-is-a-sample`) |
+| `metrics` | sample-stage expressions this Check **pushes** into the Scenario's row — `score`, `pass`, `reason`, `evidence` in scope (`docs/metrics.md:29-31`, `:61-64`); see `schema.md` §8 |
 | `readout` | measure without grading — runs and scores, never fails the Scenario (§2.1) |
 | `checks` | composite children. `assert:` is **refused** at load, and the error names `checks:` (`docs/checks.md:57`) |
 | `inline` | inline source for `custom:gosrc` |
