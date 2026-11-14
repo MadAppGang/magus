@@ -53,7 +53,7 @@ Harness ever runs.
 | `config` | free-form config map; **no in-tree check reads it** |
 | `weight` | multiplier when this Check is a composite child; unset → 1.0 |
 | `threshold` | the **Expectation** — the bar the score (or raw metric) must clear |
-| `metric` | the name this Check's normalized score binds under in the top-level `metrics:` expressions (`mean(accuracy)`). Only an explicit `metric:` binds; the `scores` line falls back to `type`, the expressions do not. A name an entry writes (or a dotted name inside it), a built-in (`cost`, `tokens`, `turns`, `duration`) and an aggregate function name do not bind; `review` beside `review.depth` is refused at load (`docs/metrics.md#a-checks-metric-is-a-sample`) |
+| `metric` | the name this Check's normalized score binds under in the top-level `metrics:` expressions (`mean(accuracy)`). Only an explicit `metric:` binds; the `scores` line falls back to `type`, the expressions do not. The same name written by an entry (`metrics.<name> = …`) refuses the bench at load; a dotted name inside or around one an entry writes, a built-in (`cost`, `tokens`, `turns`, `duration`) and an aggregate function name do not bind; `review` beside `review.depth` is refused at load (`docs/metrics.md#a-checks-metric-is-a-sample`) |
 | `metrics` | sample-stage expressions this Check **pushes** into the Scenario's row — `score`, `pass`, `reason`, `evidence` in scope (`docs/metrics.md:29-31`, `:61-64`); see `schema.md` §8 |
 | `readout` | measure without grading — runs and scores, never fails the Scenario (§2.1) |
 | `checks` | composite children. `assert:` is **refused** at load, and the error names `checks:` (`docs/checks.md:57`) |

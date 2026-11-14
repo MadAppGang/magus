@@ -152,6 +152,18 @@
 
 ---
 
+## [madbench 0.12.8] - 2026-11-14
+
+### Changed
+
+- **The madbench skills are synced to madbench 0.58.1**, so /madbench:madbench and the bench
+  agent describe the harness that is installed. The checks catalog now says that a Check
+  whose `metric:` name is also written by an entry (`metrics.<name> = …`) refuses the bench
+  at load. `madbench skills --check` reports `current`. Where Homebrew is not used (Linux),
+  the plugin installs madbench v0.58.1 when madbench is missing, not v0.58.0.
+
+---
+
 ## [madbench 0.12.7] - 2026-11-14
 
 ### Changed
