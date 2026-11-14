@@ -975,7 +975,7 @@
       "name": "meroku",
       "source": "./plugins/meroku",
       "description": "Skills for Claude Code in a meroku project: troubleshoot a failed meroku operation from its Fix with AI briefing, change an environment YAML safely, place new AWS infrastructure beside meroku's own, and understand how the YAML becomes Terraform. Investigates read-only and asks before any write.",
-      "version": "1.2.0",
+      "version": "1.3.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -993,6 +993,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "1.3.0",
+          "date": "2026-11-14",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "The skills describe vaults as meroku 6.1.0 ships them (MTL-439)"
+        },
         {
           "version": "1.2.0",
           "date": "2026-11-14",

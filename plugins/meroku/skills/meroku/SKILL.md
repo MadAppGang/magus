@@ -9,7 +9,7 @@ meroku turns one YAML file per environment into Terraform and runs it against AW
 always runs from the project root, never from the meroku source tree. Use this to place
 any file, error or command in the pipeline before you change anything.
 
-Written against meroku 6.0.0 and schema v32. When this text disagrees with the project,
+Written against meroku 6.1.0 and schema v32. When this text disagrees with the project,
 the project wins: the env YAML's `schema_version`, and its own `infrastructure/` copy
 (`infrastructure/version.txt` names that copy's version; `meroku --version` names the
 binary's).
@@ -70,7 +70,9 @@ meroku checkout; change that checkout with git instead.
 From the menu: **"🚀 Deploy environment"** generates, runs AWS pre-flight checks,
 initialises Terraform, shows the plan and applies after confirmation. **"💥 Nuke/Destroy
 Environment"** is the destroy flow. **"🌐 Edit environment with web UI"** edits the YAML
-in a browser. **"🤖 Fix with AI (Claude Code)"** writes a briefing and starts Claude Code.
+in a browser; its Vaults tab is also where the user sets vault secret values, which are
+never in the YAML. **"🤖 Fix with AI (Claude Code)"** writes a briefing and starts Claude
+Code.
 
 Anything that writes (generate, migrate, update, a deploy, dns setup) runs only after the
 user agrees. Prefer asking the user to run deploy and destroy themselves.
@@ -87,5 +89,6 @@ unexpected (hex at the end, words missing), or a change would rename something.
 - A failed meroku operation or a Fix with AI briefing: read `../troubleshoot/SKILL.md`.
 - Changing the env YAML: read `../yaml/SKILL.md`.
 - Adding an AWS resource meroku does not create: read `../extend/SKILL.md`.
+- Vaults, their `secrets` list and their values: read `../yaml/references/vaults.md`.
 - Design notes for a feature: `infrastructure/ai_docs/` in the project, when the copy
   carries it.

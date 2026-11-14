@@ -7,7 +7,7 @@ root. This plugin teaches that session how to find the cause, explain it with ev
 fix it in a way the next meroku run keeps. When a project needs AWS infrastructure meroku
 does not create, it decides where that goes and writes it beside meroku's own.
 
-Written against meroku 6.0.0 and env YAML schema v32. Where the skills disagree with the
+Written against meroku 6.1.0 and env YAML schema v32. Where the skills disagree with the
 project itself (the briefing, the project's `infrastructure/` copy, or the YAML's
 `schema_version`), the project wins.
 
@@ -25,7 +25,7 @@ settings, and needs nothing on the machine beyond what meroku itself needs.
 | Skill | Loads when | What it does |
 |---|---|---|
 | `meroku:troubleshoot` | meroku opened the session, or a `.meroku/claude/` briefing is named | Reads the briefing, investigates a failed apply, plan, destroy or AWS SSO setup read-only, names the cause, and proposes a fix in the right place |
-| `meroku:yaml` | an env YAML (`dev.yaml`, `prod.yaml`, …) is being read or changed | Explains the schema, migrations and backups, and names any change that forces AWS to replace a resource before it is made |
+| `meroku:yaml` | an env YAML (`dev.yaml`, `prod.yaml`, …) is being read or changed | Explains the schema, migrations and backups, names any change that forces AWS to replace a resource before it is made, and covers vaults: secret names in the YAML, values set in the web UI's Vaults tab |
 | `meroku:meroku` | any work in a meroku project | Explains the pipeline from YAML to Terraform, the commands, the project layout and how resources are named |
 | `meroku:extend` | an AWS resource is being added: a queue, a bucket, a Cognito pool, an SMS setting | Checks meroku's default first, then picks one of `custom/terraform/`, the `custom/pre/` hook or the `custom/post/` hook, and writes the Terraform with a `README.md`; a meroku pull request only when every project would want the change |
 

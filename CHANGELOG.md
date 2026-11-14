@@ -4,6 +4,29 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [meroku 1.3.0] - 2026-11-14
+
+### Changed
+
+- **The skills describe vaults as meroku 6.1.0 ships them (MTL-439).** Every vault declares
+  its secret names in the YAML (`vaults[].secrets`: required, `[]` allowed, lower-case
+  names), and only declared names reach a connected workload. The user sets, replaces and
+  deletes the values in the web UI's Vaults tab; Terraform never writes or deletes them,
+  and `meroku destroy` keeps them. The skills no longer say that vault secrets are found
+  in SSM or that a terminal command is the normal way to set a value.
+- `meroku:yaml` gains a vaults reference: the keys, what a change to the list does to task
+  definitions, the order for removing a secret, the Vaults tab, and how to tell a 6.0.x
+  project from a 6.1.0 one.
+- `meroku:troubleshoot` and `meroku:yaml` carry the 6.1.0 `meroku generate` refusal for a
+  vault without a `secrets` list, with its fix (the Vaults tab's "Import names from AWS"),
+  and warn never to write `secrets: []` on a vault whose parameters are in use: the next
+  apply would drop every vault secret from every connected task definition.
+- A declared secret with no value is described as a plan warning, with its fix.
+- `meroku:extend` names the 6.1.0 breaking change before it recommends the update, and
+  lists what `meroku generate` refuses in 6.1.0.
+
+---
+
 ## [magus plugin 1.0.0] - 2026-11-14
 
 ### Added

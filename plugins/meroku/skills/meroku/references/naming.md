@@ -1,6 +1,6 @@
 # How meroku names AWS resources
 
-Written against meroku 6.0.0. The project's own copy is the authority:
+Written against meroku 6.1.0. The project's own copy is the authority:
 `infrastructure/modules/naming/` (the rule), and each module's `naming.tf` (which names
 go through it, with what limit).
 

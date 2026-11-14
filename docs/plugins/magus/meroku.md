@@ -7,7 +7,7 @@ Skills for Claude Code in a meroku project: troubleshoot a failed meroku operati
 
 | | |
 |---|---|
-| Version | `1.2.0` |
+| Version | `1.3.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 0 |
 | Subagents | 0 |
@@ -43,7 +43,7 @@ Prefer to do it by hand? [Installing Magus](../../guides/install.md) has the man
 | `meroku:extend` | Decides where new AWS infrastructure goes in a meroku project and writes any custom Terraform with its README. |
 | `meroku:meroku` | Explains how meroku turns an env YAML into Terraform on AWS: commands, project layout, naming. Use when working in a meroku project. |
 | `meroku:troubleshoot` | Fixes a failed meroku apply, plan, destroy or AWS SSO setup from its Fix with AI briefing. Use when meroku opened you or names a .meroku/claude file. |
-| `meroku:yaml` | Changes a meroku env YAML safely, naming any change that forces resource replacement. Use when editing dev.yaml, prod.yaml or any env YAML. |
+| `meroku:yaml` — [4 more docs](./meroku-yaml.md) | Changes a meroku env YAML safely, naming any change that forces resource replacement. Use when editing dev.yaml, prod.yaml or any env YAML. |
 
 ## Source
 

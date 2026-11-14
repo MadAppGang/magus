@@ -1,7 +1,7 @@
 # The three places for custom Terraform
 
 What meroku does with each place, what it passes in, what it reads back, and one example
-each. Current as of meroku 6.0.0; the project's `infrastructure/env/main.hbs` (the
+each. Current as of meroku 6.1.0; the project's `infrastructure/env/main.hbs` (the
 `custom_pre` and `custom_post` blocks) is the truth for the hook inputs.
 
 Every example below goes in with a `README.md` beside it (the template is in

@@ -2,7 +2,7 @@
 
 A map, not the truth. The truth is the project's own copy: what its
 `infrastructure/env/main.hbs` reads and its `infrastructure/modules/` create. This file is
-current as of meroku 6.0.0; read the template before relying on any row.
+current as of meroku 6.1.0; read the template before relying on any row.
 
 ## How to tell what this project's meroku has
 
@@ -10,6 +10,7 @@ current as of meroku 6.0.0; read the template before relying on any row.
 |---|---|
 | Which meroku templates this project renders | `infrastructure/version.txt` (the copy). `meroku --version` names the binary, which is read-only and safe to run |
 | Whether this copy has meroku 6.0.0's features | `infrastructure/version.txt` is `v6.0.0` or later, and `main.hbs` has `module "events" {`. The other signs are in "On a copy older than 6.0.0" below |
+| Whether this copy has meroku 6.1.0's vaults | `infrastructure/version.txt` is `v6.1.0` or later. `main.hbs` has `module "vaults" {` from 6.0.0 on, so that sign does not tell the two apart. In the YAML, a 6.0.x vault has no `secrets` key |
 | Whether a feature exists in this copy | the block in `infrastructure/env/main.hbs` that reads its key. No block reading the key: the copy does not have it |
 | What a module creates and accepts | `infrastructure/modules/<module>/main.tf` and `variables.tf` |
 | Whether a module exists in this env | most sit under an `{{#if <section>.enabled}}` wrapper in `main.hbs`, and need that section in the env YAML. In 6.0.0, `data_bucket`, `vaults` and `events` render in every env; `valkey` renders under `{{#if _valkey}}` |
@@ -46,7 +47,7 @@ Check the sign in `main.hbs` before using any row.
 | A project event bus | `event_bus: { enabled: true }` (optional) | the bus `<project>-<env>`; `EVENT_BUS_NAME` names it | `bus_enabled =` in `module "events"` |
 | Private storage per workload | nothing: the bucket always exists. `data_bucket.shared` to share a folder | `DATA_BUCKET_NAME`, `DATA_BUCKET_PATH` (`<name>/`), `DATA_BUCKET_SHARED_<NAME>` per shared folder; non-backend workloads also get `AWS_S3_BUCKET` | `module "data_bucket" {` |
 | IAM for any workload | `policy` on `workload`, `services[]`, `scheduled_tasks[]`, `event_processor_tasks[]` | one managed policy on the task role; `effect` and `conditions` supported | `service_policies = {`; `custom_policy =` in the task modules |
-| Secrets shared by several workloads | top-level `vaults[]`, and `vaults` on each workload | each parameter under `/<env>/<project>/vault/<name>/` as a secret | `module "vaults" {` |
+| Secrets shared by several workloads | top-level `vaults[]` (`name`; in 6.1.0 also `secrets`), and `vaults` on each workload | 6.1.0: each name the vault's `secrets` list declares, from `/<env>/<project>/vault/<name>/<secret>`, as a container secret. 6.0.x: no `secrets` key, and the names came from SSM | `module "vaults" {`; `version.txt` tells 6.0.x from 6.1.0 |
 | A Redis-compatible cache | `valkey` | `VALKEY_HOST`, `VALKEY_PORT`, `VALKEY_URL` (`rediss://`) for workloads in `access` | `module "valkey" {` under `{{#if _valkey}}` |
 | Amplify rewrites, e.g. `/api/*` to the backend | `amplify_apps[].custom_rules` | rules applied before the single-page-app rule; app-level `environment_variables` now render | `custom_rules = [` inside `module "amplify"` |
 
@@ -77,6 +78,7 @@ data_bucket:
 
 vaults:
   - name: payments
+    secrets: [database_url]         # 6.1.0: required, names only; a 6.0.x copy has no secrets key
 
 valkey:
   enabled: true
@@ -101,8 +103,11 @@ Things to know before writing them:
   backend and services only.
 - A `policy` statement needs non-empty `actions` and `resources`; `effect` defaults to
   `Allow`.
-- Vault values are never in the YAML. The user sets them with
-  `aws ssm put-parameter --type SecureString`, then applies.
+- Vault values are never in the YAML. On a 6.1.0 copy the vault's `secrets` list declares
+  the names (`^[a-z][a-z0-9_]{0,62}$`, listed once; `[]` allowed), and only declared names
+  reach a workload. The user sets each value in the web UI's Vaults tab. A declared secret
+  with no value is a plan warning, and a new task of a connected workload cannot start
+  until it is set. Read `../../yaml/references/vaults.md` before writing a vault.
 - An Amplify rule sets exactly one of `target` or `workload`. A `backend` rule whose path
   starts with `/<s>` for a public service `s` is refused.
 - Valkey costs about $6 a month idle, and needs a cluster-aware TLS client.
@@ -159,6 +164,24 @@ Three breaking changes. Check each against the project and say what it needs.
 The upgrade itself replaces nothing. Every workload gets one new task-definition revision,
 and `terraform init` is needed for the new modules.
 
+## Before recommending the update to 6.1.0
+
+One breaking change, and only for a project whose YAML has vaults. A copy older than
+6.0.0 has none, so for it this adds nothing to the three changes above.
+
+**Every vault needs a `secrets` list.** `meroku generate` refuses a vault without one,
+which is every vault meroku 6.0.0 wrote. No migration writes the list, because only SSM
+knows the names. After the update the user opens the web UI's Vaults tab and uses
+**Import names from AWS** on each vault, then generates and applies. Each connected
+workload gets one new task-definition revision (`valueFrom` is now the parameter's ARN);
+nothing is replaced.
+
+- A parameter name with upper case, hyphens or dots cannot be imported as it is. List the
+  names before recommending the update (`aws ssm describe-parameters`, read-only) and say
+  which need a new lower-case name.
+- Never write `secrets: []` on a vault whose parameters are in use: the next apply would
+  drop every vault secret from every connected task definition.
+
 ## What `meroku generate` refuses in 6.0.0
 
 Avoid these when writing YAML or custom `.tf`:
@@ -176,8 +199,20 @@ Avoid these when writing YAML or custom `.tf`:
 - a `policy` statement with empty `actions` or `resources`;
 - an Amplify `backend` rule shadowed by a public service's path.
 
-Vault name collisions (a vault secret named like an env var, like another vault's secret,
-or `ENV`) are refused later, at plan, in `modules/env_secret_check`.
+In 6.1.0 it also refuses:
+
+- a vault without a `secrets` key (`[]` is allowed), a secret name that does not match
+  `^[a-z][a-z0-9_]{0,62}$`, or a name listed twice;
+- a vault secret named `env` on a connection without a prefix;
+- two vaults giving one workload the same variable;
+- a vault secret with the name of one of that workload's YAML variables, or of a variable
+  meroku sets for it (`DATA_BUCKET_*`, `EVENT_QUEUE_URL`, `VALKEY_*`, the backend's
+  `AWS_S3_BUCKET`).
+
+The other vault name collisions are still refused at plan, in `modules/env_secret_check`:
+a variable only a module sets, and a parameter under the workload's own path with the
+name of a variable or of a vault secret. On a 6.0.x copy every vault name collision is
+refused at plan.
 
 ## Not a meroku resource
 

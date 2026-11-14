@@ -1,6 +1,6 @@
 # Fields whose change replaces or removes resources
 
-Written against meroku 6.0.0, schema v32. Every one of these is safe on an environment
+Written against meroku 6.1.0, schema v32. Every one of these is safe on an environment
 that has never been deployed. On a deployed one, each needs the replacement answer in
 your proposal and a plan read before anyone applies. A plan marks a replacement as
 `-/+` or `must be replaced`; meroku's plan viewer shows it as a delete and a create.
@@ -123,7 +123,7 @@ absent keys render nothing.
 - The ALB target group check (`backend_health_endpoint`) is separate; a task must pass
   both.
 
-## Events, vaults, valkey, the data bucket (6.0.0)
+## Events, vaults, valkey, the data bucket (6.0.0; vaults as of 6.1.0)
 
 | Change on a deployed env | Effect |
 |---|---|
@@ -131,11 +131,17 @@ absent keys render nothing.
 | editing an unnamed subscription's `detail_type`, `detail_type_prefix` or `bus` | its derived key changes, so its rule is destroyed and created (the queue stays). Set `name` to pin it |
 | renaming a consumer service | its three queues are renamed, that is replaced; messages in them are lost |
 | removing `subscribes` from the last consumer | the queues, DLQs, alarms and the alerts topic are destroyed |
-| renaming a vault | a new SSM path, empty (meroku never stores values); connected tasks fail to start until the values are set |
-| deleting a vault parameter by hand | every connected workload's next task fails to start until the next apply |
+| renaming a vault | a new SSM path with no values; the values under the old path stay where they are. The plan warns about each declared secret, and a new task of a connected workload cannot start until the user sets the values in the Vaults tab |
+| removing a vault | its secrets leave every connected task definition on the next apply; the values stay in SSM. The web UI removes every workload's connection with it; a connection left in the YAML by hand is refused at generate |
+| adding or removing a name in `vaults[].secrets` (6.1.0) | every connected workload gets a new task-definition revision on the next apply. A removed name's value stays in SSM |
+| `secrets: []` on a vault whose parameters are in use (6.1.0) | the next apply drops every vault secret from every connected task definition. Never write it to get past a generate refusal |
+| deleting a vault secret's value while its name is still applied (6.1.0) | every connected workload's current revision still names it: new tasks fail to start until the value is set again or the removal is applied. Remove the name, apply, then delete the value |
+| changing a vault secret's value (6.1.0) | nothing until each connected workload is redeployed; a running task keeps the value it started with |
+| deleting a vault parameter on a 6.0.x copy | every connected workload's next task fails to start until the next apply |
 | `valkey.enabled: false` | the cache is destroyed; its data is gone |
 | `valkey.engine_version` | unknown until plan (an upgrade or a downgrade); read the plan |
 | destroying an env | fails while the data bucket holds any object version (`force_destroy` is false) |
+| destroying an env with vaults | the vault values stay in SSM: Terraform never deletes them. The user deletes them when the environment is gone for good |
 
 ## Not replacements, still changes people notice
 
@@ -145,5 +151,8 @@ absent keys render nothing.
   (`EVENT_BUS_NAME`).
 - Updating to 6.0.0 replaces nothing, but task roles lose the managed
   `CloudWatchFullAccess`, and every workload gets one new revision.
+- Updating from 6.0.x to 6.1.0 replaces nothing. `meroku generate` refuses every vault
+  until it has a `secrets` list (`vaults.md`); after that, each workload connected to a
+  vault gets one new revision (`valueFrom` is now the parameter's ARN).
 - `auto_deploy` and per-target `auto_deploy`: decide whether a push deploys.
 - `pubsub_appsync.api_key_enabled: false` deletes a live API key its clients may hold.

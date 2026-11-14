@@ -1,6 +1,6 @@
 # schema_version, migrations and backups
 
-Written against meroku 6.0.0, where the current schema is v32. The authority is the
+Written against meroku 6.1.0, where the current schema is still v32. The authority is the
 meroku that runs: `meroku migrate` with no argument prints the current schema version.
 In the project, `infrastructure/app/migrations.go` (when the copy carries it) holds
 `CurrentSchemaVersion`, the per-version history in the comment above it, and
@@ -59,6 +59,16 @@ these are the ones a user may notice in a diff:
 | v32 | an existing `neon:` block gets `owner_role`, `create: false` per database, and `project.pg_version` in create mode; a file with no `neon:` block changes only `schema_version` |
 
 meroku 6.0.0 added no migration: its new sections are optional, and absent means off.
+
+meroku 6.1.0 added no migration either. It made `vaults[].secrets` required, and
+`meroku generate` refuses a vault without it (`vault "<name>" has no secrets list: …`),
+but no migration writes the key, on purpose. The names are the parameters already under
+the vault's path in SSM, and a migration reads only the YAML. Writing `secrets: []`
+instead would let the next apply drop every vault secret from every connected task
+definition. So the key stays absent until the user fills it: the web UI's Vaults tab lists
+the names in SSM and imports them (**Import names from AWS**). meroku saving the file keeps
+a missing list missing and `[]` as `[]`. Never add `secrets: []` by hand to finish a
+migration; read `vaults.md`.
 
 For the full table, read `infrastructure/ai_docs/MIGRATIONS.md` in the project, when present.
 

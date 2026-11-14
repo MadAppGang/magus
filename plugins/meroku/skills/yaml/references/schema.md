@@ -1,6 +1,6 @@
 # Env YAML field guide, by section
 
-A map of the important keys, not the full schema. Written against meroku 6.0.0, schema
+A map of the important keys, not the full schema. Written against meroku 6.1.0, schema
 v32. For any key not here, or any doubt about a default, read the project's own files:
 
 | Question | Where to look in the project |
@@ -14,7 +14,8 @@ v32. For any key not here, or any doubt about a default, read the project's own 
 ALB certificate, egress strategy, AppSync auth, SES DNS values, service network access,
 backend health check, compute pools; in 6.0.0 also workload names (unique, not
 `backend`, `vault`, `task` or `shared`), reserved env var names, events, vaults, valkey,
-Amplify rules and policy statements). A refusal there names the key; that is the
+Amplify rules and policy statements; in 6.1.0 also each vault's `secrets` list and the
+vault name collisions it can see in the YAML). A refusal there names the key; that is the
 cheapest place to find a mistake.
 
 Turning a section or an item off removes what it built. `postgres.enabled: false`
@@ -125,8 +126,12 @@ New in 6.0.0, all optional (absent means off). Details in
 - `event_bus` (`enabled`): the project bus `<project>-<env>` (`EVENTS.md`).
 - `data_bucket` (`shared[]`: `name`, `read_write`, `read`): shared folders in the env's
   private bucket, which exists either way (`DATA_BUCKET.md`).
-- `vaults[]` (`name`): SSM paths shared by the workloads that connect to them
-  (`VAULTS.md`).
+- `vaults[]` (`name`; in 6.1.0 also `secrets`, which is required, `[]` allowed): secrets
+  shared by the workloads that connect to the vault, under the SSM path
+  `/<env>/<project>/vault/<name>/`. Each secret name matches `^[a-z][a-z0-9_]{0,62}$` and
+  is listed once. Only declared names reach a workload, and editing the list changes the
+  connected task definitions on the next apply. The values are never in the YAML. On a
+  6.0.x copy a vault has `name` only. Read `vaults.md` before changing one (`VAULTS.md`).
 - `valkey` (`enabled`, `engine_version`, `max_storage_gb`, `access`): a serverless cache
   (`VALKEY.md`).
 - `amplify_apps[].custom_rules` (`source`, then `target` and `status`, or `workload` and

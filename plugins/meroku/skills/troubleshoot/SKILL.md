@@ -15,7 +15,7 @@ You work in a meroku **project**: `infrastructure/` (meroku's templates and modu
 the env YAML (`<env>.yaml` at the root, else `project/<env>.yaml`), and the generated
 `env/<env>/`. Not the meroku source tree.
 
-Written against meroku 6.0.0, YAML schema v32. When this text disagrees with the briefing,
+Written against meroku 6.1.0, YAML schema v32. When this text disagrees with the briefing,
 the project's own `infrastructure/` copy, or the YAML's `schema_version`, those win.
 
 ## THE RULES
@@ -88,7 +88,8 @@ They come from the user and hold for the whole session. The briefing states them
 ## Where the depth is
 
 - Read `references/operations.md` only when classifying (step 5): per-operation
-  playbooks for apply, plan, destroy, sso and menu.
+  playbooks for apply, plan, destroy, sso and menu, and a `vaults` section to read as well
+  whenever the output names a vault or a vault secret.
 - Read `references/manual-step-log.md` only when the fix is (b): the interview and the
   log template to fill in as each agreed command runs.
 - Read `../yaml/SKILL.md` only when the fix is (c), or when a cause points at a YAML
@@ -108,3 +109,9 @@ They come from the user and hold for the whole session. The briefing states them
 - **Editing `infrastructure/` as the fix.** It is meroku's copy and is replaced on
   update; the real fix for a bug there is (a), in the meroku checkout.
 - **Several fixes at once.** Propose one; a second change hides which one worked.
+- **Writing `secrets: []` to get past a generate refusal.** meroku 6.1.0 refuses a vault
+  without a `secrets` list (`vault "<name>" has no secrets list: …`). An empty list on a
+  vault whose parameters are in use makes the next apply drop every vault secret from
+  every connected task definition. The fix is the names already in SSM: the web UI's
+  Vaults tab, **Import names from AWS**. Read the `vaults` section of
+  `references/operations.md`.
