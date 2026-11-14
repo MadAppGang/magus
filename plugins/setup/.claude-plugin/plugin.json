@@ -23,6 +23,7 @@
   "category": "utility",
   "skills": [
     "./skills/index-skills",
+    "./skills/market",
     "./skills/statusline-customization"
   ],
   "compatibility": {

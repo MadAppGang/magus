@@ -15,7 +15,7 @@ You work in a meroku **project**: `infrastructure/` (meroku's templates and modu
 the env YAML (`<env>.yaml` at the root, else `project/<env>.yaml`), and the generated
 `env/<env>/`. Not the meroku source tree.
 
-Written against meroku 5.1, YAML schema v31. When this text disagrees with the briefing,
+Written against meroku 6.0.0, YAML schema v32. When this text disagrees with the briefing,
 the project's own `infrastructure/` copy, or the YAML's `schema_version`, those win.
 
 ## THE RULES

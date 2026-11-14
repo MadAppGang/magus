@@ -1,7 +1,7 @@
 # The three places for custom Terraform
 
 What meroku does with each place, what it passes in, what it reads back, and one example
-each. Current as of meroku 5.6; the project's `infrastructure/env/main.hbs` (the
+each. Current as of meroku 6.0.0; the project's `infrastructure/env/main.hbs` (the
 `custom_pre` and `custom_post` blocks) is the truth for the hook inputs.
 
 Every example below goes in with a `README.md` beside it (the template is in
@@ -14,8 +14,25 @@ Every example below goes in with a `README.md` beside it (the template is in
 - The files join the root module, so they read meroku's modules directly
   (`module.cognito.user_pool_id`, `module.workloads.backend_task_role_name`) and the
   bridge `env/<env>/_bridge.tf` builds (`local.bridge.api_endpoint`,
-  `local.bridge.domain_zone_id`, `local.bridge.db_endpoint`, …). The bridge holds empty
-  strings for a disabled domain or database.
+  `local.bridge.domain_zone_id`, `local.bridge.db_endpoint`, …). A 6.0.0 copy adds
+  `data_bucket_name`, `data_bucket_arn`, `backend_bucket_arn`, `event_bus_name`,
+  `event_bus_arn`, `event_queue_urls` (consumer name to queue URL), `alerts_topic_arn`,
+  `valkey_address`, `valkey_port` and `valkey_security_group_id`. The bridge holds empty
+  strings (an empty map for `event_queue_urls`) for a feature that is off.
+- In 6.0.0 the alerts topic `<project>-<env>-alerts`, which receives the event DLQ alarms,
+  has no subscriber. Subscribing to it is a typical `custom/terraform` file:
+
+  ```hcl
+  resource "aws_sns_topic_subscription" "oncall" {
+    topic_arn = local.bridge.alerts_topic_arn
+    protocol  = "email"
+    endpoint  = "ops@example.com"
+  }
+  ```
+
+- Names meroku's root module owns in 6.0.0 are refused at generate: `module
+  "data_bucket"`, `"vaults"`, `"events"`, `"valkey"`, and the locals `workload_roles`,
+  `workload_extra_env`, `workload_extra_secrets`.
 - A module exists only while its YAML section is on. `module.cognito` needs
   `cognito.enabled: true`; reference a module whose section is off and the plan fails.
 - Do not declare a `terraform`, `backend` or `provider "aws"` block: `main.tf` has them.

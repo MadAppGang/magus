@@ -51,6 +51,12 @@ and AWS CLI v2. A failure inside that script is often the machine, not the YAML:
 `aws --version`. meroku also refuses at plan to replace a foreign SPF or DMARC value the
 YAML does not set; that refusal is by design, and the answer is a YAML decision (c).
 
+**After an update to 6.0.0.** `AccessDenied` on `events:PutEvents`: the workload lacks
+`events.produces` for that event, a YAML fix (c). `AccessDenied` on `logs:` or
+`cloudwatch:` reads, or on `sns:Publish`: task roles lost `CloudWatchFullAccess` in 6.0.0;
+the workload needs a `policy` block (c). A plan that fails in `env_secret_check`: a vault
+secret collides with an env var, another vault's secret, or `ENV` (c).
+
 ## plan
 
 Opened with `a` on meroku's failed-plan screen. Nothing in AWS changed.
@@ -70,7 +76,9 @@ given or could reach:
 - an uninitialised or disconnected `env/<env>/`: `terraform init` is a write here; the
   briefing offers `meroku sync <env>`, which the user runs or agrees to.
 
-`terraform plan` without `-out` is safe to rerun while you investigate.
+`terraform plan` without `-out` is safe to rerun while you investigate. In a Neon env it
+fails on the Neon providers (this pane lacks their credentials): read state instead, and
+rerun meroku for a plan.
 
 ## destroy
 
@@ -83,6 +91,9 @@ and the full stderr.
 Establish which with `terraform state list`; what remains in state is what the next
 destroy will try again. For each resource that blocked, find out with read-only calls
 what holds it.
+
+A destroy that fails on the data bucket (`BucketNotEmpty`) is by design: its
+`force_destroy` is false. Emptying every object version is a (b) step, agreed and logged.
 
 Never remove a leftover resource from AWS yourself (rule 1), and never `state rm` it to
 make the destroy pass: either is (b), interviewed and logged, because it decides what is

@@ -1,6 +1,6 @@
 # How meroku names AWS resources
 
-Written against meroku 5.1. The project's own copy is the authority:
+Written against meroku 6.0.0. The project's own copy is the authority:
 `infrastructure/modules/naming/` (the rule), and each module's `naming.tf` (which names
 go through it, with what limit).
 
@@ -19,6 +19,9 @@ for most resources (ECS, IAM, ECR, log groups) and `-` where AWS or convention n
 | service target group | `myapp-service-api-tg-dev` |
 | scheduled task definition | `myapp_task_cleanup_dev` |
 | ECR repositories | `myapp_backend`, `myapp_service_api`, `myapp_task_cleanup` (no env) |
+| event queue of service `ai` (6.0.0) | `myapp-events-ai-dev` |
+| data bucket (6.0.0) | `myapp-data-dev-<account id>` (the account id is never truncated) |
+| valkey cache (6.0.0) | `myapp-valkey-dev` (limit 40) |
 
 ## Length caps
 

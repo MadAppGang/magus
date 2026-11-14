@@ -1,6 +1,6 @@
 # schema_version, migrations and backups
 
-Written against meroku 5.1, where the current schema is v31. The authority is the
+Written against meroku 6.0.0, where the current schema is v32. The authority is the
 meroku that runs: `meroku migrate` with no argument prints the current schema version.
 In the project, `infrastructure/app/migrations.go` (when the copy carries it) holds
 `CurrentSchemaVersion`, the per-version history in the comment above it, and
@@ -24,8 +24,9 @@ Steps, when the file is older than the binary:
 4. Write the file back.
 
 A file already at the current version is not touched. A file at a **higher** version
-than the binary is loaded as is: that binary is older than whoever wrote the file, so
-ask the user to upgrade meroku (`brew upgrade meroku`) rather than editing the number.
+than the binary is refused: meroku stops with "written by a newer meroku … this file was
+not changed". The fix is upgrading meroku (`brew upgrade meroku`), never editing the
+number.
 
 The file is written back from parsed data, so **comments are lost and keys come out
 sorted** after a migration. That is expected, not damage. The backup keeps the original.
@@ -55,6 +56,9 @@ these are the ones a user may notice in a diff:
 | v25, v29 | `container_command` and `backend_container_command` turned from a string into a list |
 | v30 | `services[].network_access: full_open` on every existing service; an absent key renders `public` |
 | v31 | name-based policy written as flags: `auto_deploy` true only in `dev`, every non-dev target's auto-deploy turned off, `is_prod` for `prod` and `production`, prod's domain settings |
+| v32 | an existing `neon:` block gets `owner_role`, `create: false` per database, and `project.pg_version` in create mode; a file with no `neon:` block changes only `schema_version` |
+
+meroku 6.0.0 added no migration: its new sections are optional, and absent means off.
 
 For the full table, read `infrastructure/ai_docs/MIGRATIONS.md` in the project, when present.
 

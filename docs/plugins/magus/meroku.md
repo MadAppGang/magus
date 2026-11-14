@@ -7,7 +7,7 @@ Skills for Claude Code in a meroku project: troubleshoot a failed meroku operati
 
 | | |
 |---|---|
-| Version | `1.1.0` |
+| Version | `1.2.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 0 |
 | Subagents | 0 |

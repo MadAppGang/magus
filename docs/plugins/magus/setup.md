@@ -11,7 +11,7 @@ Project setup jobs in one plugin. Investigates a repository and provisions it �
 | Marketplace | [`magus`](./index.md) |
 | Commands | 4 |
 | Subagents | 0 |
-| Skills | 2 |
+| Skills | 3 |
 | MCP server | no |
 | Hooks | yes |
 
@@ -87,6 +87,7 @@ Prefer to do it by hand? [Installing Magus](../../guides/install.md) has the man
 
 | | How you get it |
 |---|---|
+| ● | Claude can reach for it on its own |
 | ○ | You invoke it by name |
 | ▸ | A command loads it for you — you never name it |
 
@@ -94,6 +95,7 @@ Prefer to do it by hand? [Installing Magus](../../guides/install.md) has the man
 
 | | Skill | What it covers |
 |---|---|---|
+| ● | `setup:market` | Publishes skill edits to the company plugin marketplace and manages its plugins and skills with magus market. |
 | ○ | `setup:index-skills` | Walks every skill reachable from this project and writes a browsable markdown index, plus a small deterministic index spliced into CLAUDE.md. |
 | ▸ | `setup:statusline-customization` | Configuration reference and troubleshooting for the statusline plugin — sections, themes, bar widths, and script architecture |
 

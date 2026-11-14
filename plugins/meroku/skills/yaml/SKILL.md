@@ -9,7 +9,7 @@ The env YAML is the one file that describes an environment. meroku migrates it, 
 it through a Handlebars template into Terraform, and runs Terraform. A configuration fix
 is a change to this file, followed by a meroku rerun. Never a hand edit of `env/<env>/`.
 
-Written against meroku 5.1 and schema v31. When this text disagrees with the project,
+Written against meroku 6.0.0 and schema v32. When this text disagrees with the project,
 the project wins: its `schema_version`, its `infrastructure/env/main.hbs`, and its
 `infrastructure/modules/`. For the pipeline and the commands, read `../meroku/SKILL.md`.
 
@@ -26,7 +26,7 @@ check it against `references/dangerous-fields.md`.
 1. The env name comes from the briefing, the user, or `env/<env>/`.
 2. meroku looks for `<env>.yaml` at the project root, then `project/<env>.yaml`. The
    first one found is the file. Edit that one.
-3. Read its `schema_version`. Read `references/migrations.md` when it is below 31, when
+3. Read its `schema_version`. Read `references/migrations.md` when it is below 32, when
    it is missing, or when the user asks about migrations or backups.
 
 ## Make the change
@@ -37,6 +37,8 @@ check it against `references/dangerous-fields.md`.
 2. Decide the replacement answer (the rule above).
 3. Show the user the exact diff and the replacement answer. Wait for a yes.
 4. Edit the file. Change only the keys you named. Never edit `schema_version` by hand.
+   Never set an env var meroku sets itself: `DATA_BUCKET_*`, `EVENT_QUEUE_URL`,
+   `VALKEY_*`, or `AWS_S3_BUCKET` on the backend. Generate refuses them.
 5. Ask the user to rerun meroku: `meroku generate <env>` to regenerate, then a deploy
    from the menu. A plan is the proof: look for `must be replaced` and `-/+` on the
    resources you named.
@@ -62,12 +64,13 @@ which helper wraps it.
 
 - Read `references/schema.md` only when you need to know which section a key belongs to,
   what it controls, or where its rules are checked.
-- Read `references/migrations.md` only when `schema_version` is below 31 or missing, a
+- Read `references/migrations.md` only when `schema_version` is below 32 or missing, a
   backup is involved, or the user asks to migrate.
 - Read `references/dangerous-fields.md` before any change to `vpc_cidr`, `use_default_vpc`,
   `project`, `env`, any `name`, `bucket_postfix`, `region`, the state keys, `domain` or
-  `ses` zones and records, `postgres.aurora`, `ecr_strategy`, or the backend health
-  check and circuit breaker.
+  `ses` zones and records, `postgres.aurora`, `ecr_strategy`, the backend health
+  check and circuit breaker, `event_bus`, any `events` subscription, `vaults`, or
+  `valkey`.
 - The YAML cannot express the resource: read `../extend/SKILL.md` before writing any
   Terraform.
 

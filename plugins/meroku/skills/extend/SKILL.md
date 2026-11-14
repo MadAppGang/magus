@@ -9,7 +9,7 @@ Put a new AWS resource where the next meroku run keeps it, without a second copy
 anything meroku already creates. Success: the user's plan adds the new resources and
 replaces nothing meroku owns, and every custom folder says why it exists.
 
-Written against meroku 5.6. When this text disagrees with the project, the project wins:
+Written against meroku 6.0.0. When this text disagrees with the project, the project wins:
 its `infrastructure/env/main.hbs` is what renders, and `infrastructure/version.txt` names
 the copy's version. For the pipeline itself, read `../meroku/SKILL.md`.
 
@@ -36,14 +36,19 @@ They hold for the whole task.
    - Read `references/defaults.md`. Then read the block in the project's
      `infrastructure/env/main.hbs` that would create the resource, and
      `infrastructure/version.txt`.
-   - **Shipped in this copy:** the change is in the env YAML. Read `../yaml/SKILL.md` and
-     follow it. Stop here.
-   - **Not in this copy:** name the meroku feature that will cover it (from
-     `references/defaults.md`, e.g. the per-service events section), say it is coming in a
-     later meroku release, and name what to look for in `main.hbs` once it lands. A
-     shipped section that covers part of the need (the shared `sqs` queue) is offered too. Offer two paths: wait and run `meroku update`
-     when it ships, or a stop-gap in `custom/` whose README's "When this can be deleted"
-     names that release.
+   - **Shipped in this copy:** the change is in the env YAML. `references/defaults.md`
+     gives the key and an example; the block in `main.hbs` is the authority. Read
+     `../yaml/SKILL.md` and follow it. Stop here.
+   - **In meroku 6.0.0 but not in this copy** (`version.txt` older than `v6.0.0`, and the
+     sign from `references/defaults.md` absent in `main.hbs`): say meroku 6.0.0 has it,
+     name the YAML key, and say the upgrade brings it: `brew upgrade meroku`, then
+     `meroku update`. Name the 6.0.0 breaking changes that apply to this project before
+     recommending it (`references/defaults.md`). Offer two paths: upgrade, or a stop-gap
+     in `custom/` whose README's "When this can be deleted" says "after `meroku update` to
+     6.0.0 or later, replaced by `<key>`". A shipped section that covers part of the need
+     is offered too.
+   - **Not in any meroku release** in `references/defaults.md`: it is not meroku's
+     default; go to step 3.
    - **Never write a YAML key the project's `main.hbs` does not read.** It renders
      nothing, and the user believes the resource exists.
 3. **Close but missing something: Terraform next to meroku.** Pick one of the three places
@@ -85,20 +90,23 @@ One in `custom/pre/`, one in `custom/post/`, one in each `custom/terraform/<env>
 <the resources, and which env or every env>
 
 ## Why meroku's default cannot do it
-<the meroku feature checked and what it lacks, or "coming in a later meroku release: <what to look for>">
+<the meroku feature checked and what it lacks, or "in meroku 6.0.0 as <key>; this copy is <version>">
 
 ## Why this is not a meroku pull request
 <which question is no: the next new project would not turn it on, or the running projects would not want it>
 
 ## When this can be deleted
-<the condition: the meroku release that ships it, or the feature it serves going away>
+<the condition: the `meroku update` that brings the feature (name the release and the key), or the feature it serves going away>
 ```
 
 ## Examples
 
 | Request | Place | Why |
 |---|---|---|
-| "an SQS queue for the ai service" | the service's events section, coming in a later meroku release; today the shared `sqs` section if one queue for every service fits | a stop-gap in `custom/terraform/<env>/` only with a README naming when it goes; never a queue the app creates at boot |
+| "an SQS queue for the ai service" | `events.subscribes` on the `ai` service in the env YAML: its own queue, two DLQs and `EVENT_QUEUE_URL`. A publisher needs `events.produces` | meroku 6.0.0's default; the shared `sqs` section only when one queue for every workload fits; a custom queue only on a pre-6.0.0 copy, with a README naming the update; never a queue the app creates at boot |
+| "a private bucket for a service" | nothing to add: its data bucket folder `<name>/` exists (`DATA_BUCKET_*`); `data_bucket.shared` to share one | meroku 6.0.0's default |
+| "IAM permissions for a service" | `services[].policy` | meroku 6.0.0's default, on the service's task role |
+| "a Redis or Valkey cache" | `valkey` | meroku 6.0.0's default |
 | "SMS account settings" | `custom/terraform/<env>/`, `aws_sns_sms_preferences` | account-wide setting meroku has no section for |
 | "a second Cognito pool for the admin dashboard" | first a `cognito` key in the YAML when `main.hbs` reads one for it (a dashboard client); else `custom/terraform/<env>/`: an app client on `module.cognito.user_pool_id` | meroku already creates the pool; a meroku pull request only for a pool setting every project needs |
 | "notify the API from SNS" | `custom/post/` | `api_endpoint` is one of its inputs |
@@ -108,6 +116,13 @@ One in `custom/pre/`, one in `custom/post/`, one in each `custom/terraform/<env>
 - Copying a meroku module "to change one setting". A setting on a resource meroku creates
   is step 4, a meroku pull request.
 - Writing a YAML key for a feature this copy does not have.
+- A custom queue, bucket, IAM grant or SSM path on a 6.0.0 copy for a need its YAML
+  covers (events, data bucket, policy, vaults, valkey).
+- A custom `.tf` declaring `module "events"`, `"data_bucket"`, `"vaults"`, `"valkey"` or
+  the locals `workload_roles`, `workload_extra_env`, `workload_extra_secrets`: generate
+  refuses it.
+- Adding a consumer without a producer: a queue fed by EventBridge gets nothing until a
+  workload has `events.produces` for that detail type.
 - App code creating its queue or bucket at boot.
 - A custom folder without a `README.md`.
 - A post hook whose `variables.tf` misses an input, or declares a conditional one without
@@ -120,7 +135,7 @@ One in `custom/pre/`, one in `custom/post/`, one in each `custom/terraform/<env>
 ## Where the depth is
 
 - Read `references/defaults.md` at step 2, every time: what meroku creates, what is
-  shipped and what is coming, and how to tell from the project's `main.hbs`.
+  shipped, from which release, and how to tell from the project's `main.hbs`.
 - Read `references/places.md` at step 3, before writing `custom/pre` or `custom/post`, or
   a `custom/terraform` file that references a meroku module: exact hook inputs and
   outputs, and an example per place.

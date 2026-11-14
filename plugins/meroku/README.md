@@ -7,8 +7,7 @@ root. This plugin teaches that session how to find the cause, explain it with ev
 fix it in a way the next meroku run keeps. When a project needs AWS infrastructure meroku
 does not create, it decides where that goes and writes it beside meroku's own.
 
-Written against meroku 5.1 and env YAML schema v31; the infrastructure guidance against
-meroku 5.6. Where the skills disagree with the
+Written against meroku 6.0.0 and env YAML schema v32. Where the skills disagree with the
 project itself (the briefing, the project's `infrastructure/` copy, or the YAML's
 `schema_version`), the project wins.
 

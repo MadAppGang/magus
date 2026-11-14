@@ -1,7 +1,7 @@
 # Env YAML field guide, by section
 
-A map of the important keys, not the full schema. Written against meroku 5.1, schema
-v31. For any key not here, or any doubt about a default, read the project's own files:
+A map of the important keys, not the full schema. Written against meroku 6.0.0, schema
+v32. For any key not here, or any doubt about a default, read the project's own files:
 
 | Question | Where to look in the project |
 |---|---|
@@ -12,7 +12,9 @@ v31. For any key not here, or any doubt about a default, read the project's own 
 
 `meroku generate <env>` checks several sections before it renders anything (VPC range,
 ALB certificate, egress strategy, AppSync auth, SES DNS values, service network access,
-backend health check, compute pools). A refusal there names the key; that is the
+backend health check, compute pools; in 6.0.0 also workload names (unique, not
+`backend`, `vault`, `task` or `shared`), reserved env var names, events, vaults, valkey,
+Amplify rules and policy statements). A refusal there names the key; that is the
 cheapest place to find a mistake.
 
 Turning a section or an item off removes what it built. `postgres.enabled: false`
@@ -62,6 +64,10 @@ Deploy and health: `backend_auto_deploy`, `backend_health_check`,
 CI: `enable_github_oidc`, `github_oidc_subjects`, `github_oidc_create_provider`,
 `github_push_external_image`.
 Storage: `bucket_postfix` (part of the bucket name), `bucket_public`.
+IAM: `policy`, a list of statements (`actions`, `resources`, optional `effect` and
+`conditions`) on the backend task role. Before 6.0.0 a `Deny` or a condition deployed as
+an unconditional Allow.
+In 6.0.0: `events` (`subscribes`, `queue`, `produces`) and `vaults`, as for services below.
 
 ## `services[]`, `scheduled_tasks[]`, `event_processor_tasks[]`
 
@@ -71,6 +77,12 @@ image or `ecr_config`, a command (a list), size, and environment. Services also 
 `internal`, `full_open`, `none`), `health_check_command`, `runtime`, `compute_pool`.
 Event tasks carry `rules[]` (EventBridge patterns); scheduled tasks carry `schedule`
 (`rate(...)` or `cron(...)`, UTC).
+
+In 6.0.0 every item also takes `policy` (statements on its task role) and `vaults`
+(`name`, `access` `read` or `read_write`, `prefix`). Services take `events` with
+`subscribes`, `queue` and `produces`; both task kinds take `events.produces` only
+(`subscribes` or `queue` on a task is refused). Event-task `rules[]` take `bus`
+(`project` or `default`).
 
 Deleting `network_access` from a service is a change: the absent key renders `public`,
 while v30 wrote `full_open` onto every service that existed before it.
@@ -106,6 +118,19 @@ single `ses.domain_name` form still renders. Ownership rules: `dangerous-fields.
 `amplify_apps`, `cloudfront_distributions[]`, `compute` (EC2 capacity pools),
 `extensions` (`sns_topics`, `sqs_queues`), `manage_dns_records`. Read their block in
 `main.hbs` before changing them.
+
+New in 6.0.0, all optional (absent means off). Details in
+`infrastructure/ai_docs/<FEATURE>.md` when the copy carries them:
+
+- `event_bus` (`enabled`): the project bus `<project>-<env>` (`EVENTS.md`).
+- `data_bucket` (`shared[]`: `name`, `read_write`, `read`): shared folders in the env's
+  private bucket, which exists either way (`DATA_BUCKET.md`).
+- `vaults[]` (`name`): SSM paths shared by the workloads that connect to them
+  (`VAULTS.md`).
+- `valkey` (`enabled`, `engine_version`, `max_storage_gb`, `access`): a serverless cache
+  (`VALKEY.md`).
+- `amplify_apps[].custom_rules` (`source`, then `target` and `status`, or `workload` and
+  `path`): rewrites and redirects (`amplify.md`).
 
 ## Outside the YAML
 

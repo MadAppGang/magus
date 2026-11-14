@@ -4,6 +4,59 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [meroku 1.2.0] - 2026-11-14
+
+### Changed
+
+- **The skills are written against meroku 6.0.0 and YAML schema v32.** `meroku:extend`
+  sends a request meroku 6.0.0 covers to the env YAML, with the real keys: a queue per
+  service (`events.subscribes`, `EVENT_QUEUE_URL`), the event bus and strict
+  `events.produces`, the private data bucket, `policy` on services and tasks, vaults,
+  Valkey and Amplify `custom_rules`. On an older copy it names the 6.0.0 key and the
+  update, and a stop-gap's README names that update as its delete condition.
+- It states the 6.0.0 breaking changes where an agent acts on them (strict PutEvents, no
+  `CloudWatchFullAccess` on task roles, `event_bus.enabled` replacing event-task rules)
+  and the new `meroku generate` refusals.
+- `meroku:yaml` adds the new keys, the fields among them that replace resources, the v32
+  migration, and that a YAML from a newer meroku is refused rather than loaded.
+
+### Verified
+
+- MRE-1 `sqs-for-ai-service` on a meroku 6.0.0 project (r4, `--trials 3`): with the plugin,
+  3 of 3 Sessions put `events.subscribes` on the `ai` service with no custom Terraform;
+  without it, 0 of 1 graded (2 errored).
+
+---
+
+## [magus 7.13.0] - 2026-11-14
+
+### Added
+
+- **`magus market` runs a company plugin marketplace on GitHub (MTL-452).** It creates a
+  marketplace repo or connects an existing one, creates and deletes plugins, adds and
+  removes skills, and publishes a skill edited in a project as the plugin's next patch
+  version. Without push access, publish opens a pull request instead. Bare
+  `magus market` opens its own screen; every operation is also a command
+  (`market list`, `status`, `create`, `connect`, `remove`, `plugin create|delete`,
+  `skill add|remove`, `publish`) with `--yes` and `--json`. A command run without `--yes`
+  shows its plan and asks; with no terminal it writes nothing and exits 3.
+- **Company marketplaces list first.** The Plugins tab shows them above magus with a
+  `◆ Company` badge.
+- **Teammates get the company marketplace from the profile.** A plugin from a company
+  marketplace saved into a profile records where that marketplace lives, and
+  `magus install` and `magus update` add it on a teammate's machine before planning. A
+  teammate whose GitHub account cannot read it is told to ask the owner for access, and
+  the rest of the update carries on.
+
+### Fixed
+
+- **`magus update` reads a plugin's new dependencies from the refreshed marketplace,**
+  not from the copy installed before the update.
+- **A marketplace with conflicting names is left out of update planning,** in the CLI,
+  the previews and the Plugins tab alike, instead of updating from the wrong source.
+
+---
+
 ## [madbench 0.12.6] - 2026-11-14
 
 ### Changed

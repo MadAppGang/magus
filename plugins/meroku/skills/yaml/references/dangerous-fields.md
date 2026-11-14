@@ -1,6 +1,6 @@
 # Fields whose change replaces or removes resources
 
-Written against meroku 5.1, schema v31. Every one of these is safe on an environment
+Written against meroku 6.0.0, schema v32. Every one of these is safe on an environment
 that has never been deployed. On a deployed one, each needs the replacement answer in
 your proposal and a plan read before anyone applies. A plan marks a replacement as
 `-/+` or `must be replaced`; meroku's plan viewer shows it as a delete and a create.
@@ -31,15 +31,17 @@ groups, the database subnet group, and every ECS service.
 
 Names are built from `project`, `env` and the item's own name (`services[].name`,
 `scheduled_tasks[].name`, `event_processor_tasks[].name`, `buckets[].name`, extension
-queue and topic names), plus `bucket_postfix` for the backend bucket. Most AWS names
-cannot be changed in place, so **a rename is a destroy and a create**:
+queue and topic names, and in 6.0.0 the event consumer queues and `vaults[].name`), plus
+`bucket_postfix` for the backend bucket. Most AWS names cannot be changed in place, so
+**a rename is a destroy and a create**:
 
 - a target group that a listener rule references cannot be deleted, so the destroy can
   block part-way;
 - the backend bucket and `buckets[]` have no force-destroy, so a bucket holding objects
   fails to delete;
 - a renamed database identifier is a new, empty database unless the data is moved first;
-- a renamed ECR repository loses its images.
+- a renamed ECR repository loses its images;
+- a renamed event consumer service replaces its three queues; messages in them are lost.
 
 Renaming a deployed item is usually fix (b) of the troubleshooting rules, not a YAML
 edit: a planned, agreed one-off step. How names are built and shortened:
@@ -121,9 +123,27 @@ absent keys render nothing.
 - The ALB target group check (`backend_health_endpoint`) is separate; a task must pass
   both.
 
+## Events, vaults, valkey, the data bucket (6.0.0)
+
+| Change on a deployed env | Effect |
+|---|---|
+| `event_bus.enabled` toggled | event-task rules and subscription rules without `bus` are replaced; every workload gets a new task-definition revision |
+| editing an unnamed subscription's `detail_type`, `detail_type_prefix` or `bus` | its derived key changes, so its rule is destroyed and created (the queue stays). Set `name` to pin it |
+| renaming a consumer service | its three queues are renamed, that is replaced; messages in them are lost |
+| removing `subscribes` from the last consumer | the queues, DLQs, alarms and the alerts topic are destroyed |
+| renaming a vault | a new SSM path, empty (meroku never stores values); connected tasks fail to start until the values are set |
+| deleting a vault parameter by hand | every connected workload's next task fails to start until the next apply |
+| `valkey.enabled: false` | the cache is destroyed; its data is gone |
+| `valkey.engine_version` | unknown until plan (an upgrade or a downgrade); read the plan |
+| destroying an env | fails while the data bucket holds any object version (`force_destroy` is false) |
+
 ## Not replacements, still changes people notice
 
 - `services[].network_access`: narrowing cuts traffic. Deleting the key renders
   `public`, which narrows a pre-v30 service that the migration pinned to `full_open`.
+- `event_bus.enabled: true`: every workload gets a new task-definition revision
+  (`EVENT_BUS_NAME`).
+- Updating to 6.0.0 replaces nothing, but task roles lose the managed
+  `CloudWatchFullAccess`, and every workload gets one new revision.
 - `auto_deploy` and per-target `auto_deploy`: decide whether a push deploys.
 - `pubsub_appsync.api_key_enabled: false` deletes a live API key its clients may hold.
