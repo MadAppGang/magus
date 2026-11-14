@@ -1,0 +1,29 @@
+{
+  "name": "magus",
+  "version": "1.0.0",
+  "description": "Teaches the magus CLI and TUI: profiles and scopes, install, update and upgrade, doctor, per-subagent model routing, every TUI tab, what to commit to git, and company plugin marketplaces. Answers from the real commands and drives magus market to publish skill edits.",
+  "author": {
+    "name": "Jack Rudenko",
+    "email": "i@madappgang.com",
+    "company": "MadAppGang"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/MadAppGang/magus",
+  "keywords": [
+    "magus",
+    "profiles",
+    "plugins",
+    "marketplace",
+    "company-marketplace",
+    "model-routing",
+    "onboarding"
+  ],
+  "category": "utility",
+  "skills": [
+    "./skills/magus",
+    "./skills/market"
+  ],
+  "compatibility": {
+    "claudeCode": ">=0.1.0"
+  }
+}

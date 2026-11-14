@@ -4,6 +4,47 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [magus plugin 1.0.0] - 2026-11-14
+
+### Added
+
+- **The magus plugin teaches magus (MTL-461).** Its `magus` skill explains profiles and
+  scopes, `install` / `update` / `upgrade`, `doctor`, per-subagent model routing, every TUI
+  tab, what to commit to git, worktrees, the shell alias and output styles. It is a short
+  router; each area is a reference file read on demand, written from the magus 7.14.0
+  source. It runs only commands that read, and a yes to `magus update` never also upgrades
+  magus itself. Measured by bench MAG-1: three questions answered 15/15 with the plugin
+  against 0/15 without.
+- **The `market` skill moves here from setup.** It also lists skills and plugin folders in
+  no company marketplace, and names the `magus edit` screen for doing the work by hand.
+  Bench MKT-1 is repointed to `magus:market`.
+
+---
+
+## [setup 1.11.0] - 2026-11-14
+
+### Removed
+
+- **The `market` skill moved to the magus plugin.** Install `magus@magus` for it.
+
+---
+
+## [magus 7.14.2] - 2026-11-14
+
+### Fixed
+
+- **The help lists every TUI tab,** including 9 Styles and 0 Models, and `--no-refresh`
+  says what it skips: adding, at startup, marketplaces this project uses but this machine
+  lacks.
+- **The Plugins tab's team help names profiles.** It told users to commit
+  `extraKnownMarketplaces` in `.claude/settings.json`; it now says to install at PROJECT
+  scope, commit `.claude/profiles.json`, and have teammates run `magus install` or
+  `magus update`.
+- **The README and docs match the commands.** No `magus claude` (it never existed), no
+  `update --yes` (update never asks), and no `stale` status in `magus models status`.
+
+---
+
 ## [magus 7.14.1] - 2026-11-14
 
 ### Fixed

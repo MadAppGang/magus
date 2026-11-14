@@ -530,7 +530,7 @@
       "name": "setup",
       "source": "./plugins/setup",
       "description": "Project setup jobs in one plugin. Investigates a repository and provisions it \u2014 plugins, tools, framework best-practice references, and a seeded knowledge base \u2014 then installs the adaptive statusline and indexes every skill reachable from the project into browsable markdown.",
-      "version": "1.10.0",
+      "version": "1.11.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -550,6 +550,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "1.11.0",
+          "date": "2026-11-14",
+          "kinds": [
+            "Removed"
+          ],
+          "summary": "The market skill moved to the magus plugin"
+        },
         {
           "version": "1.10.0",
           "date": "2026-11-14",
@@ -582,11 +590,38 @@
             "Added"
           ],
           "summary": "The status line's context bar measures against Claude Code's auto-compact window, so it shows\u2026"
-        },
+        }
+      ]
+    },
+    {
+      "name": "magus",
+      "source": "./plugins/magus",
+      "description": "Teaches the magus CLI and TUI: profiles and scopes, install, update and upgrade, doctor, per-subagent model routing, every TUI tab, what to commit to git, and company plugin marketplaces. Answers from the real commands and drives magus market to publish skill edits.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Jack Rudenko",
+        "email": "i@madappgang.com",
+        "company": "MadAppGang"
+      },
+      "category": "utility",
+      "keywords": [
+        "magus",
+        "profiles",
+        "plugins",
+        "marketplace",
+        "company-marketplace",
+        "model-routing",
+        "onboarding"
+      ],
+      "strict": true,
+      "releases": [
         {
-          "version": "1.7.2",
-          "date": "2026-10-21",
-          "summary": "Inside tmux, the status line follows the light/dark mode the tmux theme menu chose for that\u2026"
+          "version": "1.0.0",
+          "date": "2026-11-14",
+          "kinds": [
+            "Added"
+          ],
+          "summary": "The magus plugin teaches magus (MTL-461)"
         }
       ]
     },

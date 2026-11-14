@@ -1,6 +1,6 @@
 ---
 name: market
-description: Publishes skill edits to the company plugin marketplace and manages its plugins and skills with magus market. Use when the user says publish this skill, update the company plugin, or add this skill to our plugin.
+description: Publishes skill edits and manages plugins in the company plugin marketplace with magus market. Use when the user says publish this skill, update the company plugin, or add this skill to our plugin.
 allowed-tools: Bash, Read
 ---
 
@@ -36,6 +36,7 @@ user to run `magus upgrade`, and stop.
 | The user wants to | Run |
 |---|---|
 | see company marketplaces, plugins, skills | `magus market list --json` |
+| find skills and plugin folders that are in no company marketplace | `magus market list --json`, read `local[]` (`kind` skill or plugin, `name`, `scope` project or user); offer the add row below for each |
 | change a company skill | `magus market skill edit <skill> --json` (copies it into this project; edit that copy) |
 | send edits back | `magus market publish <skill> --json` |
 | update the plugin (several of its skills edited) | `magus market publish --plugin <p@m> --json` — every `edited` skill as one version; `no-base`/`conflict` copies are left out, each goes on its own with `--force` |
@@ -49,6 +50,12 @@ user to run `magus upgrade`, and stop.
 
 `<p@m>` is `plugin@marketplace`; `@m` may be left out when there is one company
 marketplace. `magus market --help` lists every flag.
+
+**The user would rather do it by hand:** the same operations are on the screen
+`magus edit` (run it in their own terminal; it needs a TTY, so never run it yourself).
+There, `a` adds the selected skill or plugin folder, `e` copies a company skill here to
+edit, `p` publishes (on a plugin row: every skill edited here as one version), `?` lists
+every key.
 
 **Publish without a named skill:** run `magus market status --json` and read `skills[]`.
 
