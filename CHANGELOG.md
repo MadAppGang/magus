@@ -4,6 +4,44 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [setup 1.10.0] - 2026-11-14
+
+### Added
+
+- **The `market` skill publishes skill edits to the company plugin marketplace (MTL-452).**
+  It drives `magus market` (magus 7.14.0 or later): it shows the plan, asks, applies with
+  consent bound to that plan, and reports the version, the pull request and the installs that
+  moved. It never runs git or gh by hand, and stays out of "update my plugins". Measured by
+  bench MKT-1: publish 5/5 with the skill against 0/5 without.
+
+---
+
+## [magus 7.14.0] - 2026-11-14
+
+### Added
+
+- **`magus edit` opens the company marketplace screens (MTL-452).** The commands stay
+  `magus market <verb>`; bare `magus market` now prints its help and points at
+  `magus edit`.
+- **A company marketplace carries the company's name.** `market create` and
+  `market connect` take `--company <name>`, the create screen asks for it, and magus
+  shows the marketplace as "by <name>" instead of a generic Company badge.
+- **The screens manage plugins and skills edited here.** A plugin with skills edited in
+  this project shows `● N skills edited here`, and its marketplace `● N plugins to push`;
+  `p` pushes every edited skill as one new version (`market publish --plugin <p@m>`).
+- **Skills and plugin folders in no marketplace are listed with a way in.** A section
+  "Here, in no marketplace" lists this project's and the USER skills and plugin folders;
+  `a` adds a skill to an existing or a new plugin (`market skill add --create-plugin`) or
+  adds a plugin folder (`market plugin add <path> [--to <m>] [--name <p>]`).
+
+### Fixed
+
+- **The screens fit narrow terminals.** Rows cut long names with "…" and keep the scope
+  badge, and paths show relative to the project or under `~`.
+- **A plugin folder leaves the local list once a company marketplace holds it.**
+
+---
+
 ## [meroku 1.2.0] - 2026-11-14
 
 ### Changed

@@ -28,7 +28,7 @@ published changes the same way.
 
 ## 1. Check magus
 
-Run `magus --version`. The `market` command needs magus 7.13.0 or later. Older → tell the
+Run `magus --version`. The `market` command needs magus 7.14.0 or later. Older → tell the
 user to run `magus upgrade`, and stop.
 
 ## 2. Pick the verb
@@ -38,11 +38,13 @@ user to run `magus upgrade`, and stop.
 | see company marketplaces, plugins, skills | `magus market list --json` |
 | change a company skill | `magus market skill edit <skill> --json` (copies it into this project; edit that copy) |
 | send edits back | `magus market publish <skill> --json` |
-| add a project or USER skill to a plugin | `magus market skill add <skill> --plugin <p@m> --json` (`--from global` for a USER skill) |
+| update the plugin (several of its skills edited) | `magus market publish --plugin <p@m> --json` — every `edited` skill as one version; `no-base`/`conflict` copies are left out, each goes on its own with `--force` |
+| add a project or USER skill to a plugin | `magus market skill add <skill> --plugin <p@m> --json` (`--from global` for a USER skill; `--create-plugin` when the plugin does not exist yet) |
+| add a plugin folder of the user's own | `magus market plugin add <path> [--to <m>] --json` (the folder holds `.claude-plugin/plugin.json`; it stays in place) |
 | remove a skill from a plugin | `magus market skill remove <skill> --plugin <p@m> --json` |
 | new or deleted plugin | `magus market plugin create\|delete <p@m> --json` |
-| new marketplace | `magus market create <owner>/<repo> --private\|--public --json` — ask which visibility |
-| use an existing repo | `magus market connect <owner/repo\|git-url\|path> --json` |
+| new marketplace | `magus market create <owner>/<repo> --private\|--public [--company <name>] --json` — ask which visibility and the company name magus shows it by (defaults to the GitHub owner) |
+| use an existing repo | `magus market connect <owner/repo\|git-url\|path> [--company <name>] --json` (`--company` only for a repo with no marketplace yet) |
 | take one off this machine | `magus market remove <m> --json` (the repository stays) |
 
 `<p@m>` is `plugin@marketplace`; `@m` may be left out when there is one company
@@ -52,7 +54,8 @@ marketplace. `magus market --help` lists every flag.
 
 - any `not-checked` row → `magus market fetch --json`, then `status` again
 - `edited`, `no-base` and `conflict` rows are candidates. None → say there is nothing to
-  publish. One → publish it. Several → list them and ask which.
+  publish. One → publish it. Several → list them and ask which; several `edited` rows of
+  one plugin can go together with `publish --plugin <p@m>`.
 - `ambiguous` (`owners[]`) → ask which plugin, then pass `--plugin <p@m>`
 - `plugin-newer` → the plugin has a newer version of this skill; nothing to publish
 

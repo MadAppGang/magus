@@ -5,9 +5,9 @@ repository holding the plugins and skills your team shares. magus lists it first
 every public marketplace, and keeps it in sync for everyone whose project profile includes
 it.
 
-You manage it with `magus market`, from the command line or its own screens. Every change
-shows its plan first and asks before it writes anything. `magus market --help` lists every
-command, flag and exit code.
+You manage it with the `magus market` commands, or on its own screens with `magus edit`.
+Every change shows its plan first and asks before it writes anything. `magus market --help`
+lists every command, flag and exit code.
 
 You need magus 7.13.0 or later (`magus upgrade`) and the GitHub CLI, signed in
 (`gh auth login`).
@@ -17,8 +17,13 @@ You need magus 7.13.0 or later (`magus upgrade`) and the GitHub CLI, signed in
 Create a new repository that holds an empty marketplace:
 
 ```bash
-magus market create acme/claude-market --private --name acme
+magus market create acme/claude-market --private --name acme --company "Acme Labs"
 ```
+
+`--company` is the company name magus shows the marketplace by: it reads **by Acme Labs**
+in the plugin list, where magus's own marketplaces read **by MadAppGang**. Leave it out and
+the GitHub owner (`acme`) is used. It is one line of at most 64 characters, and it is
+written into the marketplace as its `owner.name`, so every teammate sees the same name.
 
 Or use a repository that already exists, on GitHub, at any git URL, or on disk:
 
@@ -26,11 +31,12 @@ Or use a repository that already exists, on GitHub, at any git URL, or on disk:
 magus market connect acme/claude-market
 ```
 
-`--name` with `connect` applies only when the repository holds no marketplace yet;
-otherwise the marketplace keeps the name it already has.
+`--name` and `--company` with `connect` apply only when the repository holds no marketplace
+yet; otherwise the marketplace keeps the name and the company name it already has (its
+`owner.name`, or the GitHub owner when it names none).
 
 Either way the marketplace is added to this machine at **USER** scope. `magus market list`
-shows it with its plugins and skills, and `magus market remove acme` takes it off this
+shows it with its company name, plugins and skills, and `magus market remove acme` takes it off this
 machine again, uninstalling its plugins. The repository itself is never deleted.
 
 If the repository runs `claude plugin validate --strict` in its own CI, that check fails on
@@ -41,9 +47,22 @@ the marker magus adds to the marketplace. Use plain `claude plugin validate` the
 ```bash
 magus market plugin create review-kit@acme          # a new, empty plugin
 magus market skill add review --plugin review-kit@acme
+magus market skill add review --plugin review-kit@acme --create-plugin   # create the plugin with it
+magus market plugin add .claude/skills/lint-kit --to acme                # a plugin folder of your own
 magus market skill remove review --plugin review-kit@acme
 magus market plugin delete review-kit@acme
 ```
+
+`--create-plugin` creates the plugin, at 0.1.0, in the same commit as the skill when the
+marketplace has no plugin of that name (`--description` describes it). Without it, a plugin
+that does not exist is an error.
+
+`plugin add` copies a plugin folder of your own, one holding `.claude-plugin/plugin.json`,
+into the marketplace as a new plugin, at the version its `plugin.json` gives (0.1.0 when it
+gives none). `--name` names it differently there. The same files are left out as for a
+skill: dotfiles other than `.claude-plugin/`, `node_modules`, ignored files and symlinks.
+The folder itself stays; install the plugin from magus to use the marketplace's copy, then
+remove the folder so it does not load twice.
 
 `skill add` takes a skill from this project's `.claude/skills/`, or from your USER skills
 with `--from global`, adds it to the plugin as its next version, and moves this machine's
@@ -85,6 +104,11 @@ marketplace, `@acme` can be left out.
    that change, any files that will not be published and why (dotfiles, `node_modules`,
    ignored files, symlinks), the installs that move, and whether the local copy is removed.
    `--dry-run` shows the plan and changes nothing.
+
+   Edited several skills of one plugin? `magus market publish --plugin review-kit@acme`
+   sends every one of them as one new version: one commit, one version bump, one move of
+   the installs. A copy with origin unknown, or changed on both sides, is left out and
+   named; publish it on its own with `--force`.
 
 On yes, magus pushes the new version, moves this machine's installs to it, and removes the
 local copy. A copy is kept, with the reason shown, when it holds anything that was not
@@ -140,16 +164,17 @@ magus tells them once that it now treats the marketplace as a company marketplac
 
 ## The screens
 
-`magus market` with no arguments opens the company marketplace screens. Opening them
-changes nothing; every change goes through the same plan and confirmation as the commands.
+`magus edit` opens the company marketplace screens (`magus market` with no arguments
+prints the command help instead). Opening them changes nothing; every change goes through the same plan and confirmation as the commands.
 
 **Company marketplaces**
 
 | Key | Does |
 |---|---|
 | `Enter` | open the marketplace |
-| `c` | create one on GitHub |
+| `c` | create one on GitHub: asks for the owner, the company name (prefilled with the owner), the repository name and who can see it |
 | `o` | connect an existing repository |
+| `a` | on a row under *Here, in no marketplace*: add that skill or plugin folder to a company marketplace |
 | `d` | remove it from this machine (the repository stays) |
 | `r` | fetch what changed on GitHub |
 | `?` | every key |
@@ -161,7 +186,7 @@ to its skills:
 | Key | Does |
 |---|---|
 | `Enter`, `→` | show or hide a plugin's skills |
-| `p` | publish this project's edits to the selected skill |
+| `p` | on a skill: publish its edits; on a plugin: push every skill edited here as one new version |
 | `e` | copy the skill into this project to edit it |
 | `a` | add a skill from this project or your USER skills |
 | `x` | remove the skill from its plugin |
@@ -169,6 +194,17 @@ to its skills:
 | `D` | delete the plugin |
 | `r` | fetch what changed on GitHub |
 | `Esc` | back to the marketplaces |
+
+A marketplace row shows `● N plugins to push` when skills of its plugins are edited here,
+and a plugin row `● N skills edited here`.
+
+Below the marketplaces, *Here, in no marketplace* lists this project's skills and your USER
+skills that are not a copy of a company skill, and the plugin folders among them (a folder
+holding `.claude-plugin/plugin.json`), each with its scope. `a` on a skill asks which
+marketplace (when there is more than one) and which plugin, a new one included, then shows
+one plan that creates the plugin if needed, adds the skill and pushes. `a` on a plugin
+folder adds it as a new plugin. With no company marketplace yet, the rows are still listed
+and `a` says to create or connect one first.
 
 Skill rows are marked `●` edited here, `◇` edited here with origin unknown, `⚠` changed here
 and on GitHub, `↓` the plugin has a newer version, and `?` not checked against GitHub.
