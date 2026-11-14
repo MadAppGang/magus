@@ -4,6 +4,22 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [magus 7.14.1] - 2026-11-14
+
+### Fixed
+
+- **Removing a plugin from PROJECT works when Claude Code records it at USER.** On the
+  Plugins screen, the Project key on such a plugin failed with Claude Code's own message,
+  "installed in user scope, not project", although the Scopes panel showed it in Project
+  (MTL-465). magus now removes the plugin from the profile, and the project no longer
+  turns it on.
+- **A remove magus cannot do names the scope that holds the plugin.** When a plugin is on
+  at USER or LOCAL but Claude Code records it at another scope, the scope key now says, for
+  example, "multimodel is installed at USER scope, not PROJECT — remove it from USER",
+  instead of Claude Code's message. Any other failure still shows as before.
+
+---
+
 ## [setup 1.10.0] - 2026-11-14
 
 ### Added
