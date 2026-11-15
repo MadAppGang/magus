@@ -1,7 +1,7 @@
 ---
 name: troubleshoot
 description: Fixes a failed meroku apply, plan, destroy or AWS SSO setup from its Fix with AI briefing. Use when meroku opened you or names a .meroku/claude file.
-argument-hint: <briefing path>
+user-invocable: false
 ---
 
 # Troubleshoot a meroku failure
@@ -55,11 +55,16 @@ They come from the user and hold for the whole session. The briefing states them
    briefing's "How to rerun", even the read-only ones: the briefing says to run those
    only after the user agrees.
 
+   The allowlist covers every route to AWS: the `aws` CLI, the `aws-core` plugin's MCP
+   tools, an SDK (`../meroku/references/official-plugins.md`).
+
 ## Workflow
 
-1. **Find the briefing.** Use the path in `$ARGUMENTS`. Without one, take the newest
-   `.meroku/claude/*.md` under the working directory (`ls -t .meroku/claude/*.md`). None
-   there: ask the user for it.
+1. **Find the briefing.** Take the first of: the path passed to this skill
+   (`$ARGUMENTS`); the path named in the conversation (Fix with AI's start prompt names
+   it, and so does a request routed through `/meroku:meroku`); the newest
+   `.meroku/claude/*.md` under the working directory (`ls -t .meroku/claude/*.md`).
+   None of them: ask the user for it.
 2. **Read the whole briefing** before running anything: Goal, Where it ran, What failed,
    How meroku works, How to rerun.
 3. **State what you are working on** in one short block: operation, environment, AWS
@@ -75,7 +80,10 @@ They come from the user and hold for the whole session. The briefing states them
 6. **Investigate read-only** (rule 5). Trace any `env/<env>/…tf:<line>` location back to
    what produced it: `infrastructure/env/main.hbs`, a module under
    `infrastructure/modules/`, user Terraform in `custom/terraform/`, and the YAML key that
-   fed it.
+   fed it. To find which read-only call answers a question, or what an AWS error means,
+   use the `aws-core` plugin's skills (`aws-core:aws-investigation` first). For a
+   Terraform provider argument, use the `terraform` plugin. Missing: one line recommending
+   it, as `../meroku/references/official-plugins.md` says, and carry on.
 7. **Explain** the cause with its evidence: the command you ran and the lines of output,
    the file and line. Separate what you verified from what you infer.
 8. **Propose ONE fix**, the first of (a), (b), (c) that fits, and say why the earlier
@@ -98,6 +106,10 @@ They come from the user and hold for the whole session. The briefing states them
   `variables.tf`, or a custom file referencing a meroku module or output.
 - Read `../meroku/SKILL.md` only when you need the pipeline itself: YAML → migrations →
   templates → `env/<env>/` → Terraform, the commands, and the project layout.
+- Read `../meroku/references/official-plugins.md` the first time you would inspect AWS or
+  look up a Terraform provider argument: the `aws-core` and `terraform` plugins, how to
+  tell whether each is installed, its install command, and how THE RULES apply to their
+  MCP tools.
 
 ## Failure modes
 

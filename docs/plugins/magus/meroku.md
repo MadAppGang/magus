@@ -3,14 +3,14 @@
 
 # meroku
 
-Skills for Claude Code in a meroku project: troubleshoot a failed meroku operation from its Fix with AI briefing, change an environment YAML safely, place new AWS infrastructure beside meroku's own, and understand how the YAML becomes Terraform. Investigates read-only and asks before any write.
+A command, an agent and skills for meroku projects: create and change env YAMLs, add AWS infrastructure beside meroku's own, and fix a failed operation from its Fix with AI briefing. Investigates read-only, asks before any write, and leaves generic AWS and Terraform to the official plugins.
 
 | | |
 |---|---|
-| Version | `1.3.0` |
+| Version | `2.0.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 0 |
-| Subagents | 0 |
+| Subagents | 1 |
 | Skills | 4 |
 | MCP server | no |
 | Hooks | no |
@@ -32,18 +32,26 @@ Prefer to do it by hand? [Installing Magus](../../guides/install.md) has the man
 
 ## When to reach for it
 
-- Use when working in a meroku project — `meroku`
+- Use when working in a meroku project or asked about meroku — `meroku`
 - Use when meroku opened you or names a — `troubleshoot`
-- Use when editing dev — `yaml`
+- Use when creating or editing dev — `yaml`
+
+## Subagents
+
+Dispatched with the Agent tool, each in its own context window.
+
+| Agent | What it does |
+|---|---|
+| `meroku:meroku` | Does meroku work for another workflow: a failed meroku operation from its Fix with AI briefing, an env YAML change, or new AWS infrastructure beside meroku's own. |
 
 ## Skills
 
 | Skill | What it covers |
 |---|---|
 | `meroku:extend` | Decides where new AWS infrastructure goes in a meroku project and writes any custom Terraform with its README. |
-| `meroku:meroku` | Explains how meroku turns an env YAML into Terraform on AWS: commands, project layout, naming. Use when working in a meroku project. |
+| `meroku:meroku` | Explains how meroku turns an env YAML into Terraform on AWS, and routes the task to its yaml, extend or troubleshoot skill. Use when working in a meroku project or asked about meroku. |
 | `meroku:troubleshoot` | Fixes a failed meroku apply, plan, destroy or AWS SSO setup from its Fix with AI briefing. Use when meroku opened you or names a .meroku/claude file. |
-| `meroku:yaml` — [4 more docs](./meroku-yaml.md) | Changes a meroku env YAML safely, naming any change that forces resource replacement. Use when editing dev.yaml, prod.yaml or any env YAML. |
+| `meroku:yaml` — [4 more docs](./meroku-yaml.md) | Creates and changes a meroku env YAML safely, naming any change that forces resource replacement. Use when creating or editing dev.yaml, prod.yaml or any env YAML. |
 
 ## Source
 

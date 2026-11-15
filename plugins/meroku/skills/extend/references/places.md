@@ -51,8 +51,6 @@ resource "aws_sns_sms_preferences" "account" {
 }
 ```
 
-AWS caps SMS spend low on a new account; a limit above that cap fails until AWS raises it.
-
 Example, `custom/terraform/dev/admin_client.tf`, an app client on meroku's pool:
 
 ```hcl
@@ -145,8 +143,6 @@ resource "aws_sns_topic_subscription" "billing_to_api" {
   endpoint_auto_confirms = false
 }
 ```
-
-The API must confirm the subscription (SNS posts a `SubscriptionConfirmation` first).
 
 ## Checking the result
 

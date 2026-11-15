@@ -1,6 +1,7 @@
 ---
 name: yaml
-description: Changes a meroku env YAML safely, naming any change that forces resource replacement. Use when editing dev.yaml, prod.yaml or any env YAML.
+description: Creates and changes a meroku env YAML safely, naming any change that forces resource replacement. Use when creating or editing dev.yaml, prod.yaml or any env YAML.
+user-invocable: false
 ---
 
 # Changing a meroku env YAML
@@ -28,6 +29,16 @@ check it against `references/dangerous-fields.md`.
    first one found is the file. Edit that one.
 3. Read its `schema_version`. Read `references/migrations.md` when it is below 32, when
    it is missing, or when the user asks about migrations or backups.
+
+## Create a new env YAML
+
+meroku writes it; you do not. Ask the user to run `meroku` at the project root and choose
+"✨ Create new environment". The name is lower-case letters only, two or more. meroku writes
+`<env>.yaml` there with the current `schema_version`, the project name, defaults for a prod
+or non-prod name, and a `vpc_cidr` that avoids the other envs. Never write one from scratch
+or by copying another env's file: a copy keeps that env's names, state keys and network
+range. Then change it with the rules below. An env never deployed has nothing to replace,
+so the replacement answer is "no, not deployed".
 
 ## Make the change
 

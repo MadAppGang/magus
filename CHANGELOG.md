@@ -4,6 +4,39 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [meroku 2.0.0] - 2026-11-15
+
+### Changed
+
+- **`/meroku:meroku` is the plugin's one command.** It explains how meroku works and routes
+  the task: a new or changed env YAML to `meroku:yaml`, new AWS infrastructure to
+  `meroku:extend`, a failed operation or a Fix with AI briefing to `meroku:troubleshoot`.
+  Give it the task, or a briefing path: `/meroku:meroku .meroku/claude/<file>.md`.
+- `meroku:yaml`, `meroku:extend` and `meroku:troubleshoot` are knowledge skills: hidden from
+  the `/` menu, still chosen by the model on their own, and still loaded by Fix with AI.
+- A `meroku` agent preloads the four skills for meroku work another workflow delegates. It
+  investigates read-only and returns one proposal; it writes only a change the user approved.
+- For AWS and Terraform themselves the skills rely on Anthropic's official plugins,
+  `aws-core` and `terraform` from `claude-plugins-official`, and recommend installing them
+  once when missing. The read-only rules now cover their MCP tools as well as the CLIs.
+- `meroku:yaml` covers a new environment: meroku's "Create new environment" writes the file.
+
+### Removed
+
+- The typed commands `/meroku:yaml`, `/meroku:extend` and `/meroku:troubleshoot`.
+- Notes on generic AWS behaviour (SNS subscription confirmation, the SMS spend cap, AWS
+  profile mechanics), now left to the `aws-core` plugin.
+
+### Migration notes
+
+- Type `/meroku:meroku <what you want>` where you typed one of the removed commands. A
+  briefing path after it works as it did after `/meroku:troubleshoot`.
+- Fix with AI needs no change: its prompt loads `meroku:troubleshoot` through the model.
+- Optional: `claude plugin install aws-core@claude-plugins-official` and
+  `claude plugin install terraform@claude-plugins-official`.
+
+---
+
 ## [meroku 1.3.0] - 2026-11-14
 
 ### Changed

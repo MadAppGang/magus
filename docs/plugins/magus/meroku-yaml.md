@@ -2,7 +2,7 @@
 
 # `meroku:yaml`
 
-Changes a meroku env YAML safely, naming any change that forces resource replacement. Use when editing dev.yaml, prod.yaml or any env YAML.
+Creates and changes a meroku env YAML safely, naming any change that forces resource replacement. Use when creating or editing dev.yaml, prod.yaml or any env YAML.
 
 Part of [`meroku`](./meroku.md).
 

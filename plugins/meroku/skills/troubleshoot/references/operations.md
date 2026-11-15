@@ -121,10 +121,11 @@ or cached credentials; do not go looking for them.
 
 **Look first.**
 
-- `aws configure list-profiles`, and the profile's section in the AWS config file the
-  briefing names. Compare it with `aws_profile`, `region` and `account_id` in the env YAML.
-- `AWS_PROFILE=<profile> aws sts get-caller-identity` tells working credentials from a
-  missing or expired login.
+- The profile's section in the AWS config file the briefing names. Compare it with
+  `aws_profile`, `region` and `account_id` in the env YAML.
+- `AWS_PROFILE=<profile> aws sts get-caller-identity`.
+- How AWS sign-in and the config file work: `aws-core`'s sign-in and auth skills
+  (`../../meroku/references/official-plugins.md`).
 
 **Fixes.**
 

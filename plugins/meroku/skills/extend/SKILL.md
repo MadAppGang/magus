@@ -1,6 +1,7 @@
 ---
 name: extend
 description: Decides where new AWS infrastructure goes in a meroku project and writes any custom Terraform with its README. Use when adding a queue, bucket, Cognito pool, SMS setting or other AWS resource.
+user-invocable: false
 ---
 
 # Adding infrastructure to a meroku project
@@ -28,6 +29,8 @@ They hold for the whole task.
   the next meroku run neither knows about it nor cleans it up.
 - **Every custom folder has a `README.md`** with the four answers below, written in the
   same change as the code. Nothing without one merges.
+- **No AWS writes from here either**: inspecting what exists uses the read-only allowlist
+  (rule 5 of `../troubleshoot/SKILL.md`), on every route, including `aws-core`'s MCP tools.
 
 ## Decide, in this order
 
@@ -56,8 +59,8 @@ They hold for the whole task.
    - **Never write a YAML key the project's `main.hbs` does not read.** It renders
      nothing, and the user believes the resource exists.
 3. **Close but missing something: Terraform next to meroku.** Pick one of the three places
-   below. Ask the user with AskUserQuestion: the three places as options, the one you
-   recommend first and marked "(Recommended)", one line each on why. Read
+   below. Ask the user one multiple-choice question: the three places as options, the one
+   you recommend first and marked "(Recommended)", one line each on why. Read
    `references/places.md` before writing a `custom/pre` or `custom/post` hook, or a
    `custom/terraform` file that references a meroku module.
 4. **A meroku pull request is last.** Propose one only when both answers are yes: would
@@ -66,7 +69,13 @@ They hold for the whole task.
    new option defaults to what is deployed today, so running projects see no change. Ask
    for the user's meroku checkout path; never edit `infrastructure/` as the pull request.
 5. **Write, after the yes:** the `.tf` files and the folder's `README.md` together. A
-   folder that already exists gets its README updated, not a second one.
+   folder that already exists gets its README updated, not a second one. Take resource
+   arguments from the provider's docs through the `terraform` plugin, not from memory. AWS
+   service behaviour (quotas, confirmations, account-wide settings) comes from `aws-core`'s
+   skills. Either missing: see `../meroku/references/official-plugins.md`. With
+   `terraform` missing, write the arguments you know and mark them in your reply as not
+   checked against the provider docs. Never run `terraform init`, or any command off the
+   read-only allowlist, to fetch a provider schema.
 6. **Hand back.** The user runs `meroku generate <env>`, then a plan. The proof: the plan
    adds the custom resources and replaces nothing meroku owns.
 
@@ -149,3 +158,7 @@ One in `custom/pre/`, one in `custom/post/`, one in each `custom/terraform/<env>
   outputs, and an example per place.
 - Read `../yaml/SKILL.md` when the answer is a YAML change.
 - Read `../meroku/SKILL.md` when you need the pipeline, the commands or the layout.
+- Read `../meroku/references/official-plugins.md` the first time you would inspect AWS or
+  look up a Terraform provider argument: the `aws-core` and `terraform` plugins, how to
+  tell whether each is installed, its install command, and how the read-only rules apply
+  to their MCP tools.

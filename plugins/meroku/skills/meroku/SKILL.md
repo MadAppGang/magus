@@ -1,9 +1,10 @@
 ---
 name: meroku
-description: Explains how meroku turns an env YAML into Terraform on AWS: commands, project layout, naming. Use when working in a meroku project.
+description: Explains how meroku turns an env YAML into Terraform on AWS, and routes the task to its yaml, extend or troubleshoot skill. Use when working in a meroku project or asked about meroku.
+argument-hint: "[what to do, or a .meroku/claude briefing path]"
 ---
 
-# How a meroku project works
+# meroku: the entry point
 
 meroku turns one YAML file per environment into Terraform and runs it against AWS. It
 always runs from the project root, never from the meroku source tree. Use this to place
@@ -13,6 +14,38 @@ Written against meroku 6.1.0 and schema v32. When this text disagrees with the p
 the project wins: the env YAML's `schema_version`, and its own `infrastructure/` copy
 (`infrastructure/version.txt` names that copy's version; `meroku --version` names the
 binary's).
+
+The task: `$ARGUMENTS`. Empty: take it from the conversation. Nothing there either: ask the
+user what they want to do in this meroku project.
+
+## Route the task
+
+Pick the row that matches and load that skill before you do anything else. Load it with the
+Skill tool (`meroku:troubleshoot`, `meroku:yaml`, `meroku:extend`). If the Skill tool is not
+available or answers with an error, read the file instead, relative to this skill's
+directory (`../troubleshoot/SKILL.md`, `../yaml/SKILL.md`, `../extend/SKILL.md`). Already in
+your context, as in the meroku agent, which preloads all four: do not load it again; follow
+it.
+
+| The task | Load | Notes |
+|---|---|---|
+| a meroku operation failed (apply, plan, destroy, AWS SSO); a `.meroku/claude/*.md` briefing; "Fix with AI" | `meroku:troubleshoot` | pass the briefing path as the skill's argument when one is named. It reads `yaml` itself when the fix is in the YAML |
+| create a new environment or a new env YAML | `meroku:yaml` | its "Create a new env YAML" section |
+| change, review or migrate an env YAML; vaults; what a key does or what the YAML format is | `meroku:yaml` | |
+| add AWS infrastructure: a queue, bucket, Cognito pool or client, SMS setting, alarm, IAM permission, cache, anything meroku might create | `meroku:extend` | it checks meroku's default first and reads `yaml` itself when the answer is a YAML key |
+| how meroku works, a command, the project layout, why a resource has the name it has | nothing more | answer from this skill |
+| a failure and a change at once ("apply failed after I added a queue") | `meroku:troubleshoot` first | the failure decides what is safe to change |
+| unclear between rows | — | ask the user one multiple-choice question, the rows as options, your best guess first and marked "(Recommended)" |
+
+Load one skill at a time. Load a second only when the first one sends you there.
+
+## AWS and Terraform themselves
+
+This plugin teaches meroku. For AWS and Terraform it relies on two official plugins:
+`aws-core@claude-plugins-official` and `terraform@claude-plugins-official`. Read
+`references/official-plugins.md` the first time you would inspect AWS or look up a
+Terraform provider argument: what each plugin is for, how to tell whether it is installed,
+the install commands, and how the read-only rules apply to their tools.
 
 ## The pipeline
 
@@ -86,9 +119,6 @@ unexpected (hex at the end, words missing), or a change would rename something.
 
 ## Where to go next
 
-- A failed meroku operation or a Fix with AI briefing: read `../troubleshoot/SKILL.md`.
-- Changing the env YAML: read `../yaml/SKILL.md`.
-- Adding an AWS resource meroku does not create: read `../extend/SKILL.md`.
 - Vaults, their `secrets` list and their values: read `../yaml/references/vaults.md`.
 - Design notes for a feature: `infrastructure/ai_docs/` in the project, when the copy
   carries it.

@@ -1,7 +1,7 @@
 {
   "name": "meroku",
-  "version": "1.3.0",
-  "description": "Skills for Claude Code in a meroku project: troubleshoot a failed meroku operation from its Fix with AI briefing, change an environment YAML safely, place new AWS infrastructure beside meroku's own, and understand how the YAML becomes Terraform. Investigates read-only and asks before any write.",
+  "version": "2.0.0",
+  "description": "A command, an agent and skills for meroku projects: create and change env YAMLs, add AWS infrastructure beside meroku's own, and fix a failed operation from its Fix with AI briefing. Investigates read-only, asks before any write, and leaves generic AWS and Terraform to the official plugins.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
