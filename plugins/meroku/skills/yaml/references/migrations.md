@@ -1,6 +1,6 @@
 # schema_version, migrations and backups
 
-Written against meroku 6.1.0, where the current schema is still v32. The authority is the
+Written against meroku 6.2.0, where the current schema is still v32. The authority is the
 meroku that runs: `meroku migrate` with no argument prints the current schema version.
 In the project, `infrastructure/app/migrations.go` (when the copy carries it) holds
 `CurrentSchemaVersion`, the per-version history in the comment above it, and
@@ -69,6 +69,9 @@ definition. So the key stays absent until the user fills it: the web UI's Vaults
 the names in SSM and imports them (**Import names from AWS**). meroku saving the file keeps
 a missing list missing and `[]` as `[]`. Never add `secrets: []` by hand to finish a
 migration; read `vaults.md`.
+
+meroku 6.2.0 added no migration either: `kms_keys` is optional, and an absent block
+creates no key.
 
 For the full table, read `infrastructure/ai_docs/MIGRATIONS.md` in the project, when present.
 

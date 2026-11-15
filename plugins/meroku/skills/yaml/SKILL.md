@@ -10,7 +10,7 @@ The env YAML is the one file that describes an environment. meroku migrates it, 
 it through a Handlebars template into Terraform, and runs Terraform. A configuration fix
 is a change to this file, followed by a meroku rerun. Never a hand edit of `env/<env>/`.
 
-Written against meroku 6.1.0 and schema v32. When this text disagrees with the project,
+Written against meroku 6.2.0 and schema v32. When this text disagrees with the project,
 the project wins: its `schema_version`, its `infrastructure/env/main.hbs`, and its
 `infrastructure/modules/`. For the pipeline and the commands, read `../meroku/SKILL.md`.
 
@@ -49,7 +49,8 @@ so the replacement answer is "no, not deployed".
 3. Show the user the exact diff and the replacement answer. Wait for a yes.
 4. Edit the file. Change only the keys you named. Never edit `schema_version` by hand.
    Never set an env var meroku sets itself: `DATA_BUCKET_*`, `EVENT_QUEUE_URL`,
-   `VALKEY_*`, or `AWS_S3_BUCKET` on the backend. Generate refuses them.
+   `VALKEY_*`, `AWS_S3_BUCKET` on the backend, or `KMS_<NAME>_KEY_ARN` and
+   `KMS_<NAME>_PUBLIC_KEY` on a workload connected to key `<name>`. Generate refuses them.
 5. Ask the user to rerun meroku: `meroku generate <env>` to regenerate, then a deploy
    from the menu. A plan is the proof: look for `must be replaced` and `-/+` on the
    resources you named.
@@ -97,6 +98,27 @@ Vaults tab; they are never read back.
 Read `references/vaults.md` before any change to `vaults` or to a workload's `vaults`
 connections. It also says how to tell a 6.0.x project, whose vaults have no `secrets` key.
 
+## KMS signing keys: declared in the YAML, removed in two applies
+
+meroku 6.2.0 declares asymmetric KMS signing keys at the top level,
+`kms_keys: [{ name, key_spec, retired }]` (`key_spec` defaults to `ECC_NIST_P256`), and
+connects them per workload with `kms_keys: [{ name, access }]`, access `sign`, `verify` or
+`both`. A connected workload gets `KMS_<NAME>_KEY_ARN` and `KMS_<NAME>_PUBLIC_KEY` (a
+multi-line PEM). Asked to "add a signing key" or "sign JWTs with KMS": this is the answer,
+never custom Terraform.
+
+- Adding a key or a connection: no replacement, a new task-definition revision for each
+  workload connected to it.
+- Removing a key takes two applies: set `retired: true` and remove its connections, apply,
+  then delete the entry and apply. The key is then scheduled for deletion 7 days ahead.
+- A changed `key_spec` on a created key is ignored, and the plan warns.
+- Deleting an entry and re-adding the same name before the apply keeps the old key.
+- On a copy whose `infrastructure/version.txt` is older than `v6.2.0` there is no
+  `kms_keys`. Never write it there.
+
+Read `references/kms-keys.md` before any change to `kms_keys` or to a workload's
+`kms_keys` connections.
+
 ## Where to look next
 
 - Read `references/schema.md` only when you need to know which section a key belongs to,
@@ -106,11 +128,14 @@ connections. It also says how to tell a 6.0.x project, whose vaults have no `sec
 - Read `references/dangerous-fields.md` before any change to `vpc_cidr`, `use_default_vpc`,
   `project`, `env`, any `name`, `bucket_postfix`, `region`, the state keys, `domain` or
   `ses` zones and records, `postgres.aurora`, `ecr_strategy`, the backend health
-  check and circuit breaker, `event_bus`, any `events` subscription, `vaults`, or
-  `valkey`.
+  check and circuit breaker, `event_bus`, any `events` subscription, `vaults`,
+  `kms_keys`, or `valkey`.
 - Read `references/vaults.md` before any change to `vaults`, `vaults[].secrets` or a
   workload's `vaults` connections, when generate says `has no secrets list`, and when a
   plan warns that a vault has no value yet.
+- Read `references/kms-keys.md` before any change to `kms_keys` or a workload's
+  `kms_keys`, when generate refuses a `kms_keys` field, and when a plan warns that a KMS
+  key keeps its type.
 - The YAML cannot express the resource: read `../extend/SKILL.md` before writing any
   Terraform.
 
@@ -120,5 +145,7 @@ connections. It also says how to tell a 6.0.x project, whose vaults have no `sec
 - never put a secret's value in the YAML; values live in SSM Parameter Store or Secrets
   Manager. A vault's `secrets` list holds names only
 - never write `secrets: []` on a vault whose parameters are in use
+- never delete a `kms_keys` entry that is not retired and applied; retire it, apply, then
+  delete it
 - never edit `schema_version`, and never edit a backup to "restore" by hand without asking
 - never fix the problem in AWS instead of the YAML

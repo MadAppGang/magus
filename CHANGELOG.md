@@ -4,6 +4,29 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [meroku 2.1.0] - 2026-11-15
+
+### Added
+
+- **The skills cover meroku 6.2.0's KMS signing keys.** A request for a signing key is
+  the env YAML's `kms_keys`: top-level keys (`key_spec`, default `ECC_NIST_P256`) and
+  per-workload connections with `sign`, `verify` or `both`, which give the workload
+  `KMS_<NAME>_KEY_ARN` and `KMS_<NAME>_PUBLIC_KEY`. Never custom Terraform.
+- `meroku:yaml` gains a KMS keys reference: the keys, the variables and grants,
+  signing and verifying in an application, removal in two applies, the 7-day
+  scheduled deletion, the same-name trap, and why a changed `key_spec` is ignored.
+- `meroku:troubleshoot` names each `meroku generate` refusal for `kms_keys` with its
+  fix, and the plan warning for a changed `key_spec`.
+- `meroku:extend` maps a signing key to `kms_keys`, and says how to tell a copy older
+  than 6.2.0, which has none.
+
+### Changed
+
+- The skills are written against meroku 6.2.0. The schema stays v32: 6.2.0 adds no
+  migration.
+
+---
+
 ## [meroku 2.0.0] - 2026-11-15
 
 ### Changed

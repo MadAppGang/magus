@@ -1,6 +1,6 @@
 # Env YAML field guide, by section
 
-A map of the important keys, not the full schema. Written against meroku 6.1.0, schema
+A map of the important keys, not the full schema. Written against meroku 6.2.0, schema
 v32. For any key not here, or any doubt about a default, read the project's own files:
 
 | Question | Where to look in the project |
@@ -15,7 +15,8 @@ ALB certificate, egress strategy, AppSync auth, SES DNS values, service network 
 backend health check, compute pools; in 6.0.0 also workload names (unique, not
 `backend`, `vault`, `task` or `shared`), reserved env var names, events, vaults, valkey,
 Amplify rules and policy statements; in 6.1.0 also each vault's `secrets` list and the
-vault name collisions it can see in the YAML). A refusal there names the key; that is the
+vault name collisions it can see in the YAML; in 6.2.0 also `kms_keys`, its connections,
+the variable names a key gives each workload, and a custom `module "kms_keys"`). A refusal there names the key; that is the
 cheapest place to find a mistake.
 
 Turning a section or an item off removes what it built. `postgres.enabled: false`
@@ -69,6 +70,7 @@ IAM: `policy`, a list of statements (`actions`, `resources`, optional `effect` a
 `conditions`) on the backend task role. Before 6.0.0 a `Deny` or a condition deployed as
 an unconditional Allow.
 In 6.0.0: `events` (`subscribes`, `queue`, `produces`) and `vaults`, as for services below.
+In 6.2.0: `kms_keys` connections (`name`, `access`), as for services below.
 
 ## `services[]`, `scheduled_tasks[]`, `event_processor_tasks[]`
 
@@ -84,6 +86,8 @@ In 6.0.0 every item also takes `policy` (statements on its task role) and `vault
 `subscribes`, `queue` and `produces`; both task kinds take `events.produces` only
 (`subscribes` or `queue` on a task is refused). Event-task `rules[]` take `bus`
 (`project` or `default`).
+
+In 6.2.0 every item also takes `kms_keys` (`name`, `access` `sign`, `verify` or `both`).
 
 Deleting `network_access` from a service is a change: the absent key renders `public`,
 while v30 wrote `full_open` onto every service that existed before it.
@@ -137,11 +141,20 @@ New in 6.0.0, all optional (absent means off). Details in
 - `amplify_apps[].custom_rules` (`source`, then `target` and `status`, or `workload` and
   `path`): rewrites and redirects (`amplify.md`).
 
+New in 6.2.0, optional (absent means no key):
+
+- `kms_keys[]` (`name`, `key_spec` default `ECC_NIST_P256`, `retired`): asymmetric
+  signing keys, alias `alias/<project>-<env>-<name>`. Connected workloads get
+  `KMS_<NAME>_KEY_ARN` and `KMS_<NAME>_PUBLIC_KEY`. Removal is two applies; a changed
+  `key_spec` on a created key is ignored. Read `kms-keys.md` before changing one
+  (`KMS_KEYS.md`).
+
 ## Outside the YAML
 
 Terraform that the YAML cannot express goes in `custom/terraform/_shared/*.tf` (every
 env) or `custom/terraform/<env>/*.tf`, which meroku appends to the generated `main.tf`.
-`env/<env>/_bridge.tf` exposes the module outputs to that code as `local.bridge`.
+`env/<env>/_bridge.tf` exposes the module outputs to that code as `local.bridge`. A 6.2.0
+copy adds `local.bridge.kms_key_arns`.
 
 Before writing any of it, read `../../extend/SKILL.md`: it checks meroku's default first,
 picks between `custom/terraform/`, the `custom/pre/` hook and the `custom/post/` hook, and

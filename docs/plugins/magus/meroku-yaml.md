@@ -6,7 +6,7 @@ Creates and changes a meroku env YAML safely, naming any change that forces reso
 
 Part of [`meroku`](./meroku.md).
 
-**4 reference documents, about 588 lines.**
+**5 reference documents, about 895 lines.**
 
 The skill itself does not contain them. It reads your question and names the one or two
 worth opening — which is the point, because loading everything below to answer one
@@ -16,10 +16,11 @@ question would cost more than the answer is worth.
 
 | Document | Covers | Lines |
 |---|---|---|
-| [`dangerous-fields.md`](https://github.com/MadAppGang/magus/blob/main/plugins/meroku/skills/yaml/references/dangerous-fields.md) | Fields whose change replaces or removes resources | 159 |
-| [`migrations.md`](https://github.com/MadAppGang/magus/blob/main/plugins/meroku/skills/yaml/references/migrations.md) | schema_version, migrations and backups | 93 |
-| [`schema.md`](https://github.com/MadAppGang/magus/blob/main/plugins/meroku/skills/yaml/references/schema.md) | Env YAML field guide, by section | 149 |
-| [`vaults.md`](https://github.com/MadAppGang/magus/blob/main/plugins/meroku/skills/yaml/references/vaults.md) | Vaults: names in the YAML, values in the Vaults tab | 187 |
+| [`dangerous-fields.md`](https://github.com/MadAppGang/magus/blob/main/plugins/meroku/skills/yaml/references/dangerous-fields.md) | Fields whose change replaces or removes resources | 179 |
+| [`kms-keys.md`](https://github.com/MadAppGang/magus/blob/main/plugins/meroku/skills/yaml/references/kms-keys.md) | KMS signing keys: declared in the YAML, the private key never leaves KMS | 269 |
+| [`migrations.md`](https://github.com/MadAppGang/magus/blob/main/plugins/meroku/skills/yaml/references/migrations.md) | schema_version, migrations and backups | 96 |
+| [`schema.md`](https://github.com/MadAppGang/magus/blob/main/plugins/meroku/skills/yaml/references/schema.md) | Env YAML field guide, by section | 162 |
+| [`vaults.md`](https://github.com/MadAppGang/magus/blob/main/plugins/meroku/skills/yaml/references/vaults.md) | Vaults: names in the YAML, values in the Vaults tab | 189 |
 
 ## Reading these
 

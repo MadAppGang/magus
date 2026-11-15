@@ -2,7 +2,7 @@
 
 A map, not the truth. The truth is the project's own copy: what its
 `infrastructure/env/main.hbs` reads and its `infrastructure/modules/` create. This file is
-current as of meroku 6.1.0; read the template before relying on any row.
+current as of meroku 6.2.0; read the template before relying on any row.
 
 ## How to tell what this project's meroku has
 
@@ -11,6 +11,7 @@ current as of meroku 6.1.0; read the template before relying on any row.
 | Which meroku templates this project renders | `infrastructure/version.txt` (the copy). `meroku --version` names the binary, which is read-only and safe to run |
 | Whether this copy has meroku 6.0.0's features | `infrastructure/version.txt` is `v6.0.0` or later, and `main.hbs` has `module "events" {`. The other signs are in "On a copy older than 6.0.0" below |
 | Whether this copy has meroku 6.1.0's vaults | `infrastructure/version.txt` is `v6.1.0` or later. `main.hbs` has `module "vaults" {` from 6.0.0 on, so that sign does not tell the two apart. In the YAML, a 6.0.x vault has no `secrets` key |
+| Whether this copy has meroku 6.2.0's KMS signing keys | `infrastructure/version.txt` is `v6.2.0` or later, the primary test; the copy's `infrastructure/modules/kms_keys/` and a `module "kms_keys"` in `main.hbs` confirm it. Older: no `kms_keys` |
 | Whether a feature exists in this copy | the block in `infrastructure/env/main.hbs` that reads its key. No block reading the key: the copy does not have it |
 | What a module creates and accepts | `infrastructure/modules/<module>/main.tf` and `variables.tf` |
 | Whether a module exists in this env | most sit under an `{{#if <section>.enabled}}` wrapper in `main.hbs`, and need that section in the env YAML. In 6.0.0, `data_bucket`, `vaults` and `events` render in every env; `valkey` renders under `{{#if _valkey}}` |
@@ -115,6 +116,26 @@ Things to know before writing them:
 
 Read `../../yaml/SKILL.md` before changing any of these.
 
+### Shipped in 6.2.0: present only when this copy is 6.2.0 or later
+
+Check `version.txt` before using the row.
+
+| Need | YAML | What the workload gets | Sign |
+|---|---|---|---|
+| A signing key that never leaves KMS (JWTs, webhooks, documents others verify) | top-level `kms_keys[]` (`name`, `key_spec`, `retired`), and `kms_keys: [{ name, access }]` on `workload`, `services[]`, `scheduled_tasks[]`, `event_processor_tasks[]` | `KMS_<NAME>_KEY_ARN`, `KMS_<NAME>_PUBLIC_KEY` (a multi-line PEM); `kms:Sign` and/or `kms:Verify` plus `kms:GetPublicKey`, `kms:DescribeKey` on the task role | `version.txt` `v6.2.0` or later, then `module "kms_keys"` in `main.hbs` |
+
+```yaml
+kms_keys:
+  - name: auth                 # key_spec defaults to ECC_NIST_P256
+
+services:
+  - name: api
+    kms_keys:
+      - { name: auth, access: sign }
+```
+
+Read `../../yaml/references/kms-keys.md` before writing a key.
+
 ## On a copy older than 6.0.0
 
 The project's `main.hbs` wins. When `infrastructure/version.txt` is older than
@@ -182,6 +203,18 @@ nothing is replaced.
 - Never write `secrets: []` on a vault whose parameters are in use: the next apply would
   drop every vault secret from every connected task definition.
 
+## Before recommending the update to 6.2.0
+
+No migration and no breaking change for a project without the two names below: an absent
+`kms_keys` creates no key. Check two things:
+
+1. **A custom `.tf` that declares `module "kms_keys"`** is refused at generate after the
+   update. Rename it before the update. Renaming a module moves its resources' addresses,
+   so read the plan for destroys (a `moved` block keeps them).
+2. **A workload YAML variable named `KMS_<NAME>_KEY_ARN` or `KMS_<NAME>_PUBLIC_KEY`**
+   matters only once a key `<name>` is connected to that workload; generate refuses it
+   then.
+
 ## What `meroku generate` refuses in 6.0.0
 
 Avoid these when writing YAML or custom `.tf`:
@@ -213,6 +246,20 @@ The other vault name collisions are still refused at plan, in `modules/env_secre
 a variable only a module sets, and a parameter under the workload's own path with the
 name of a variable or of a vault secret. On a 6.0.x copy every vault name collision is
 refused at plan.
+
+In 6.2.0 it also refuses, and names the field:
+
+- a malformed key name (not `^[a-z][a-z0-9_]{0,30}$`), or a duplicate one;
+- an unknown `key_spec`;
+- a connection to a key not in the top-level list, or to a retired key;
+- a bad or missing `access` (`sign`, `verify` or `both`);
+- one key connected twice to one workload;
+- a workload YAML variable (`backend_env_variables`, `env_vars`, `environment_variables`)
+  named like a variable a connected key gives it, or a vault secret that would become the
+  same name on that workload;
+- a custom `.tf` that declares `module "kms_keys"`.
+
+The two exact messages upstream gives are in `../../yaml/references/kms-keys.md`.
 
 ## Not a meroku resource
 

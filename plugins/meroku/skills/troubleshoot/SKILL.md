@@ -15,7 +15,7 @@ You work in a meroku **project**: `infrastructure/` (meroku's templates and modu
 the env YAML (`<env>.yaml` at the root, else `project/<env>.yaml`), and the generated
 `env/<env>/`. Not the meroku source tree.
 
-Written against meroku 6.1.0, YAML schema v32. When this text disagrees with the briefing,
+Written against meroku 6.2.0, YAML schema v32. When this text disagrees with the briefing,
 the project's own `infrastructure/` copy, or the YAML's `schema_version`, those win.
 
 ## THE RULES
@@ -96,8 +96,9 @@ They come from the user and hold for the whole session. The briefing states them
 ## Where the depth is
 
 - Read `references/operations.md` only when classifying (step 5): per-operation
-  playbooks for apply, plan, destroy, sso and menu, and a `vaults` section to read as well
-  whenever the output names a vault or a vault secret.
+  playbooks for apply, plan, destroy, sso and menu, and a `vaults` section and a
+  `kms keys` section to read as well whenever the output names a vault, a vault secret, a
+  KMS key or `kms_keys`.
 - Read `references/manual-step-log.md` only when the fix is (b): the interview and the
   log template to fill in as each agreed command runs.
 - Read `../yaml/SKILL.md` only when the fix is (c), or when a cause points at a YAML
@@ -127,3 +128,7 @@ They come from the user and hold for the whole session. The briefing states them
   every connected task definition. The fix is the names already in SSM: the web UI's
   Vaults tab, **Import names from AWS**. Read the `vaults` section of
   `references/operations.md`.
+- **Clearing a KMS refusal or warning the quick way.** Deleting a `kms_keys` entry that is
+  not retired, re-adding a key under the same name to get a fresh key, or editing
+  `key_spec` back to silence the plan warning. The warning never fails a plan; the key
+  keeps its type. Read the `kms keys` section of `references/operations.md`.

@@ -1,6 +1,6 @@
 # Vaults: names in the YAML, values in the Vaults tab
 
-Written against meroku 6.1.0, schema v32. A vault is a set of secrets several workloads
+Written against meroku 6.2.0, schema v32. A vault is a set of secrets several workloads
 share. The YAML declares the vault and the names of its secrets. The values live only in
 SSM Parameter Store, under `/<env>/<project>/vault/<name>/`, and are written from the web
 UI's **Vaults** tab. The project's own copy is the authority:
@@ -15,7 +15,7 @@ carries it.
 | `v6.0.0` to `v6.0.3` | `name` only, no `secrets` key | 6.0.x: every parameter directly under the vault's path became a secret |
 | older than `v6.0.0` | no vaults | nothing |
 
-The rest of this file describes 6.1.0. On a 6.0.x copy, leave a vault without `secrets`,
+The rest of this file describes 6.1.0 and later. On a 6.0.x copy, leave a vault without `secrets`,
 and name "Moving a 6.0.x vault" below before recommending the update.
 
 ## The YAML
@@ -161,7 +161,9 @@ reading SSM at plan (a missing permission, for example) does fail the plan.
   (`workload.backend_env_variables`, `services[].env_vars`, a task's
   `environment_variables`);
 - a vault secret with the name of a variable meroku sets for that workload
-  (`DATA_BUCKET_*`, `EVENT_QUEUE_URL`, `VALKEY_*`, the backend's `AWS_S3_BUCKET`).
+  (`DATA_BUCKET_*`, `EVENT_QUEUE_URL`, `VALKEY_*`, the backend's `AWS_S3_BUCKET`);
+- from 6.2.0, a vault secret with the name of a variable a connected KMS key gives that
+  workload (`KMS_<NAME>_KEY_ARN`, `KMS_<NAME>_PUBLIC_KEY`; `kms-keys.md`).
 
 The plan-time `modules/env_secret_check` remains for the rest: a variable only the owning
 module sets (`AWS_REGION`, `PG_DATABASE_HOST` and the rest), and a parameter under the

@@ -8,7 +8,7 @@ keeps. When an operation fails, meroku's "Fix with AI" menu entry writes a brief
 `.meroku/claude/` and starts Claude Code at the project root; the plugin works from that
 briefing.
 
-Written against meroku 6.1.0 and env YAML schema v32. Where the skills disagree with the
+Written against meroku 6.2.0 and env YAML schema v32. Where the skills disagree with the
 project itself (the briefing, the project's `infrastructure/` copy, or the YAML's
 `schema_version`), the project wins.
 
@@ -55,7 +55,7 @@ loads by itself from the briefing.
 |---|---|---|---|
 | command and skill | `meroku:meroku` | you (`/meroku:meroku`), the model, Fix with AI | Explains the pipeline from YAML to Terraform, the commands, the project layout and how resources are named, and routes the task to one of the three skills below |
 | skill | `meroku:troubleshoot` | `/meroku:meroku`, the model, Fix with AI; not typed | Reads the briefing, investigates a failed apply, plan, destroy or AWS SSO setup read-only, names the cause, and proposes a fix in the right place |
-| skill | `meroku:yaml` | `/meroku:meroku`, the model, Fix with AI; not typed | Creates and changes env YAMLs: the schema, migrations and backups, any change that forces AWS to replace a resource named before it is made, and vaults (secret names in the YAML, values set in the web UI's Vaults tab) |
+| skill | `meroku:yaml` | `/meroku:meroku`, the model, Fix with AI; not typed | Creates and changes env YAMLs: the schema, migrations and backups, any change that forces AWS to replace a resource named before it is made, and vaults (secret names in the YAML, values set in the web UI's Vaults tab), and KMS signing keys (declared in the YAML, connected per workload, removed in two applies) |
 | skill | `meroku:extend` | `/meroku:meroku`, the model; not typed | Checks meroku's default first, then picks one of `custom/terraform/`, the `custom/pre/` hook or the `custom/post/` hook, and writes the Terraform with a `README.md`; a meroku pull request only when every project would want the change |
 | agent | `meroku` | another workflow, through the Agent tool | Preloads the four skills, investigates read-only and returns one proposal; writes only a change the user approved |
 

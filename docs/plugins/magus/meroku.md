@@ -7,7 +7,7 @@ A command, an agent and skills for meroku projects: create and change env YAMLs,
 
 | | |
 |---|---|
-| Version | `2.0.0` |
+| Version | `2.1.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 0 |
 | Subagents | 1 |
@@ -51,7 +51,7 @@ Dispatched with the Agent tool, each in its own context window.
 | `meroku:extend` | Decides where new AWS infrastructure goes in a meroku project and writes any custom Terraform with its README. |
 | `meroku:meroku` | Explains how meroku turns an env YAML into Terraform on AWS, and routes the task to its yaml, extend or troubleshoot skill. Use when working in a meroku project or asked about meroku. |
 | `meroku:troubleshoot` | Fixes a failed meroku apply, plan, destroy or AWS SSO setup from its Fix with AI briefing. Use when meroku opened you or names a .meroku/claude file. |
-| `meroku:yaml` — [4 more docs](./meroku-yaml.md) | Creates and changes a meroku env YAML safely, naming any change that forces resource replacement. Use when creating or editing dev.yaml, prod.yaml or any env YAML. |
+| `meroku:yaml` — [5 more docs](./meroku-yaml.md) | Creates and changes a meroku env YAML safely, naming any change that forces resource replacement. Use when creating or editing dev.yaml, prod.yaml or any env YAML. |
 
 ## Source
 

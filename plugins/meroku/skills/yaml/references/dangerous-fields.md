@@ -1,6 +1,6 @@
 # Fields whose change replaces or removes resources
 
-Written against meroku 6.1.0, schema v32. Every one of these is safe on an environment
+Written against meroku 6.2.0, schema v32. Every one of these is safe on an environment
 that has never been deployed. On a deployed one, each needs the replacement answer in
 your proposal and a plan read before anyone applies. A plan marks a replacement as
 `-/+` or `must be replaced`; meroku's plan viewer shows it as a delete and a create.
@@ -31,7 +31,8 @@ groups, the database subnet group, and every ECS service.
 
 Names are built from `project`, `env` and the item's own name (`services[].name`,
 `scheduled_tasks[].name`, `event_processor_tasks[].name`, `buckets[].name`, extension
-queue and topic names, and in 6.0.0 the event consumer queues and `vaults[].name`), plus
+queue and topic names, in 6.0.0 the event consumer queues and `vaults[].name`, and in
+6.2.0 `kms_keys[].name`), plus
 `bucket_postfix` for the backend bucket. Most AWS names cannot be changed in place, so
 **a rename is a destroy and a create**:
 
@@ -41,7 +42,10 @@ queue and topic names, and in 6.0.0 the event consumer queues and `vaults[].name
   fails to delete;
 - a renamed database identifier is a new, empty database unless the data is moved first;
 - a renamed ECR repository loses its images;
-- a renamed event consumer service replaces its three queues; messages in them are lost.
+- a renamed event consumer service replaces its three queues; messages in them are lost;
+- a renamed KMS key is a deleted key and a new one: the old key is scheduled for deletion,
+  the new key has a new ARN and public key, and signatures made with the old key verify
+  only with its public key.
 
 Renaming a deployed item is usually fix (b) of the troubleshooting rules, not a YAML
 edit: a planned, agreed one-off step. How names are built and shortened:
@@ -143,6 +147,20 @@ absent keys render nothing.
 | destroying an env | fails while the data bucket holds any object version (`force_destroy` is false) |
 | destroying an env with vaults | the vault values stay in SSM: Terraform never deletes them. The user deletes them when the environment is gone for good |
 
+## KMS signing keys (6.2.0)
+
+| Change on a deployed env | Effect |
+|---|---|
+| adding a key, or a connection | no replacement; every connected workload gets a new task-definition revision, registered in the apply that creates the key; workloads connected only to other keys keep theirs |
+| deleting an entry that is not retired | if any workload still connects to it, generate refuses that connection (the "not in the top-level kms_keys list" refusal); with no connections, the apply schedules the deletion at once, skipping the retire step that keeps the key usable for verification |
+| `retired: true` and its connections removed | grants go at apply while redeployed tasks start without the variables; a task still on the old revision loses `kms:Sign`/`kms:Verify` at once. Stop the app's use, deploy, then retire |
+| deleting a retired entry | the key is scheduled for deletion 7 days ahead and disabled meanwhile; cancellable only by the user (`kms-keys.md`) |
+| changing `key_spec` on a created key | nothing in AWS; the plan warns (`key_spec_unchanged`). Change type with a new key |
+| deleting an entry and adding one with the same name before the apply | the same key: no deletion scheduled; a different `key_spec` only warns |
+| destroying an env with keys | every key, retired included, is scheduled for deletion with the 7-day window |
+
+Each key costs about $1 a month, retired keys included.
+
 ## Not replacements, still changes people notice
 
 - `services[].network_access`: narrowing cuts traffic. Deleting the key renders
@@ -154,5 +172,7 @@ absent keys render nothing.
 - Updating from 6.0.x to 6.1.0 replaces nothing. `meroku generate` refuses every vault
   until it has a `secrets` list (`vaults.md`); after that, each workload connected to a
   vault gets one new revision (`valueFrom` is now the parameter's ARN).
+- Updating to 6.2.0 adds no migration: an absent `kms_keys` creates no key. A custom `.tf`
+  declaring `module "kms_keys"` is refused at generate after the update.
 - `auto_deploy` and per-target `auto_deploy`: decide whether a push deploys.
 - `pubsub_appsync.api_key_enabled: false` deletes a live API key its clients may hold.

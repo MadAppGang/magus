@@ -1,8 +1,9 @@
 # Per-operation playbooks
 
 The operation is in the briefing's file name (`<time>-<operation>.md`) and in its
-"Where it ran" table. Read only the section that matches it, and "vaults" at the end as
-well whenever the output names a vault or a vault secret. THE RULES in `SKILL.md` apply
+"Where it ran" table. Read only the section that matches it, and "vaults" or "kms keys"
+at the end as well whenever the output names a vault, a vault secret, a KMS key or
+`kms_keys`. THE RULES in `SKILL.md` apply
 to every section; nothing here relaxes them.
 
 Every Terraform command below runs from `env/<env>/` with the briefing's profile:
@@ -60,6 +61,12 @@ the workload needs a `policy` block (c).
 **After an update to 6.1.0.** A refusal that a vault `has no secrets list`, a task that
 cannot start on a vault secret, or a failure in `env_secret_check`: read "vaults" below.
 
+**After an update to 6.2.0.** `meroku generate` refuses a custom `.tf` that declares
+`module "kms_keys"`: rename it (c). A task that fails `kms:Sign` or `kms:Verify` with
+`AccessDeniedException` right after the apply that granted it: the grant is still
+reaching every KMS endpoint; the application should retry for a few seconds. After a
+retire, a task still on the old revision has lost the grant. Read "kms keys" below.
+
 ## plan
 
 Opened with `a` on meroku's failed-plan screen. Nothing in AWS changed.
@@ -81,6 +88,8 @@ given or could reach:
 - vaults: `Warning: Check block assertion failed` naming a vault with no value yet is a
   warning and not why the plan failed. A failure in `env_secret_check` is a name
   collision. Read "vaults" below for both.
+- KMS keys: a warning naming a key whose type in AWS differs from `kms_keys` (from the
+  check `key_spec_unchanged`) is never why the plan failed. Read "kms keys" below.
 
 `terraform plan` without `-out` is safe to rerun while you investigate. In a Neon env it
 fails on the Neon providers (this pane lacks their credentials): read state instead, and
@@ -103,6 +112,9 @@ A destroy that fails on the data bucket (`BucketNotEmpty`) is by design: its
 
 Vault values still in SSM after a destroy are by design, not a leftover: Terraform never
 deletes a vault parameter. The user deletes them when the environment is gone for good.
+
+KMS keys scheduled for deletion after a destroy are by design: each has a 7-day window.
+Cancelling is the user's AWS write.
 
 Never remove a leftover resource from AWS yourself (rule 1), and never `state rm` it to
 make the destroy pass: either is (b), interviewed and logged, because it decides what is
@@ -222,3 +234,59 @@ a module sets, or a parameter under the workload's own path with the name of a v
 or of a vault secret (its message names both parameters). On a plan that adds or removes
 a service, that own-path check runs at apply. All are configuration fixes (c): a `prefix`
 on the connection, or another name. On a 6.0.x copy every vault collision fails at plan.
+
+## kms keys
+
+Not an operation: read it under any of them when the output names a KMS key or
+`kms_keys`. It describes meroku 6.2.0; `../../yaml/references/kms-keys.md` has the rest.
+A copy older than `v6.2.0` has no `kms_keys`.
+
+**`meroku generate` refuses a `kms_keys` field.** It names the field. Two of the
+messages:
+
+```
+kms_keys:
+  workload.kms_keys[0]: kms key "auth" is retired: remove the connection, or set retired: false
+  services[0].kms_keys ('api')[0] connects kms key "billing", which is not in the top-level kms_keys list; add it under kms_keys first
+```
+
+Each refusal is a configuration fix (c):
+
+| Refusal | Fix |
+|---|---|
+| a malformed key name (not `^[a-z][a-z0-9_]{0,30}$`), or a duplicate one | another name |
+| an unknown `key_spec` | one of the seven values in `kms-keys.md` |
+| a connection to a key not in the top-level list | add the key under `kms_keys` first, or fix the name |
+| a connection to a retired key | remove the connection, or set `retired: false` |
+| a bad or missing `access` | `sign`, `verify` or `both` |
+| one key connected twice to one workload | one connection |
+| a workload YAML variable (`backend_env_variables`, `env_vars`, `environment_variables`) named like a variable a connected key gives it | rename the variable |
+| a vault secret that would become the same name on that workload | rename the secret, or connect the vault with a `prefix` |
+| a custom `.tf` that declares `module "kms_keys"` | rename the custom module |
+
+**The plan warns that a key keeps its type.**
+
+```
+KMS key "auth" is ECC_NIST_P256 in AWS, but kms_keys sets RSA_2048. AWS cannot
+change a key's type: add a new key with the type you want, move the workloads
+to it, then retire this one. Until then the key keeps ECC_NIST_P256.
+```
+
+A warning from the check `key_spec_unchanged`, never the cause of a failed plan or apply.
+The fix: add a key of the wanted type, move the connections to it, apply, then retire the
+old one. Never delete and re-add the entry under the same name: to Terraform that is the
+same key.
+
+**A task lost its key after a retire.** The variables and the grants go at that apply; a
+task still on the old revision loses `kms:Sign` and `kms:Verify` at once. The application
+must stop using the key and be deployed before the retire.
+
+**A key was deleted by mistake.** Within 7 days it is disabled, not gone. Recovery is
+(b): every step is run by the user after agreement, and logged
+(`manual-step-log.md`). The user runs `aws kms cancel-key-deletion` and
+`aws kms enable-key`, the entry goes back in the YAML, and the user runs a
+`terraform import` of `module.kms_keys.aws_kms_key.key["<name>"]` and its alias before the
+next apply. Without the import Terraform creates a new key. After 7 days the key is gone.
+
+**`KMS_<NAME>_PUBLIC_KEY` will not parse.** It is a multi-line PEM; read it as is and hand
+it to the PEM parser.

@@ -1,6 +1,6 @@
 # How meroku names AWS resources
 
-Written against meroku 6.1.0. The project's own copy is the authority:
+Written against meroku 6.2.0. The project's own copy is the authority:
 `infrastructure/modules/naming/` (the rule), and each module's `naming.tf` (which names
 go through it, with what limit).
 
@@ -22,6 +22,7 @@ for most resources (ECS, IAM, ECR, log groups) and `-` where AWS or convention n
 | event queue of service `ai` (6.0.0) | `myapp-events-ai-dev` |
 | data bucket (6.0.0) | `myapp-data-dev-<account id>` (the account id is never truncated) |
 | valkey cache (6.0.0) | `myapp-valkey-dev` (limit 40) |
+| KMS key alias of key `auth` (6.2.0) | `alias/myapp-dev-auth` |
 
 ## Length caps
 
