@@ -4,6 +4,16 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [meroku 2.2.1] - 2026-11-16
+
+### Fixed
+
+- The vault references name `EVENT_DLQ_URL` among the variables a vault secret cannot
+  become on an event consumer: meroku 6.4.0 refuses it there as it refuses
+  `EVENT_QUEUE_URL`.
+
+---
+
 ## [meroku 2.2.0] - 2026-11-16
 
 ### Added

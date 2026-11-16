@@ -975,7 +975,7 @@
       "name": "meroku",
       "source": "./plugins/meroku",
       "description": "A command, an agent and skills for meroku projects: create and change env YAMLs, add AWS infrastructure beside meroku's own, and fix a failed operation from its Fix with AI briefing. Investigates read-only, asks before any write, and leaves generic AWS and Terraform to the official plugins.",
-      "version": "2.2.0",
+      "version": "2.2.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -993,6 +993,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "2.2.1",
+          "date": "2026-11-16",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "The vault references name EVENT_DLQ_URL among the variables a vault secret cannot become on an\u2026"
+        },
         {
           "version": "2.2.0",
           "date": "2026-11-16",
@@ -1026,14 +1034,6 @@
             "Changed"
           ],
           "summary": "The skills describe vaults as meroku 6.1.0 ships them (MTL-439)"
-        },
-        {
-          "version": "1.2.0",
-          "date": "2026-11-14",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "The skills are written against meroku 6.0.0 and YAML schema v32"
         }
       ]
     }

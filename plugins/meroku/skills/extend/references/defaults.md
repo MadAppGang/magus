@@ -259,7 +259,7 @@ In 6.1.0 it also refuses:
 - two vaults giving one workload the same variable;
 - a vault secret with the name of one of that workload's YAML variables, or of a variable
   meroku sets for it (`DATA_BUCKET_*`, `EVENT_QUEUE_URL`, `VALKEY_*`, the backend's
-  `AWS_S3_BUCKET`).
+  `AWS_S3_BUCKET`; from 6.4.0 also `EVENT_DLQ_URL` on an event consumer).
 
 The other vault name collisions are still refused at plan, in `modules/env_secret_check`:
 a variable only a module sets, and a parameter under the workload's own path with the

@@ -161,7 +161,8 @@ reading SSM at plan (a missing permission, for example) does fail the plan.
   (`workload.backend_env_variables`, `services[].env_vars`, a task's
   `environment_variables`);
 - a vault secret with the name of a variable meroku sets for that workload
-  (`DATA_BUCKET_*`, `EVENT_QUEUE_URL`, `VALKEY_*`, the backend's `AWS_S3_BUCKET`);
+  (`DATA_BUCKET_*`, `EVENT_QUEUE_URL`, `VALKEY_*`, the backend's `AWS_S3_BUCKET`; from
+  6.4.0 also `EVENT_DLQ_URL` on an event consumer);
 - from 6.2.0, a vault secret with the name of a variable a connected KMS key gives that
   workload (`KMS_<NAME>_KEY_ARN`, `KMS_<NAME>_PUBLIC_KEY`; `kms-keys.md`).
 
