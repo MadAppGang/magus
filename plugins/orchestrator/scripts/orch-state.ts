@@ -52,6 +52,7 @@ import {
   ownPid,
   ownedKey,
   prune,
+  pruneNow,
   readRecord,
   safeCwd,
   updateProgress,
@@ -369,7 +370,7 @@ function pruneVerb(argv: readonly string[]): void {
   const days = Number(daysText);
   if (!/^\d+(\.\d+)?$/.test(daysText) || !Number.isFinite(days)) die(EXIT_BAD_INPUT, `invalid --days ${JSON.stringify(daysText)}`);
   const ctx = storeContext();
-  const pruned = prune(ctx, { days, now: Date.now() });
+  const pruned = prune(ctx, { days, now: pruneNow(process.env) });
   emit({ ok: true, pruned });
 }
 

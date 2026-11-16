@@ -4,6 +4,18 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [orchestrator 0.4.1] - 2026-11-17
+
+### Fixed
+
+- The session-record tests pass again after their testdata dates aged past the 7-day
+  prune window. Both prune callers, the SessionStart hook and `orch-state prune`, read
+  their clock from `ORCHESTRATOR_PRUNE_NOW` (epoch milliseconds) and use the real clock
+  when it is unset or malformed. The test sandbox sets it, so fixed testdata dates no
+  longer age out as the calendar moves. Binding a session still uses the real clock.
+
+---
+
 ## [meroku 2.2.1] - 2026-11-16
 
 ### Fixed

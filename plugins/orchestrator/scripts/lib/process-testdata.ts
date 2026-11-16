@@ -4,6 +4,7 @@ import { join, resolve } from "node:path";
 import type { StoreContext } from "./record-store";
 import type { OrchestratorIdentity, OrchestratorProgress, OrchestratorClaim } from "./state-core";
 import type { SimState } from "./testdata/herdr-sim";
+import { NOW } from "../../tests/testdata";
 
 export const pluginRoot = resolve(import.meta.dir, "../..");
 export const script = (relative: string) => join(pluginRoot, relative);
@@ -34,6 +35,7 @@ export function sandbox() {
     GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null", XDG_STATE_HOME: join(root, "xdg-state"),
     TMPDIR: tmpdir(), LANG: "C", LC_ALL: "C",
     CLAUDE_CONFIG_DIR: ctx.claudeConfigDir, ORCHESTRATOR_STATE_DIR: ctx.stateDir,
+    ORCHESTRATOR_PRUNE_NOW: String(NOW),
   };
   const log = join(root, "herdr-calls.jsonl");
   return {

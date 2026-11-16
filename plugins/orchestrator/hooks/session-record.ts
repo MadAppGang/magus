@@ -32,6 +32,7 @@ import {
   claudeConfigDirOf,
   ownPid,
   prune,
+  pruneNow,
   readRecord,
   safeCwd,
   writableKey,
@@ -71,7 +72,7 @@ function sessionStart(ctx: StoreContext, sessionId: string, payload: HookPayload
 
   const record = readRecord(ctx, bound.key);
   if (record !== null) publishRecord(record, env);
-  prune(ctx, { days: PRUNE_DAYS, now });
+  prune(ctx, { days: PRUNE_DAYS, now: pruneNow(env) });
 }
 
 function sessionEnd(ctx: StoreContext, sessionId: string, payload: HookPayload, env: NodeJS.ProcessEnv): void {

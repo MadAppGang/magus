@@ -5,7 +5,7 @@ import { createHash } from "node:crypto";
 import {
   readRecord, readIdentity, readProgress, ownedKey, aliasKey, writableKey, readClaim,
   bindSession, updateProgress, writeClaim, fillTicket, prune, ownPid, identityLive,
-  claudeConfigDirOf, type BindInput,
+  claudeConfigDirOf, pruneNow, type BindInput,
 } from "./record-store";
 import { parseRecord, renderTasksTable } from "./state-core";
 import { sandbox, actualStart, ancestor, runBun, spawnEval, collect, script, type Sandbox } from "./process-testdata";
@@ -348,6 +348,15 @@ describe("atomic storage and command protocol [R1.4, R1.8; §6 Store]", () => {
     expect(readClaim(s.ctx, "l-newclaim1")).not.toBeNull();
   });
 
+  test("[REQ-4, REQ-8, REQ-16] TEST-809 orch-state prune compares stored dates against the prune clock", async () => {
+    const s = space();
+    s.identity(identity({ pid: null, procStart: null, updatedAt: NOW - 1000 }));
+    const r = await runBun(s, "scripts/orch-state.ts", ["prune"]);
+    expect(r.code).toBe(0);
+    expect(JSON.parse(r.stdout).pruned.records).toEqual([]);
+    expect(readIdentity(s.ctx, MANAGER)).not.toBeNull();
+  });
+
   test("[REQ-4, REQ-8, REQ-16] TEST-611 failed progress write reports exit 4 and the path without modifying identity", async () => {
     const s = space();
     s.identity(identity({ pid: null, procStart: null })); s.alias(SELF, MANAGER);
@@ -381,4 +390,38 @@ describe("atomic storage and command protocol [R1.4, R1.8; §6 Store]", () => {
     expect((await runBun(s, "scripts/orch-state.ts", ["unknown"], "", { CLAUDE_CODE_SESSION_ID: SELF })).code).toBe(1);
     expect((await runBun(s, "scripts/orch-state.ts", ["dep", "add", "pr:PR #7"], "", { CLAUDE_CODE_SESSION_ID: SELF })).code).toBe(1);
   }, 30_000);
+});
+
+describe("prune clock from the environment [R1.4; record-store contract]", () => {
+  // Calls pruneNow and asserts it returned the real clock: a value read between the call's bounds.
+  const realClock = (env: NodeJS.ProcessEnv) => {
+    const before = Date.now();
+    const got = pruneNow(env);
+    const after = Date.now();
+    expect(got).toBeGreaterThanOrEqual(before);
+    expect(got).toBeLessThanOrEqual(after);
+  };
+
+  test("[REQ-4, REQ-8, REQ-16] TEST-808 ORCHESTRATOR_PRUNE_NOW holding epoch milliseconds is the prune clock", () => {
+    expect(pruneNow({ ORCHESTRATOR_PRUNE_NOW: String(NOW) })).toBe(NOW);
+    expect(pruneNow({ ORCHESTRATOR_PRUNE_NOW: "1700000000000" })).toBe(1_700_000_000_000);
+    expect(pruneNow({ ORCHESTRATOR_PRUNE_NOW: "0" })).toBe(0);
+    expect(pruneNow({ ORCHESTRATOR_PRUNE_NOW: String(Number.MAX_SAFE_INTEGER) })).toBe(Number.MAX_SAFE_INTEGER);
+  });
+
+  test("[REQ-4, REQ-8, REQ-16] TEST-808 surrounding whitespace is trimmed before the value is read", () => {
+    expect(pruneNow({ ORCHESTRATOR_PRUNE_NOW: " 12 " })).toBe(12);
+    expect(pruneNow({ ORCHESTRATOR_PRUNE_NOW: `\t${NOW}\n` })).toBe(NOW);
+  });
+
+  test("[REQ-4, REQ-8, REQ-16] TEST-808 unset, empty, non-digit, negative, fractional and unsafe values use the real clock", () => {
+    realClock({});
+    for (const value of ["", "   ", "abc", "-1", "1.5", "1e12", "+12", "0x10", "12abc", "99999999999999999999", String(Number.MAX_SAFE_INTEGER + 1)]) {
+      realClock({ ORCHESTRATOR_PRUNE_NOW: value });
+    }
+  });
+
+  test("[REQ-4, REQ-8, REQ-16] TEST-808 only ORCHESTRATOR_PRUNE_NOW is read, never another clock-like variable", () => {
+    realClock({ NOW: String(NOW), ORCHESTRATOR_NOW: String(NOW), PRUNE_NOW: String(NOW) });
+  });
 });

@@ -611,6 +611,18 @@ function listDir(path: string): string[] {
 }
 
 /**
+ * The clock that `prune` compares stored dates against: epoch milliseconds from
+ * ORCHESTRATOR_PRUNE_NOW when it holds digits only and is a safe integer,
+ * otherwise the real clock. A process that runs under testdata sets it, so that
+ * records stamped with fixed dates do not age out as the calendar moves on.
+ */
+export function pruneNow(env: NodeJS.ProcessEnv): number {
+  const text = env.ORCHESTRATOR_PRUNE_NOW?.trim() ?? "";
+  const ms = /^\d+$/.test(text) ? Number(text) : Number.NaN;
+  return Number.isSafeInteger(ms) ? ms : Date.now();
+}
+
+/**
  * Deletes what no live session needs:
  *
  * - records (both files) whose session is not live and that were not updated
