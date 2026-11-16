@@ -44,8 +44,9 @@ queue and topic names, in 6.0.0 the event consumer queues and `vaults[].name`, a
 - a renamed ECR repository loses its images;
 - a renamed event consumer service replaces its three queues; messages in them are lost;
 - a renamed KMS key is a deleted key and a new one: the old key is scheduled for deletion,
-  the new key has a new ARN and public key, and signatures made with the old key verify
-  only with its public key.
+  the new key has a new ARN (and, for a signing key, a new public key), and signatures
+  made with the old key verify only with its public key; a MAC made with an old HMAC key
+  never checks against the new one.
 
 Renaming a deployed item is usually fix (b) of the troubleshooting rules, not a YAML
 edit: a planned, agreed one-off step. How names are built and shortened:
@@ -147,15 +148,15 @@ absent keys render nothing.
 | destroying an env | fails while the data bucket holds any object version (`force_destroy` is false) |
 | destroying an env with vaults | the vault values stay in SSM: Terraform never deletes them. The user deletes them when the environment is gone for good |
 
-## KMS signing keys (6.2.0)
+## KMS signing and HMAC keys (6.2.0; HMAC 6.5.0)
 
 | Change on a deployed env | Effect |
 |---|---|
 | adding a key, or a connection | no replacement; every connected workload gets a new task-definition revision, registered in the apply that creates the key; workloads connected only to other keys keep theirs |
 | deleting an entry that is not retired | if any workload still connects to it, generate refuses that connection (the "not in the top-level kms_keys list" refusal); with no connections, the apply schedules the deletion at once, skipping the retire step that keeps the key usable for verification |
-| `retired: true` and its connections removed | grants go at apply while redeployed tasks start without the variables; a task still on the old revision loses `kms:Sign`/`kms:Verify` at once. Stop the app's use, deploy, then retire |
+| `retired: true` and its connections removed | grants go at apply while redeployed tasks start without the variables; a task still on the old revision loses `kms:Sign`/`kms:Verify` (`kms:GenerateMac`/`kms:VerifyMac` on an HMAC key) at once. Stop the app's use, deploy, then retire |
 | deleting a retired entry | the key is scheduled for deletion 7 days ahead and disabled meanwhile; cancellable only by the user (`kms-keys.md`) |
-| changing `key_spec` on a created key | nothing in AWS; the plan warns (`key_spec_unchanged`). Change type with a new key |
+| changing `key_spec` on a created key, including signing to HMAC or back | nothing in AWS; the plan warns (`key_spec_unchanged`). Change type with a new key |
 | deleting an entry and adding one with the same name before the apply | the same key: no deletion scheduled; a different `key_spec` only warns |
 | destroying an env with keys | every key, retired included, is scheduled for deletion with the 7-day window |
 
@@ -174,5 +175,7 @@ Each key costs about $1 a month, retired keys included.
   vault gets one new revision (`valueFrom` is now the parameter's ARN).
 - Updating to 6.2.0 adds no migration: an absent `kms_keys` creates no key. A custom `.tf`
   declaring `module "kms_keys"` is refused at generate after the update.
+- Updating to 6.5.0 adds no migration and changes no existing key: a workload connected
+  only to signing keys keeps its policy byte for byte.
 - `auto_deploy` and per-target `auto_deploy`: decide whether a push deploys.
 - `pubsub_appsync.api_key_enabled: false` deletes a live API key its clients may hold.

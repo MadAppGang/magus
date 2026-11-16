@@ -10,7 +10,7 @@ meroku turns one YAML file per environment into Terraform and runs it against AW
 always runs from the project root, never from the meroku source tree. Use this to place
 any file, error or command in the pipeline before you change anything.
 
-Written against meroku 6.2.0 (plus 6.4.0's event-consumer grants) and schema v32. When this text disagrees with the project,
+Written against meroku 6.2.0 (plus 6.4.0's event-consumer grants and 6.5.0's HMAC keys) and schema v32. When this text disagrees with the project,
 the project wins: the env YAML's `schema_version`, and its own `infrastructure/` copy
 (`infrastructure/version.txt` names that copy's version; `meroku --version` names the
 binary's).
@@ -31,8 +31,8 @@ it.
 |---|---|---|
 | a meroku operation failed (apply, plan, destroy, AWS SSO); a `.meroku/claude/*.md` briefing; "Fix with AI" | `meroku:troubleshoot` | pass the briefing path as the skill's argument when one is named. It reads `yaml` itself when the fix is in the YAML |
 | create a new environment or a new env YAML | `meroku:yaml` | its "Create a new env YAML" section |
-| change, review or migrate an env YAML; vaults; KMS signing keys; what a key does or what the YAML format is | `meroku:yaml` | |
-| add AWS infrastructure: a queue, bucket, Cognito pool or client, SMS setting, alarm, IAM permission, cache, KMS signing key, anything meroku might create | `meroku:extend` | it checks meroku's default first and reads `yaml` itself when the answer is a YAML key |
+| change, review or migrate an env YAML; vaults; KMS signing and HMAC keys; what a key does or what the YAML format is | `meroku:yaml` | |
+| add AWS infrastructure: a queue, bucket, Cognito pool or client, SMS setting, alarm, IAM permission, cache, KMS signing or HMAC key, anything meroku might create | `meroku:extend` | it checks meroku's default first and reads `yaml` itself when the answer is a YAML key |
 | how meroku works, a command, the project layout, why a resource has the name it has | nothing more | answer from this skill |
 | a failure and a change at once ("apply failed after I added a queue") | `meroku:troubleshoot` first | the failure decides what is safe to change |
 | unclear between rows | — | ask the user one multiple-choice question, the rows as options, your best guess first and marked "(Recommended)" |
@@ -106,7 +106,7 @@ Environment"** is the destroy flow. **"🌐 Edit environment with web UI"** edit
 in a browser; its Vaults tab is also where the user sets vault secret values, which are
 never in the YAML. **"🤖 Fix with AI (Claude Code)"** writes a briefing and starts Claude
 Code. In 6.2.0 the web UI's "KMS keys" node and each workload's "KMS keys" tab add,
-retire and connect signing keys.
+retire and connect signing keys, and from 6.5.0 HMAC keys.
 
 Anything that writes (generate, migrate, update, a deploy, dns setup) runs only after the
 user agrees. Prefer asking the user to run deploy and destroy themselves.
@@ -121,7 +121,7 @@ unexpected (hex at the end, words missing), or a change would rename something.
 ## Where to go next
 
 - Vaults, their `secrets` list and their values: read `../yaml/references/vaults.md`.
-- KMS signing keys, their connections and their removal: read
+- KMS signing and HMAC keys, their connections and their removal: read
   `../yaml/references/kms-keys.md`.
 - Design notes for a feature: `infrastructure/ai_docs/` in the project, when the copy
   carries it.

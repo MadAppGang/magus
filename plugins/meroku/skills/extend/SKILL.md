@@ -1,6 +1,6 @@
 ---
 name: extend
-description: Decides where new AWS infrastructure goes in a meroku project and writes any custom Terraform with its README. Use when adding a queue, bucket, Cognito pool, KMS signing key, SMS setting or other AWS resource.
+description: Decides where new AWS infrastructure goes in a meroku project and writes any custom Terraform with its README. Use when adding a queue, bucket, Cognito pool, KMS signing or HMAC key, SMS setting or other AWS resource.
 user-invocable: false
 ---
 
@@ -10,7 +10,7 @@ Put a new AWS resource where the next meroku run keeps it, without a second copy
 anything meroku already creates. Success: the user's plan adds the new resources and
 replaces nothing meroku owns, and every custom folder says why it exists.
 
-Written against meroku 6.2.0 (plus 6.4.0's event-consumer grants). When this text disagrees with the project, the project wins:
+Written against meroku 6.2.0 (plus 6.4.0's event-consumer grants and 6.5.0's HMAC keys). When this text disagrees with the project, the project wins:
 its `infrastructure/env/main.hbs` is what renders, and `infrastructure/version.txt` names
 the copy's version. For the pipeline itself, read `../meroku/SKILL.md`.
 
@@ -66,7 +66,13 @@ They hold for the whole task.
    - **KMS signing keys on a copy older than 6.2.0** (`version.txt` older than `v6.2.0`):
      the copy has no `kms_keys`. Say meroku 6.2.0 has it, name the key, and name the 6.2.0
      note in `references/defaults.md` before recommending the update. Never write
-     `kms_keys` there.
+     `kms_keys` there. For an HMAC key, say 6.5.0 has it, not 6.2.0; the 6.2.0 note
+     still applies first.
+   - **HMAC keys on a 6.2.0 to 6.4.x copy** (`version.txt` `v6.2.0` to `v6.4.x`): the
+     copy has signing keys only, and generate refuses an `HMAC_*` `key_spec`. Say meroku
+     6.5.0 has HMAC keys, with no breaking change for existing keys
+     (`references/defaults.md`), and recommend the update. Never an `HMAC_*` `key_spec`,
+     a custom `aws_kms_key` or a KMS `policy` there as a stop-gap.
    - **Not in any meroku release** in `references/defaults.md`: it is not meroku's
      default; go to step 3.
    - **Never write a YAML key the project's `main.hbs` does not read.** It renders
@@ -136,6 +142,7 @@ One in `custom/pre/`, one in `custom/post/`, one in each `custom/terraform/<env>
 | "a Redis or Valkey cache" | `valkey` | meroku 6.0.0's default |
 | "one API key for three services" | top-level `vaults[]` with the key's name in `secrets`, and `vaults` on each of the three; the user sets the value in the web UI's Vaults tab | meroku's default since 6.0.0, in the 6.1.0 shape; never a copy of the parameter under each workload's own path, never a custom SSM parameter |
 | "a signing key for the api" / "let the api sign JWTs with KMS" | top-level `kms_keys` with the key, and `kms_keys: [{ name, access: sign }]` on the api (`verify` or `both` for the workloads that check); the api gets `KMS_<NAME>_KEY_ARN` and `KMS_<NAME>_PUBLIC_KEY` | meroku's default since 6.2.0; never a custom `aws_kms_key`, `policy` statement for `kms:Sign`, or a key the app creates |
+| "HMAC between our own workloads" / "HS256 tokens between services" / "sign internal requests" | top-level `kms_keys` with `key_spec: HMAC_256` (or `HMAC_224`, `_384`, `_512`), `access: sign` on the caller, `verify` on the receiver, `both` on a workload that does both; each gets `KMS_<NAME>_KEY_ARN` only | meroku's default since 6.5.0 (`meroku update` on an older copy); never a custom `aws_kms_key` with `GENERATE_VERIFY_MAC` or a `policy` statement for `kms:GenerateMac` or `kms:VerifyMac`. A partner outside AWS that checks the token needs a signing key instead |
 | "SMS account settings" | `custom/terraform/<env>/`, `aws_sns_sms_preferences` | account-wide setting meroku has no section for |
 | "a second Cognito pool for the admin dashboard" | first a `cognito` key in the YAML when `main.hbs` reads one for it (a dashboard client); else `custom/terraform/<env>/`: an app client on `module.cognito.user_pool_id` | meroku already creates the pool; a meroku pull request only for a pool setting every project needs |
 | "notify the API from SNS" | `custom/post/` | `api_endpoint` is one of its inputs |
@@ -146,7 +153,7 @@ One in `custom/pre/`, one in `custom/post/`, one in each `custom/terraform/<env>
   is step 4, a meroku pull request.
 - Writing a YAML key for a feature this copy does not have.
 - A custom queue, bucket, IAM grant or SSM path on a 6.0.0 copy for a need its YAML
-  covers (events, data bucket, policy, vaults, valkey, signing keys (6.2.0)).
+  covers (events, data bucket, policy, vaults, valkey, signing keys (6.2.0), HMAC keys (6.5.0)).
 - A `policy` statement on a queue, DLQ, bus, bucket, vault, KMS key or Valkey that meroku
   creates, or any ARN or account id in the env YAML.
 - On a 6.1.0 copy, a vault without `secrets` (generate refuses it), or `secrets: []` on a

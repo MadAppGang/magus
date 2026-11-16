@@ -2,7 +2,7 @@
 
 A map, not the truth. The truth is the project's own copy: what its
 `infrastructure/env/main.hbs` reads and its `infrastructure/modules/` create. This file is
-current as of meroku 6.2.0; read the template before relying on any row.
+current as of meroku 6.2.0, plus the 6.4.0 and 6.5.0 sections below; read the template before relying on any row.
 
 ## How to tell what this project's meroku has
 
@@ -12,6 +12,7 @@ current as of meroku 6.2.0; read the template before relying on any row.
 | Whether this copy has meroku 6.0.0's features | `infrastructure/version.txt` is `v6.0.0` or later, and `main.hbs` has `module "events" {`. The other signs are in "On a copy older than 6.0.0" below |
 | Whether this copy has meroku 6.1.0's vaults | `infrastructure/version.txt` is `v6.1.0` or later. `main.hbs` has `module "vaults" {` from 6.0.0 on, so that sign does not tell the two apart. In the YAML, a 6.0.x vault has no `secrets` key |
 | Whether this copy has meroku 6.2.0's KMS signing keys | `infrastructure/version.txt` is `v6.2.0` or later, the primary test; the copy's `infrastructure/modules/kms_keys/` and a `module "kms_keys"` in `main.hbs` confirm it. Older: no `kms_keys` |
+| Whether this copy has meroku 6.5.0's HMAC keys | `infrastructure/version.txt` is `v6.5.0` or later, the test. A 6.2.0 to 6.4.x copy already has `modules/kms_keys/` and `module "kms_keys"`, so those signs do not tell the two apart. `v6.2.0` to `v6.4.x`: signing keys only |
 | Whether a feature exists in this copy | the block in `infrastructure/env/main.hbs` that reads its key. No block reading the key: the copy does not have it |
 | What a module creates and accepts | `infrastructure/modules/<module>/main.tf` and `variables.tf` |
 | Whether a module exists in this env | most sit under an `{{#if <section>.enabled}}` wrapper in `main.hbs`, and need that section in the env YAML. In 6.0.0, `data_bucket`, `vaults` and `events` render in every env; `valkey` renders under `{{#if _valkey}}` |
@@ -154,6 +155,32 @@ policy in place and gives it one new task-definition revision; no schema migrati
 On an older copy the consumer can only receive. A consumer that must send to its own
 queue or DLQ needs `meroku update` to 6.4.0, never a `policy` block with the queue ARNs.
 
+### Shipped in 6.5.0: present only when this copy is 6.5.0 or later
+
+Check `version.txt` before using the row. No new YAML field: an `HMAC_*` `key_spec` on a
+`kms_keys` entry makes an HMAC key.
+
+| Need | YAML | What the workload gets | Sign |
+|---|---|---|---|
+| An HMAC key for requests between workloads in AWS (HS256-style tokens, signed internal requests) | top-level `kms_keys[]` with `key_spec` `HMAC_224`, `HMAC_256`, `HMAC_384` or `HMAC_512`; connections as for signing keys, `sign` on the caller, `verify` on the receiver | `KMS_<NAME>_KEY_ARN` only; `kms:GenerateMac` and/or `kms:VerifyMac` plus `kms:DescribeKey` on the task role; no public key, no `kms:GetPublicKey` | `version.txt` `v6.5.0` or later |
+
+```yaml
+kms_keys:
+  - name: requests
+    key_spec: HMAC_256
+
+services:
+  - name: api
+    kms_keys:
+      - { name: requests, access: sign }
+  - name: billing
+    kms_keys:
+      - { name: requests, access: verify }
+```
+
+A partner outside AWS cannot check an HMAC key's MAC: a token a third party verifies needs
+a signing key. Read `../../yaml/references/kms-keys.md` before writing a key.
+
 ## On a copy older than 6.0.0
 
 The project's `main.hbs` wins. When `infrastructure/version.txt` is older than
@@ -229,9 +256,16 @@ No migration and no breaking change for a project without the two names below: a
 1. **A custom `.tf` that declares `module "kms_keys"`** is refused at generate after the
    update. Rename it before the update. Renaming a module moves its resources' addresses,
    so read the plan for destroys (a `moved` block keeps them).
-2. **A workload YAML variable named `KMS_<NAME>_KEY_ARN` or `KMS_<NAME>_PUBLIC_KEY`**
-   matters only once a key `<name>` is connected to that workload; generate refuses it
-   then.
+2. **A workload YAML variable named `KMS_<NAME>_KEY_ARN`, or `KMS_<NAME>_PUBLIC_KEY`
+   for a signing key `<name>`,** matters only once that key is connected to that
+   workload; generate refuses it then. From 6.5.0, `KMS_<NAME>_PUBLIC_KEY` stays free
+   on a workload connected to the HMAC key `<name>`.
+
+## Before recommending the update to 6.5.0
+
+No migration and no breaking change: it adds the `HMAC_*` types. A workload connected only
+to signing keys keeps its policy byte for byte and its variables, so the update changes no
+existing key. On a copy older than 6.2.0, the 6.2.0 checks above apply first.
 
 ## What `meroku generate` refuses in 6.0.0
 
@@ -269,13 +303,13 @@ refused at plan.
 In 6.2.0 it also refuses, and names the field:
 
 - a malformed key name (not `^[a-z][a-z0-9_]{0,30}$`), or a duplicate one;
-- an unknown `key_spec`;
+- an unknown `key_spec` (before 6.5.0 that includes every `HMAC_*` value);
 - a connection to a key not in the top-level list, or to a retired key;
 - a bad or missing `access` (`sign`, `verify` or `both`);
 - one key connected twice to one workload;
 - a workload YAML variable (`backend_env_variables`, `env_vars`, `environment_variables`)
   named like a variable a connected key gives it, or a vault secret that would become the
-  same name on that workload;
+  same name on that workload (an HMAC key gives only `KMS_<NAME>_KEY_ARN`);
 - a custom `.tf` that declares `module "kms_keys"`.
 
 The two exact messages upstream gives are in `../../yaml/references/kms-keys.md`.

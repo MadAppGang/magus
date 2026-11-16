@@ -146,8 +146,9 @@ New in 6.0.0, all optional (absent means off). Details in
 New in 6.2.0, optional (absent means no key):
 
 - `kms_keys[]` (`name`, `key_spec` default `ECC_NIST_P256`, `retired`): asymmetric
-  signing keys, alias `alias/<project>-<env>-<name>`. Connected workloads get
-  `KMS_<NAME>_KEY_ARN` and `KMS_<NAME>_PUBLIC_KEY`. Removal is two applies; a changed
+  signing keys, and from 6.5.0 HMAC keys (`key_spec` `HMAC_224` to `HMAC_512`), alias
+  `alias/<project>-<env>-<name>`. Connected workloads get `KMS_<NAME>_KEY_ARN`, and
+  `KMS_<NAME>_PUBLIC_KEY` for a signing key. Removal is two applies; a changed
   `key_spec` on a created key is ignored. Read `kms-keys.md` before changing one
   (`KMS_KEYS.md`).
 

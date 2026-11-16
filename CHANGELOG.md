@@ -16,6 +16,31 @@
 
 ---
 
+## [meroku 2.3.0] - 2026-11-17
+
+### Added
+
+- **The skills cover meroku 6.5.0's HMAC keys.** A `kms_keys` entry with `key_spec`
+  `HMAC_224`, `HMAC_256`, `HMAC_384` or `HMAC_512` is an HMAC key (`GENERATE_VERIFY_MAC`)
+  for requests between workloads in AWS; no new field. `sign` grants `kms:GenerateMac`,
+  `verify` `kms:VerifyMac`, and the workload gets only `KMS_<NAME>_KEY_ARN`.
+- `meroku:yaml`'s KMS keys reference gains an HMAC section: when to use one, a
+  `generate-mac` / `verify-mac` example, the algorithm per type, the 4096-byte limit, and
+  why a third party needs a signing key.
+- `meroku:extend` maps HMAC between a project's own workloads to an HMAC `kms_keys` entry,
+  never a custom `aws_kms_key` or KMS `policy`, and tells a copy older than 6.5.0 that
+  HMAC keys need the update to 6.5.0.
+- `meroku:troubleshoot` explains `AccessDeniedException` on `kms:GenerateMac` and
+  `kms:VerifyMac`.
+
+### Changed
+
+- `KMS_<NAME>_PUBLIC_KEY` is named as set and reserved for signing keys only.
+- The `key_spec_unchanged` warning is described as also covering a switch between a
+  signing key and an HMAC key.
+
+---
+
 ## [meroku 2.2.1] - 2026-11-16
 
 ### Fixed

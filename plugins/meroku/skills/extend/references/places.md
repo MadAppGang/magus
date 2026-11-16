@@ -104,8 +104,10 @@ output "backend_env_vars" {
 }
 ```
 
-This key is a symmetric encryption key, which `kms_keys` does not create. A signing key
-for a workload is the YAML's `kms_keys` from 6.2.0 (`../../yaml/references/kms-keys.md`).
+This key is a symmetric encryption key (`ENCRYPT_DECRYPT`), which `kms_keys` does not
+create. A signing key for a workload is the YAML's `kms_keys` from 6.2.0, and an HMAC key
+for requests between workloads is `kms_keys` from 6.5.0, never a custom `aws_kms_key`
+(`../../yaml/references/kms-keys.md`).
 
 ## `custom/post/`
 

@@ -75,6 +75,10 @@ cannot start on a vault secret, or a failure in `env_secret_check`: read "vaults
 reaching every KMS endpoint; the application should retry for a few seconds. After a
 retire, a task still on the old revision has lost the grant. Read "kms keys" below.
 
+**After an update to 6.5.0.** No migration, and no existing key changes. A failing
+`kms:GenerateMac` or `kms:VerifyMac`, or an `HMAC_*` `key_spec` that generate refuses:
+read "kms keys" below.
+
 ## plan
 
 Opened with `a` on meroku's failed-plan screen. Nothing in AWS changed.
@@ -246,8 +250,8 @@ on the connection, or another name. On a 6.0.x copy every vault collision fails 
 ## kms keys
 
 Not an operation: read it under any of them when the output names a KMS key or
-`kms_keys`. It describes meroku 6.2.0; `../../yaml/references/kms-keys.md` has the rest.
-A copy older than `v6.2.0` has no `kms_keys`.
+`kms_keys`. It describes meroku 6.5.0; `../../yaml/references/kms-keys.md` has the rest.
+A copy older than `v6.2.0` has no `kms_keys`; `v6.2.0` to `v6.4.x` has signing keys only.
 
 **`meroku generate` refuses a `kms_keys` field.** It names the field. Two of the
 messages:
@@ -263,12 +267,12 @@ Each refusal is a configuration fix (c):
 | Refusal | Fix |
 |---|---|
 | a malformed key name (not `^[a-z][a-z0-9_]{0,30}$`), or a duplicate one | another name |
-| an unknown `key_spec` | one of the seven values in `kms-keys.md` |
+| an unknown `key_spec` | one of the values in `kms-keys.md`. An `HMAC_*` value on a copy older than `v6.5.0`: the update to 6.5.0, or a signing key if a third party verifies |
 | a connection to a key not in the top-level list | add the key under `kms_keys` first, or fix the name |
 | a connection to a retired key | remove the connection, or set `retired: false` |
 | a bad or missing `access` | `sign`, `verify` or `both` |
 | one key connected twice to one workload | one connection |
-| a workload YAML variable (`backend_env_variables`, `env_vars`, `environment_variables`) named like a variable a connected key gives it | rename the variable |
+| a workload YAML variable (`backend_env_variables`, `env_vars`, `environment_variables`) named like a variable a connected key gives it (an HMAC key gives only `KMS_<NAME>_KEY_ARN`; `KMS_<NAME>_PUBLIC_KEY` is free beside it) | rename the variable |
 | a vault secret that would become the same name on that workload | rename the secret, or connect the vault with a `prefix` |
 | a custom `.tf` that declares `module "kms_keys"` | rename the custom module |
 
@@ -281,13 +285,31 @@ to it, then retire this one. Until then the key keeps ECC_NIST_P256.
 ```
 
 A warning from the check `key_spec_unchanged`, never the cause of a failed plan or apply.
-The fix: add a key of the wanted type, move the connections to it, apply, then retire the
-old one. Never delete and re-add the entry under the same name: to Terraform that is the
-same key.
+It also fires when the YAML switches a key between a signing type and an `HMAC_*` type:
+the usage cannot change either. Grants and variables follow the type in AWS, so the
+workloads keep working on the old type. The fix: add a key of the wanted type, move the
+connections to it, apply, then retire the old one. Never delete and re-add the entry under
+the same name: to Terraform that is the same key.
 
 **A task lost its key after a retire.** The variables and the grants go at that apply; a
-task still on the old revision loses `kms:Sign` and `kms:Verify` at once. The application
-must stop using the key and be deployed before the retire.
+task still on the old revision loses `kms:Sign` and `kms:Verify` (`kms:GenerateMac` and
+`kms:VerifyMac` on an HMAC key) at once. The application must stop using the key and be
+deployed before the retire.
+
+**`kms:GenerateMac` or `kms:VerifyMac` fails with `AccessDeniedException`.** The grants
+follow `access` and the key's type in AWS:
+
+| When | Cause | Fix |
+|---|---|---|
+| right after the apply that granted it | the grant is still reaching every KMS endpoint | the application retries for a few seconds |
+| on `kms:VerifyMac` (or `kms:GenerateMac`) | the workload's `access` is `sign` (or `verify`) on that key | `access: both`, or the other access, in the YAML (c) |
+| while the YAML says `HMAC_*` | the key is a signing key in AWS: the plan warned `key_spec_unchanged`, and grants follow the AWS type | a new HMAC key, move the connections, retire the old one (c) |
+| on `kms:Sign`, `kms:Verify` or `kms:GetPublicKey` with an HMAC key | the application treats an HMAC key as a signing key; an HMAC key has no such grant and no public key | the application calls `GenerateMac` and `VerifyMac` (outside meroku) |
+
+A MAC that does not check is not a grant problem: the MAC algorithm must match the key
+type (`HMAC_SHA_256` for `HMAC_256`), and a message over 4096 bytes is hashed first, the
+same way on both sides. Never a `policy` statement for `kms:GenerateMac` or
+`kms:VerifyMac`: meroku grants them from `access`.
 
 **A key was deleted by mistake.** Within 7 days it is disabled, not gone. Recovery is
 (b): every step is run by the user after agreement, and logged
@@ -297,4 +319,5 @@ must stop using the key and be deployed before the retire.
 next apply. Without the import Terraform creates a new key. After 7 days the key is gone.
 
 **`KMS_<NAME>_PUBLIC_KEY` will not parse.** It is a multi-line PEM; read it as is and hand
-it to the PEM parser.
+it to the PEM parser. **It is not set at all:** the key is an HMAC key, which has no public
+key; the workload gets only `KMS_<NAME>_KEY_ARN`.

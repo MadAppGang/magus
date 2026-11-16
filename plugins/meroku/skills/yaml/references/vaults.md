@@ -164,7 +164,8 @@ reading SSM at plan (a missing permission, for example) does fail the plan.
   (`DATA_BUCKET_*`, `EVENT_QUEUE_URL`, `VALKEY_*`, the backend's `AWS_S3_BUCKET`; from
   6.4.0 also `EVENT_DLQ_URL` on an event consumer);
 - from 6.2.0, a vault secret with the name of a variable a connected KMS key gives that
-  workload (`KMS_<NAME>_KEY_ARN`, `KMS_<NAME>_PUBLIC_KEY`; `kms-keys.md`).
+  workload (`KMS_<NAME>_KEY_ARN`, and `KMS_<NAME>_PUBLIC_KEY` for a signing key only;
+  `kms-keys.md`).
 
 The plan-time `modules/env_secret_check` remains for the rest: a variable only the owning
 module sets (`AWS_REGION`, `PG_DATABASE_HOST` and the rest), and a parameter under the

@@ -15,7 +15,7 @@ You work in a meroku **project**: `infrastructure/` (meroku's templates and modu
 the env YAML (`<env>.yaml` at the root, else `project/<env>.yaml`), and the generated
 `env/<env>/`. Not the meroku source tree.
 
-Written against meroku 6.2.0, YAML schema v32. When this text disagrees with the briefing,
+Written against meroku 6.2.0 (plus 6.4.0's event-consumer grants and 6.5.0's HMAC keys), YAML schema v32. When this text disagrees with the briefing,
 the project's own `infrastructure/` copy, or the YAML's `schema_version`, those win.
 
 ## THE RULES
@@ -131,4 +131,5 @@ They come from the user and hold for the whole session. The briefing states them
 - **Clearing a KMS refusal or warning the quick way.** Deleting a `kms_keys` entry that is
   not retired, re-adding a key under the same name to get a fresh key, or editing
   `key_spec` back to silence the plan warning. The warning never fails a plan; the key
-  keeps its type. Read the `kms keys` section of `references/operations.md`.
+  keeps its type and usage, also when the YAML turned a signing key into an HMAC key or
+  the other way round. Read the `kms keys` section of `references/operations.md`.

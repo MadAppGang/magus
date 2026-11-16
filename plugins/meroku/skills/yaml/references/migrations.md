@@ -71,7 +71,7 @@ a missing list missing and `[]` as `[]`. Never add `secrets: []` by hand to fini
 migration; read `vaults.md`.
 
 meroku 6.2.0 added no migration either: `kms_keys` is optional, and an absent block
-creates no key.
+creates no key. 6.5.0's HMAC keys add none: they are new `key_spec` values.
 
 For the full table, read `infrastructure/ai_docs/MIGRATIONS.md` in the project, when present.
 

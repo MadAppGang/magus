@@ -10,7 +10,7 @@ The env YAML is the one file that describes an environment. meroku migrates it, 
 it through a Handlebars template into Terraform, and runs Terraform. A configuration fix
 is a change to this file, followed by a meroku rerun. Never a hand edit of `env/<env>/`.
 
-Written against meroku 6.2.0 (plus 6.4.0's event-consumer grants) and schema v32. When this text disagrees with the project,
+Written against meroku 6.2.0 (plus 6.4.0's event-consumer grants and 6.5.0's HMAC keys) and schema v32. When this text disagrees with the project,
 the project wins: its `schema_version`, its `infrastructure/env/main.hbs`, and its
 `infrastructure/modules/`. For the pipeline and the commands, read `../meroku/SKILL.md`.
 
@@ -93,8 +93,10 @@ so the replacement answer is "no, not deployed".
 3. Show the user the exact diff and the replacement answer. Wait for a yes.
 4. Edit the file. Change only the keys you named. Never edit `schema_version` by hand.
    Never set an env var meroku sets itself: `DATA_BUCKET_*`, `EVENT_QUEUE_URL`,
-   `EVENT_DLQ_URL` (6.4.0), `VALKEY_*`, `AWS_S3_BUCKET` on the backend, or `KMS_<NAME>_KEY_ARN` and
-   `KMS_<NAME>_PUBLIC_KEY` on a workload connected to key `<name>`. Generate refuses them.
+   `EVENT_DLQ_URL` (6.4.0), `VALKEY_*`, `AWS_S3_BUCKET` on the backend, or
+   `KMS_<NAME>_KEY_ARN` on a workload connected to key `<name>`, plus
+   `KMS_<NAME>_PUBLIC_KEY` when `<name>` is a signing key (an HMAC key leaves that name
+   free). Generate refuses them.
 5. Ask the user to rerun meroku: `meroku generate <env>` to regenerate, then a deploy
    from the menu. A plan is the proof: look for `must be replaced` and `-/+` on the
    resources you named.
@@ -142,7 +144,7 @@ Vaults tab; they are never read back.
 Read `references/vaults.md` before any change to `vaults` or to a workload's `vaults`
 connections. It also says how to tell a 6.0.x project, whose vaults have no `secrets` key.
 
-## KMS signing keys: declared in the YAML, removed in two applies
+## KMS signing and HMAC keys: declared in the YAML, removed in two applies
 
 meroku 6.2.0 declares asymmetric KMS signing keys at the top level,
 `kms_keys: [{ name, key_spec, retired }]` (`key_spec` defaults to `ECC_NIST_P256`), and
@@ -151,14 +153,23 @@ connects them per workload with `kms_keys: [{ name, access }]`, access `sign`, `
 multi-line PEM). Asked to "add a signing key" or "sign JWTs with KMS": this is the answer,
 never custom Terraform.
 
+From 6.5.0 a `key_spec` of `HMAC_224`, `HMAC_256`, `HMAC_384` or `HMAC_512` makes an HMAC
+key (`GENERATE_VERIFY_MAC`) instead, with no other new field: for HS256-style tokens and
+signed requests between workloads that run in AWS. `sign` creates a MAC, `verify` checks
+one, and the workload gets only `KMS_<NAME>_KEY_ARN`. A token a third party checks needs a
+signing key.
+
 - Adding a key or a connection: no replacement, a new task-definition revision for each
   workload connected to it.
 - Removing a key takes two applies: set `retired: true` and remove its connections, apply,
   then delete the entry and apply. The key is then scheduled for deletion 7 days ahead.
-- A changed `key_spec` on a created key is ignored, and the plan warns.
+- A changed `key_spec` on a created key is ignored, and the plan warns, also for a switch
+  between a signing key and an HMAC key. A new type is a new key, then a retire.
 - Deleting an entry and re-adding the same name before the apply keeps the old key.
 - On a copy whose `infrastructure/version.txt` is older than `v6.2.0` there is no
-  `kms_keys`. Never write it there.
+  `kms_keys`; from `v6.2.0` to `v6.4.x` there are signing keys only. Never write
+  `kms_keys`, or an `HMAC_*` `key_spec`, where the copy does not have it. An HMAC key
+  needs 6.5.0, whatever the copy's version.
 
 Read `references/kms-keys.md` before any change to `kms_keys` or to a workload's
 `kms_keys` connections.
