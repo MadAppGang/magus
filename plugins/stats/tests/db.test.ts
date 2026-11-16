@@ -35,7 +35,13 @@ describe("db", () => {
     }
   });
 
-  function makeSession(id: string, project = "/test/project", date = "2026-03-26"): SessionMetrics {
+  function today(offsetDays = 0): string {
+    return new Date(Date.now() - offsetDays * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
+  }
+
+  function makeSession(id: string, project = "/test/project", date = today()): SessionMetrics {
     return {
       session_id: id,
       date,
@@ -48,14 +54,14 @@ describe("db", () => {
           duration_ms: 50,
           success: true,
           activity_category: "research",
-          timestamp: "2026-03-26T10:00:00.000Z",
+          timestamp: `${date}T10:00:00.000Z`,
         },
         {
           tool_name: "Write",
           duration_ms: 30,
           success: true,
           activity_category: "coding",
-          timestamp: "2026-03-26T10:01:00.000Z",
+          timestamp: `${date}T10:01:00.000Z`,
         },
       ],
       activity_counts: {
@@ -167,7 +173,7 @@ describe("db", () => {
     const db = openDb(dbPath);
 
     for (let i = 1; i <= 7; i++) {
-      const metrics = makeSession(`session-${i}`, "/test/project", `2026-03-${String(i).padStart(2, "0")}`);
+      const metrics = makeSession(`session-${i}`, "/test/project", today(i));
       insertSession(db, metrics);
     }
 
@@ -222,14 +228,14 @@ describe("db", () => {
   test("deleteOldSessions removes rows older than retention window", () => {
     const db = openDb(dbPath);
 
-    // Insert an old session (more than 90 days ago)
-    const oldDate = "2025-01-01"; // well outside 90 days
+    // Insert an old session well outside the 90-day retention window
+    const oldDate = "2025-01-01";
     const metrics = makeSession("old-session", "/test/project", oldDate);
     insertSession(db, metrics);
     insertToolCalls(db, metrics.tool_calls, "old-session");
 
     // Insert a recent session
-    const recent = makeSession("recent-session", "/test/project", "2026-03-26");
+    const recent = makeSession("recent-session");
     insertSession(db, recent);
 
     const { deletedCount } = deleteOldSessions(db, 90);
