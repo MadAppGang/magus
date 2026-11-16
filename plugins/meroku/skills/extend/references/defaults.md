@@ -43,11 +43,11 @@ Check the sign in `main.hbs` before using any row.
 
 | Need | YAML | What the workload gets | Sign in `main.hbs` |
 |---|---|---|---|
-| A queue for one service or the backend, fed by events | `events.subscribes` on `workload` or `services[]`; optional `events.queue` | its own queue `<project>-events-<name>-<env>`, an application DLQ, a delivery DLQ, a rule per subscription, a DLQ alarm; `EVENT_QUEUE_URL` | `module "events" {` with `consumers =` |
+| A queue for one service or the backend, fed by events | `events.subscribes` on `workload` or `services[]`; optional `events.queue` | its own queue `<project>-events-<name>-<env>`, an application DLQ, a delivery DLQ, a rule per subscription, a DLQ alarm; `EVENT_QUEUE_URL`; receive on its own queue (`sqs:ReceiveMessage`, `DeleteMessage`, `ChangeMessageVisibility`, `GetQueueAttributes`, `GetQueueUrl`). Send grants and `EVENT_DLQ_URL`: the 6.4.0 section below | `module "events" {` with `consumers =` |
 | Publishing events | `events.produces` on `workload`, `services[]`, `scheduled_tasks[]`, `event_processor_tasks[]` | `events:PutEvents` for what it declares, nothing else; `EVENT_SOURCE` | same block |
 | A project event bus | `event_bus: { enabled: true }` (optional) | the bus `<project>-<env>`; `EVENT_BUS_NAME` names it | `bus_enabled =` in `module "events"` |
 | Private storage per workload | nothing: the bucket always exists. `data_bucket.shared` to share a folder | `DATA_BUCKET_NAME`, `DATA_BUCKET_PATH` (`<name>/`), `DATA_BUCKET_SHARED_<NAME>` per shared folder; non-backend workloads also get `AWS_S3_BUCKET` | `module "data_bucket" {` |
-| IAM for any workload | `policy` on `workload`, `services[]`, `scheduled_tasks[]`, `event_processor_tasks[]` | one managed policy on the task role; `effect` and `conditions` supported | `service_policies = {`; `custom_policy =` in the task modules |
+| IAM for any workload | `policy` on `workload`, `services[]`, `scheduled_tasks[]`, `event_processor_tasks[]` | one managed policy on the task role; `effect` and `conditions` supported. Only for resources outside meroku: never a statement for a queue, DLQ, bus, bucket, vault, KMS key or Valkey meroku creates | `service_policies = {`; `custom_policy =` in the task modules |
 | Secrets shared by several workloads | top-level `vaults[]` (`name`; in 6.1.0 also `secrets`), and `vaults` on each workload | 6.1.0: each name the vault's `secrets` list declares, from `/<env>/<project>/vault/<name>/<secret>`, as a container secret. 6.0.x: no `secrets` key, and the names came from SSM | `module "vaults" {`; `version.txt` tells 6.0.x from 6.1.0 |
 | A Redis-compatible cache | `valkey` | `VALKEY_HOST`, `VALKEY_PORT`, `VALKEY_URL` (`rediss://`) for workloads in `access` | `module "valkey" {` under `{{#if _valkey}}` |
 | Amplify rewrites, e.g. `/api/*` to the backend | `amplify_apps[].custom_rules` | rules applied before the single-page-app rule; app-level `environment_variables` now render | `custom_rules = [` inside `module "amplify"` |
@@ -135,6 +135,24 @@ services:
 ```
 
 Read `../../yaml/references/kms-keys.md` before writing a key.
+
+### Shipped in 6.4.0: present only when this copy is 6.4.0 or later
+
+Check `version.txt` before relying on it. No YAML key: every workload with
+`events.subscribes` gets it.
+
+| Resource | What the consumer's task role gets |
+|---|---|
+| its own main queue | the receive actions above, plus `sqs:SendMessage`, for a delayed retry (re-send with `DelaySeconds`) |
+| its own application DLQ | `sqs:SendMessage`, `sqs:GetQueueAttributes`, `sqs:GetQueueUrl`, to dead-letter a message at once instead of after `max_receive_count` failed receives |
+| its delivery DLQ | nothing; only EventBridge writes it |
+
+The consumer also gets `EVENT_DLQ_URL`, the application DLQ's URL. It is reserved like
+`EVENT_QUEUE_URL`: never set it in the YAML. The update changes each consumer's events
+policy in place and gives it one new task-definition revision; no schema migration.
+
+On an older copy the consumer can only receive. A consumer that must send to its own
+queue or DLQ needs `meroku update` to 6.4.0, never a `policy` block with the queue ARNs.
 
 ## On a copy older than 6.0.0
 
@@ -224,7 +242,8 @@ Avoid these when writing YAML or custom `.tf`:
 - `AWS_S3_BUCKET` in `workload.backend_env_variables` (on a service or task it is kept,
   with a warning);
 - a YAML env var `DATA_BUCKET_NAME`, `DATA_BUCKET_PATH` or `DATA_BUCKET_SHARED_*`;
-  `EVENT_QUEUE_URL` on an event consumer; `VALKEY_*` on a workload in `valkey.access`;
+  `EVENT_QUEUE_URL` (from 6.4.0 also `EVENT_DLQ_URL`) on an event consumer; `VALKEY_*` on
+  a workload in `valkey.access`;
 - two event tasks whose rules share a name on one bus;
 - an `extensions.sns_topics` entry named `alerts` in an env with event consumers;
 - a custom `.tf` declaring `module "data_bucket"`, `"vaults"`, `"events"` or `"valkey"`,
@@ -273,5 +292,5 @@ App code that creates its own bus, queue or bucket on start-up looks convenient 
 three things: the next meroku run neither knows about it nor removes it on destroy, its
 name drifts from meroku's per-env naming, and its permissions have to be wide enough to
 create resources. The resource belongs in the YAML, or in `custom/` with a README. The app
-reads its name or URL from its environment. A 6.0.0 consumer reads `EVENT_QUEUE_URL`;
-never set it in the YAML (generate refuses it).
+reads its name or URL from its environment. A 6.0.0 consumer reads `EVENT_QUEUE_URL`,
+and from 6.4.0 `EVENT_DLQ_URL`; never set either in the YAML (generate refuses it).

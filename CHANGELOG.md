@@ -4,6 +4,24 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [meroku 2.2.0] - 2026-11-16
+
+### Added
+
+- **`policy` is only for resources outside meroku.** `meroku:yaml` and `meroku:extend`
+  state the rule: the env YAML describes the system, so it never carries an ARN, an
+  account id or a generated AWS resource name, and never a `policy` statement for a
+  queue, DLQ, bus, bucket, vault, KMS key or Valkey meroku creates. Another workload is
+  reached through `events.produces`; a missing grant on meroku's own resource is a gap
+  to fix in meroku. `meroku:yaml` shows a wrong and a right example.
+- The skills cover meroku 6.4.0's event-consumer grants: `sqs:SendMessage` on the
+  consumer's own queue, `SendMessage`, `GetQueueAttributes` and `GetQueueUrl` on its
+  application DLQ, nothing on the delivery DLQ, and the reserved `EVENT_DLQ_URL`.
+- `meroku:troubleshoot` answers `AccessDenied` on a meroku-managed resource with the
+  update, `events.produces` or a meroku report, never a `policy` block.
+
+---
+
 ## [meroku 2.1.0] - 2026-11-15
 
 ### Added

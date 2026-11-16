@@ -56,7 +56,15 @@ YAML does not set; that refusal is by design, and the answer is a YAML decision 
 **After an update to 6.0.0.** `AccessDenied` on `events:PutEvents`: the workload lacks
 `events.produces` for that event, a YAML fix (c). `AccessDenied` on `logs:` or
 `cloudwatch:` reads, or on `sns:Publish`: task roles lost `CloudWatchFullAccess` in 6.0.0;
-the workload needs a `policy` block (c).
+the workload needs a `policy` block (c) for a log group, alarm or topic meroku does not
+manage. On a resource meroku creates, never a `policy` block: see the next paragraph.
+
+**`AccessDenied` on a resource meroku creates** (its event queue or DLQ, bus, bucket,
+vault, KMS key, Valkey). Never fix it with a `policy` statement or an ARN in the YAML.
+`sqs:SendMessage` on the consumer's own queue or application DLQ: the copy is older than
+6.4.0, which grants it; recommend `meroku update` to 6.4.0. On another workload's queue:
+the sender publishes through `events.produces` instead (c). Any other grant meroku lacks
+on its own resource is a meroku gap (a): report it for github.com/MadAppGang/meroku.
 
 **After an update to 6.1.0.** A refusal that a vault `has no secrets list`, a task that
 cannot start on a vault secret, or a failure in `env_secret_check`: read "vaults" below.

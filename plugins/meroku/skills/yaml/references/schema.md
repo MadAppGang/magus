@@ -68,7 +68,8 @@ CI: `enable_github_oidc`, `github_oidc_subjects`, `github_oidc_create_provider`,
 Storage: `bucket_postfix` (part of the bucket name), `bucket_public`.
 IAM: `policy`, a list of statements (`actions`, `resources`, optional `effect` and
 `conditions`) on the backend task role. Before 6.0.0 a `Deny` or a condition deployed as
-an unconditional Allow.
+an unconditional Allow. Only for resources outside meroku: see `../SKILL.md`, "The YAML
+describes the system, not AWS".
 In 6.0.0: `events` (`subscribes`, `queue`, `produces`) and `vaults`, as for services below.
 In 6.2.0: `kms_keys` connections (`name`, `access`), as for services below.
 
@@ -81,7 +82,8 @@ image or `ecr_config`, a command (a list), size, and environment. Services also 
 Event tasks carry `rules[]` (EventBridge patterns); scheduled tasks carry `schedule`
 (`rate(...)` or `cron(...)`, UTC).
 
-In 6.0.0 every item also takes `policy` (statements on its task role) and `vaults`
+In 6.0.0 every item also takes `policy` (statements on its task role, for resources
+outside meroku only) and `vaults`
 (`name`, `access` `read` or `read_write`, `prefix`). Services take `events` with
 `subscribes`, `queue` and `produces`; both task kinds take `events.produces` only
 (`subscribes` or `queue` on a task is refused). Event-task `rules[]` take `bus`

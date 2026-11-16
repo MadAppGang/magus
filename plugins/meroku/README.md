@@ -8,7 +8,7 @@ keeps. When an operation fails, meroku's "Fix with AI" menu entry writes a brief
 `.meroku/claude/` and starts Claude Code at the project root; the plugin works from that
 briefing.
 
-Written against meroku 6.2.0 and env YAML schema v32. Where the skills disagree with the
+Written against meroku 6.2.0 (plus 6.4.0's event-consumer grants) and env YAML schema v32. Where the skills disagree with the
 project itself (the briefing, the project's `infrastructure/` copy, or the YAML's
 `schema_version`), the project wins.
 

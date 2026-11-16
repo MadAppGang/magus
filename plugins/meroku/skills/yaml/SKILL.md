@@ -10,7 +10,7 @@ The env YAML is the one file that describes an environment. meroku migrates it, 
 it through a Handlebars template into Terraform, and runs Terraform. A configuration fix
 is a change to this file, followed by a meroku rerun. Never a hand edit of `env/<env>/`.
 
-Written against meroku 6.2.0 and schema v32. When this text disagrees with the project,
+Written against meroku 6.2.0 (plus 6.4.0's event-consumer grants) and schema v32. When this text disagrees with the project,
 the project wins: its `schema_version`, its `infrastructure/env/main.hbs`, and its
 `infrastructure/modules/`. For the pipeline and the commands, read `../meroku/SKILL.md`.
 
@@ -21,6 +21,50 @@ the project wins: its `schema_version`, its `infrastructure/env/main.hbs`, and i
 bucket, a DNS value, a running service). A name or network change on a deployed
 environment is a destroy and a create, not an edit. Before you call a change safe,
 check it against `references/dangerous-fields.md`.
+
+## The YAML describes the system, not AWS
+
+The env YAML says what the environment must be, not what exists in AWS. It never carries
+an ARN, an account id or a generated AWS resource name.
+
+**`policy` is only for resources outside meroku.** Never write a `policy` statement for a
+resource meroku creates: its event queues and DLQs, buses, buckets, vaults, KMS keys,
+Valkey. meroku grants those from the YAML keys that create them.
+
+- A consumer (`events.subscribes`) already receives from its own queue. From 6.4.0 it
+  also sends to its own queue (a delayed retry with `DelaySeconds`) and to its own
+  application DLQ.
+- To reach another workload, publish an event with `events.produces` and let that
+  workload subscribe. Never grant `sqs:SendMessage` on another workload's queue.
+- A workload needs a permission on its own meroku-managed resource that meroku does not
+  grant: that is a meroku gap. Report it to be fixed in meroku
+  (github.com/MadAppGang/meroku), and write no `policy` block. On a copy older than
+  6.4.0, a consumer that must send to its own queue or DLQ needs `meroku update` to 6.4.0.
+
+Wrong, a hand-written grant on meroku's own queue:
+
+```yaml
+services:
+  - name: worker
+    events:
+      subscribes:
+        - { detail_type: order.created }
+    policy:
+      - actions: ["sqs:SendMessage"]
+        resources: ["arn:aws:sqs:us-east-1:000000000000:myapp-events-orders-dev"]
+```
+
+Right: no `policy` for the worker's own queue, and `events.produces` to reach `orders`:
+
+```yaml
+services:
+  - name: worker
+    events:
+      subscribes:
+        - { detail_type: order.created }
+      produces:
+        - { detail_types: [order.retry.requested] }   # orders subscribes to it
+```
 
 ## Find the file
 
@@ -49,7 +93,7 @@ so the replacement answer is "no, not deployed".
 3. Show the user the exact diff and the replacement answer. Wait for a yes.
 4. Edit the file. Change only the keys you named. Never edit `schema_version` by hand.
    Never set an env var meroku sets itself: `DATA_BUCKET_*`, `EVENT_QUEUE_URL`,
-   `VALKEY_*`, `AWS_S3_BUCKET` on the backend, or `KMS_<NAME>_KEY_ARN` and
+   `EVENT_DLQ_URL` (6.4.0), `VALKEY_*`, `AWS_S3_BUCKET` on the backend, or `KMS_<NAME>_KEY_ARN` and
    `KMS_<NAME>_PUBLIC_KEY` on a workload connected to key `<name>`. Generate refuses them.
 5. Ask the user to rerun meroku: `meroku generate <env>` to regenerate, then a deploy
    from the menu. A plan is the proof: look for `must be replaced` and `-/+` on the
@@ -149,3 +193,5 @@ Read `references/kms-keys.md` before any change to `kms_keys` or to a workload's
   delete it
 - never edit `schema_version`, and never edit a backup to "restore" by hand without asking
 - never fix the problem in AWS instead of the YAML
+- never write an ARN, account id or generated AWS resource name into the YAML, and never a
+  `policy` statement for a resource meroku creates

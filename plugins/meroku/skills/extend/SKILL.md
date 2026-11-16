@@ -10,7 +10,7 @@ Put a new AWS resource where the next meroku run keeps it, without a second copy
 anything meroku already creates. Success: the user's plan adds the new resources and
 replaces nothing meroku owns, and every custom folder says why it exists.
 
-Written against meroku 6.2.0. When this text disagrees with the project, the project wins:
+Written against meroku 6.2.0 (plus 6.4.0's event-consumer grants). When this text disagrees with the project, the project wins:
 its `infrastructure/env/main.hbs` is what renders, and `infrastructure/version.txt` names
 the copy's version. For the pipeline itself, read `../meroku/SKILL.md`.
 
@@ -27,6 +27,15 @@ They hold for the whole task.
   creates, no hand-written duplicate of a resource meroku makes.
 - **Apps never create infrastructure at boot.** No bus, queue or bucket made by app code:
   the next meroku run neither knows about it nor cleans it up.
+- **`policy` is only for resources outside meroku.** The env YAML describes the system,
+  so it never carries an ARN, an account id or a generated AWS resource name. Never a
+  `policy` statement for a resource meroku creates (its queues, DLQs, buses, buckets,
+  vaults, KMS keys, Valkey). A consumer already receives from its own queue, and from
+  6.4.0 sends to its own queue and application DLQ. Another workload is reached by
+  `events.produces` and its subscription, never by `sqs:SendMessage` on its queue. A
+  permission meroku does not grant on its own resource is a meroku gap: report it for
+  github.com/MadAppGang/meroku, write no `policy`. The wrong and right example is in
+  `../yaml/SKILL.md`, "The YAML describes the system, not AWS".
 - **Every custom folder has a `README.md`** with the four answers below, written in the
   same change as the code. Nothing without one merges.
 - **No AWS writes from here either**: inspecting what exists uses the read-only allowlist
@@ -120,9 +129,10 @@ One in `custom/pre/`, one in `custom/post/`, one in each `custom/terraform/<env>
 
 | Request | Place | Why |
 |---|---|---|
-| "an SQS queue for the ai service" | `events.subscribes` on the `ai` service in the env YAML: its own queue, two DLQs and `EVENT_QUEUE_URL`. A publisher needs `events.produces` | meroku 6.0.0's default; the shared `sqs` section only when one queue for every workload fits; a custom queue only on a pre-6.0.0 copy, with a README naming the update; never a queue the app creates at boot |
+| "an SQS queue for the ai service" | `events.subscribes` on the `ai` service in the env YAML: its own queue, two DLQs and `EVENT_QUEUE_URL` (and `EVENT_DLQ_URL` from 6.4.0). A publisher needs `events.produces` | meroku 6.0.0's default; the shared `sqs` section only when one queue for every workload fits; a custom queue only on a pre-6.0.0 copy, with a README naming the update; never a queue the app creates at boot |
 | "a private bucket for a service" | nothing to add: its data bucket folder `<name>/` exists (`DATA_BUCKET_*`); `data_bucket.shared` to share one | meroku 6.0.0's default |
-| "IAM permissions for a service" | `services[].policy` | meroku 6.0.0's default, on the service's task role |
+| "IAM permissions for a service" | `services[].policy`, for resources outside meroku only | meroku 6.0.0's default, on the service's task role; meroku's own resources are granted by their YAML keys |
+| "let the worker send to its queue" / "send to the orders queue" | nothing for its own queue and application DLQ on 6.4.0 or later (`meroku update` on an older copy); `events.produces` for another workload's queue | meroku grants it; a `policy` with a queue ARN is a hand-written duplicate of meroku's grant |
 | "a Redis or Valkey cache" | `valkey` | meroku 6.0.0's default |
 | "one API key for three services" | top-level `vaults[]` with the key's name in `secrets`, and `vaults` on each of the three; the user sets the value in the web UI's Vaults tab | meroku's default since 6.0.0, in the 6.1.0 shape; never a copy of the parameter under each workload's own path, never a custom SSM parameter |
 | "a signing key for the api" / "let the api sign JWTs with KMS" | top-level `kms_keys` with the key, and `kms_keys: [{ name, access: sign }]` on the api (`verify` or `both` for the workloads that check); the api gets `KMS_<NAME>_KEY_ARN` and `KMS_<NAME>_PUBLIC_KEY` | meroku's default since 6.2.0; never a custom `aws_kms_key`, `policy` statement for `kms:Sign`, or a key the app creates |
@@ -137,6 +147,8 @@ One in `custom/pre/`, one in `custom/post/`, one in each `custom/terraform/<env>
 - Writing a YAML key for a feature this copy does not have.
 - A custom queue, bucket, IAM grant or SSM path on a 6.0.0 copy for a need its YAML
   covers (events, data bucket, policy, vaults, valkey, signing keys (6.2.0)).
+- A `policy` statement on a queue, DLQ, bus, bucket, vault, KMS key or Valkey that meroku
+  creates, or any ARN or account id in the env YAML.
 - On a 6.1.0 copy, a vault without `secrets` (generate refuses it), or `secrets: []` on a
   vault whose parameters are in use (the next apply drops every vault secret from every
   connected task definition).

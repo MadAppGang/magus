@@ -10,7 +10,7 @@ meroku turns one YAML file per environment into Terraform and runs it against AW
 always runs from the project root, never from the meroku source tree. Use this to place
 any file, error or command in the pipeline before you change anything.
 
-Written against meroku 6.2.0 and schema v32. When this text disagrees with the project,
+Written against meroku 6.2.0 (plus 6.4.0's event-consumer grants) and schema v32. When this text disagrees with the project,
 the project wins: the env YAML's `schema_version`, and its own `infrastructure/` copy
 (`infrastructure/version.txt` names that copy's version; `meroku --version` names the
 binary's).
