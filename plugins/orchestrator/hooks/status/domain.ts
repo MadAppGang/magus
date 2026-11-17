@@ -36,8 +36,10 @@ export const OTHER_MUX_NOTE = 'not reachable from this multiplexer'
 export const SELF_SCREEN_NOTE = 'this session'
 export const NO_TARGET_NOTE = 'no pane recorded for this session'
 
-/** The role badge on a row. */
-export const ROLE_BADGE: Readonly<Record<'triage' | 'manager' | 'child', string>> = { triage: 'T', manager: 'M', child: 'C' }
+/** The role badge on a row, where it has room for the name. */
+export const ROLE_BADGE: Readonly<Record<'triage' | 'manager' | 'child', string>> = { triage: 'triage', manager: 'manager', child: 'worker' }
+/** The role badge on a row, where it has no room for the name. */
+export const ROLE_SHORT: Readonly<Record<'triage' | 'manager' | 'child', string>> = { triage: 'TR', manager: 'MNG', child: 'WRK' }
 
 /** The glyph before a row's label, by status. */
 export const STATUS_GLYPH: Readonly<Record<'working' | 'idle' | 'waiting' | 'blocked' | 'done' | 'gone' | 'unknown', string>> = {
@@ -49,6 +51,23 @@ export const STATUS_GLYPH: Readonly<Record<'working' | 'idle' | 'waiting' | 'blo
   gone: '×',
   unknown: '?',
 }
+
+/** The theme fill of a status badge; a row that needs the user fills `warning` instead. */
+export const STATUS_FILL: Readonly<Record<keyof typeof STATUS_GLYPH, string>> = {
+  working: 'success',
+  idle: 'inactive',
+  waiting: 'permission',
+  blocked: 'error',
+  done: 'merged',
+  gone: 'subtle',
+  unknown: 'subtle',
+}
+
+/** The cells a badge takes beyond its text: one space each side. */
+export const BADGE_PAD = 2
+
+/** The theme fill of a role badge. */
+export const ROLE_FILL: Readonly<Record<keyof typeof ROLE_BADGE, string>> = { triage: 'claude', manager: 'ide', child: 'suggestion' }
 
 export function assertNever(value: never): never {
   throw new Error(`unexpected value: ${JSON.stringify(value)}`)

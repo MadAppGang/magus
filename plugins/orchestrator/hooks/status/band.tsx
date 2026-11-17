@@ -5,6 +5,8 @@
 import type { RenderElement } from 'claude-code'
 import type { OrchestratorStatus } from '../../types'
 import { actionButton, actionButtonCell, type Els } from './action-button'
+import { roleBadge, statusBadge } from './badge'
+import { BADGE_PAD } from './domain'
 import { BUTTON_CELLS, type BandModel, type BandRow, type CellPlan } from './layout'
 
 export type RowActionsFns = {
@@ -52,15 +54,17 @@ function row(els: Els, r: BandRow, plan: CellPlan, actions: BandActions): Render
     <Box key={`row:${r.key}`} flexDirection="row" gap={1}>
       {cell(els, 'lead', plan.indent + 1, lead, tint)}
       {cell(els, 'label', plan.label, r.label, r.isSelf ? { bold: true } : r.adopted ? { dimColor: true } : {})}
-      {plan.role > 0 && cell(els, 'role', plan.role, r.role, { dimColor: true })}
-      {plan.ticket > 0 && cell(els, 'ticket', plan.ticket, r.ticket, { dimColor: true })}
-      {cell(els, 'status', plan.status, r.statusText, tint)}
-      {plan.progress > 0 && cell(els, 'progress', plan.progress, r.progress)}
+      {plan.role > 0 && (
+        <Box key="role" width={plan.role} flexShrink={0}>{roleBadge(els, 'role', r.roleKind, plan.role >= r.role.length + BADGE_PAD ? r.role : r.roleShort)}</Box>
+      )}
+      {plan.ticket > 0 && cell(els, 'ticket', plan.ticket, r.ticket, { bold: true })}
+      <Box key="status" width={plan.status} flexShrink={0}>{statusBadge(els, 'status', r.status, r.needsYou, r.age)}</Box>
+      {plan.progress > 0 && cell(els, 'progress', plan.progress, r.progress, { bold: true })}
       <Box key="waits" flexGrow={1} flexShrink={1}>
         {plan.waits > 0 && r.waits !== '' && <Text wrap="truncate-end" dimColor>{r.waits}</Text>}
       </Box>
       {plan.jump > 0 && actionButtonCell(els, `jump:${r.key}`, BUTTON_CELLS.jump, 'Jump', 'primary', r.actions.jump ? () => actions.jump(r.key) : null)}
-      {actionButtonCell(els, `show:${r.key}`, BUTTON_CELLS.show, 'Show', 'primary', () => actions.show(r.key))}
+      {actionButtonCell(els, `show:${r.key}`, BUTTON_CELLS.show, 'Show', 'primary', r.actions.show ? () => actions.show(r.key) : null)}
       {plan.open > 0 && actionButtonCell(els, `open:${r.key}`, BUTTON_CELLS.open, 'Open', 'secondary', r.actions.open ? () => actions.open(r.key) : null)}
       {plan.msg > 0 && actionButtonCell(els, `msg:${r.key}`, BUTTON_CELLS.msg, 'Msg', 'secondary', r.actions.msg ? () => actions.msg(r.key) : null)}
     </Box>

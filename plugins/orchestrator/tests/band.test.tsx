@@ -14,10 +14,18 @@ for (const surface of SURFACES) {
     const band = await mountBand($, surface);
     const text = await textOf(band);
     for (const label of ["triage", "api-manager", "child-01", "example/product#7", "1/2", "approval"]) expect(text).toContain(label);
-    expect(await band.findAll({ type: "Button", text: "Show" })).toHaveLength(3);
+    // REQ-A: REQ-5. The self row does not carry Show.
+    expect(await band.findAll({ type: "Button", text: "Show" })).toHaveLength(records.length - 1);
     expect(text).toMatch(/1 needs you/);
-    expect(await rowAction(band, "api-manager", "Jump")).toBeUndefined();
-    expect(await rowAction(band, "api-manager", "Msg")).toBeUndefined();
+    // REQ-1, REQ-2, REQ-4: Jump, Show and Msg belong only to the non-self rows.
+    const others = records.filter(r => r.key !== MANAGER);
+    for (const action of ["Jump", "Show", "Msg"]) {
+      const keys = await Promise.all(others.map(r => rowAction(band, r.name!, action)));
+      for (const key of keys) expect(key).toBeDefined();
+      expect(new Set(keys).size).toBe(others.length);
+      const buttons = await band.findAll({ type: "Button", text: action });
+      expect(buttons.map(b => b.key ?? b.props.key).sort()).toEqual(keys.sort());
+    }
     expect(await rowAction(band, "child-01", "Jump")).toBeDefined();
     expect(h.fsCalls.some(c => c.path === h.sessionsDir + "/701.json" && c.op === "read")).toBe(true);
   });

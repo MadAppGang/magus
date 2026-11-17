@@ -4,6 +4,20 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [orchestrator 0.4.2] - 2026-11-17
+
+### Changed
+
+- The status band and pane draw each session's role as a filled badge: its name
+  (`triage`, `manager`, `worker`) where the band has room, or `TR`, `MNG`, `WRK` where it
+  does not. The state is a filled badge in its colour (green working, violet waiting, red
+  blocked, amber when the session needs you), with its age beside it; the ticket and
+  progress are bold.
+- The row of the session you are in keeps only Open. Jump, Show and Msg pointed at the
+  session you were already in, so they are gone from that row in the band and the pane.
+
+---
+
 ## [magus 7.15.1] - 2026-11-17
 
 ### Fixed

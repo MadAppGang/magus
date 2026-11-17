@@ -6,6 +6,7 @@ import type { RenderElement } from 'claude-code'
 import { actionButton, actionButtonCell, type Els } from './action-button'
 import { BUTTON_CELLS, type ListModel, type SessionLine, type SessionModel } from './layout'
 import { statusColor, type RowActionsFns } from './band'
+import { roleBadge, statusBadge } from './badge'
 
 export type PanelActions = RowActionsFns & {
   /** back to the session list, at a page */
@@ -37,9 +38,16 @@ function listTree(els: Els, model: ListModel, actions: PanelActions): RenderElem
         return (
           <Box key={`line:${l.key}`} flexDirection="row" gap={1}>
             <Box flexGrow={1} flexShrink={1}>
-              <Text wrap="truncate-end" {...(color ? { color } : {})} {...(l.isSelf ? { bold: true } : {})}>{l.text}</Text>
+              <Text wrap="truncate-end">
+                <Text key="lead" wrap="truncate-end" {...(color ? { color } : {})} {...(l.isSelf ? { bold: true } : {})}>{l.lead}</Text>
+                <Text key="g1" wrap="truncate-end">{'  '}</Text>
+                {roleBadge(els, 'role', l.roleKind, l.role)}
+                <Text key="g2" wrap="truncate-end">{'  '}</Text>
+                {statusBadge(els, 'status', l.status, l.needsYou, l.age)}
+                {l.progress !== '' && <Text key="progress" wrap="truncate-end" bold>{`  ${l.progress}`}</Text>}
+              </Text>
             </Box>
-            {actionButtonCell(els, `show:${l.key}`, BUTTON_CELLS.show, 'Show', 'primary', () => actions.show(l.key))}
+            {actionButtonCell(els, `show:${l.key}`, BUTTON_CELLS.show, 'Show', 'primary', l.actions.show ? () => actions.show(l.key) : null)}
             {actionButtonCell(els, `jump:${l.key}`, BUTTON_CELLS.jump, 'Jump', 'primary', l.actions.jump ? () => actions.jump(l.key) : null)}
             {actionButtonCell(els, `open:${l.key}`, BUTTON_CELLS.open, 'Open', 'secondary', l.actions.open ? () => actions.open(l.key) : null)}
             {actionButtonCell(els, `msg:${l.key}`, BUTTON_CELLS.msg, 'Msg', 'secondary', l.actions.msg ? () => actions.msg(l.key) : null)}
@@ -77,7 +85,10 @@ function sessionTree(els: Els, model: SessionModel, columns: number, actions: Pa
   return (
     <Box flexDirection="column">
       {headerRow(els, model.title, buttons)}
-      <Text key="status" wrap="truncate-end" {...(model.needsYou ? { color: 'warning' } : {})}>{model.status}</Text>
+      <Text key="status" wrap="truncate-end">
+        {statusBadge(els, 'state', model.state, model.needsYou, model.age)}
+        {model.statusRest !== '' && <Text key="rest" wrap="truncate-end" {...(model.needsYou ? { color: 'warning' } : {})}>{` · ${model.statusRest}`}</Text>}
+      </Text>
       {model.details.map((l, i) => detailLine(els, l, i))}
       <Text key="rule" wrap="truncate-end" color="subtle">{'─'.repeat(Math.max(1, columns))}</Text>
       {model.note !== null && <Text key="note" wrap="truncate-end" dimColor>{model.note}</Text>}

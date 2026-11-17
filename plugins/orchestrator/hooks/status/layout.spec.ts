@@ -3,6 +3,7 @@ import {
   formatAge, formatProgress, clip, actionsOf, messageText, planCells, pickRows,
   bandModel, panelFit, listPageSize, listModel, screenNote, sessionModel,
 } from "./layout";
+import { BADGE_PAD, NARROW_COLUMNS, ROLE_BADGE, ROLE_SHORT } from "./domain";
 import { row, NOW, MANAGER, TRIAGE, CHILD, taskRows } from "../../tests/testdata";
 import type { OrchestratorScreenState } from "../../types";
 
@@ -16,8 +17,10 @@ describe("band and panel layout [R1.1–R1.3, R1.6; §4.7]", () => {
     expect(formatProgress(null)).toBe("");
     expect(clip("abcdef", 4)).toBe("abc…");
     expect(clip("abcd", 4)).toBe("abcd");
+    // REQ-A: REQ-1, REQ-2, REQ-3, REQ-4.
     expect(actionsOf(row())).toEqual({ jump: true, show: true, open: true, msg: true });
-    expect(actionsOf(row({ isSelf: true }))).toEqual({ jump: false, show: true, open: true, msg: false });
+    expect(actionsOf(row({ isSelf: true }))).toEqual({ jump: false, show: false, open: true, msg: false });
+    expect(actionsOf(row({ isSelf: true, target: null, ticket: null, name: null }))).toEqual({ jump: false, show: false, open: false, msg: false });
     expect(actionsOf(row({ target: null, ticket: null, name: null }))).toEqual({ jump: false, show: true, open: false, msg: false });
     expect(messageText("api-child")).toBe("SendMessage to api-child: ");
   });
@@ -37,7 +40,8 @@ describe("band and panel layout [R1.1–R1.3, R1.6; §4.7]", () => {
         for (const field of ["indent", "role", "ticket", "progress", "waits", "jump", "open", "msg"] as const) expect(p[field]).toBe(0);
       }
       if (columns === 140) {
-        expect(b.rows[0]).toMatchObject({ role: "M", progress: "3/7" });
+        // REQ-B: REQ-9.
+        expect(b.rows[0]).toMatchObject({ role: "manager", progress: "3/7" });
         expect(p.role).toBeGreaterThan(0);
         expect(p.ticket).toBeGreaterThan(0);
         expect(p.progress).toBeGreaterThan(0);
@@ -73,7 +77,8 @@ describe("band and panel layout [R1.1–R1.3, R1.6; §4.7]", () => {
       const list = listModel(rows, fit, page, NOW);
       expect(list).toMatchObject({ kind: "list", page, pages: 4, prev: page > 0, next: page < 3 });
       seen.push(...list.lines.map(l => l.key));
-      for (const line of list.lines) expect(line.actions).toEqual({ jump: !line.isSelf, show: true, open: true, msg: !line.isSelf });
+      // REQ-A: REQ-6. The list carries the same self exclusions as the band.
+      for (const line of list.lines) expect(line.actions).toEqual({ jump: !line.isSelf, show: !line.isSelf, open: true, msg: !line.isSelf });
     }
     expect(seen).toEqual(rows.map(r => r.key));
     expect(new Set(seen).size).toBe(rows.length);
@@ -112,4 +117,170 @@ describe("band and panel layout [R1.1–R1.3, R1.6; §4.7]", () => {
     expect(screenNote(r, "tmux")).toBeNull();
     expect(sessionModel({ ...r, isSelf: true }, screen, { columns: 100, rows: 24 }, "tmux", NOW).note).toBe("this session");
   });
+  test("[REQ-B, REQ-8] TEST-1005 publishes role names, short forms and badge bounds from the spec", () => {
+    expect(ROLE_BADGE).toEqual({ triage: "triage", manager: "manager", child: "worker" });
+    expect(ROLE_SHORT).toEqual({ triage: "TR", manager: "MNG", child: "WRK" });
+    expect(BADGE_PAD).toBe(2);
+    expect(NARROW_COLUMNS).toBe(60);
+  });
+
+  test("[REQ-B, REQ-9] TEST-1006 exposes the name, short form and role key for every band role", () => {
+    const rows = [
+      row({ key: TRIAGE, role: "triage", depth: 0 }),
+      row({ key: MANAGER, role: "manager", depth: 1 }),
+      row({ key: CHILD, role: "child", depth: 2 }),
+    ];
+
+    const band = bandModel(rows, 200, 20, false, NOW)!;
+
+    expect(band.rows.map(r => ({ role: r.role, roleShort: r.roleShort, roleKind: r.roleKind }))).toEqual([
+      { role: "triage", roleShort: "TR", roleKind: "triage" },
+      { role: "manager", roleShort: "MNG", roleKind: "manager" },
+      { role: "worker", roleShort: "WRK", roleKind: "child" },
+    ]);
+  });
+
+  test("[REQ-B, REQ-8, REQ-10] TEST-1007 uses full role widths, falls back to short forms and drops roles below the narrow boundary", () => {
+    const rows = (["triage", "manager", "child"] as const).map((role, depth) => row({
+      key: "badge-" + role, role, depth, label: role + "-session-with-a-long-name",
+      progress: { done: 3, total: 7 }, waits: "release service 2.0",
+      status: "working", since: NOW - 12_000, isSelf: false,
+    }));
+    const band = bandModel(rows, 200, 20, false, NOW)!;
+    const nameWidth = 7 + BADGE_PAD;
+    const shortWidth = 3 + BADGE_PAD;
+
+    expect(planCells(band.rows, 200).role).toBe(nameWidth);
+
+    // Search the public width range without assuming the other cells' drop order.
+    const plans = Array.from({ length: 200 - NARROW_COLUMNS + 1 }, (_, i) => {
+      const columns = NARROW_COLUMNS + i;
+      return { columns, plan: planCells(band.rows, columns) };
+    });
+    expect(plans.some(({ plan }) => plan.role === shortWidth)).toBe(true);
+    for (const { columns, plan } of plans) {
+      expect([0, shortWidth, nameWidth]).toContain(plan.role);
+      expect(Object.values(plan).reduce((sum, width) => sum + width, 0)).toBeLessThanOrEqual(columns);
+    }
+    for (const columns of [0, 1, NARROW_COLUMNS - 1]) {
+      expect(planCells(band.rows, columns).role).toBe(0);
+    }
+
+    const sparse = bandModel([row({
+      role: "manager", depth: 0, label: "api", name: null, ticket: null,
+      target: null, since: null, progress: null, waits: null, isSelf: false,
+    })], 200, 20, false, NOW)!;
+    expect(planCells(sparse.rows, NARROW_COLUMNS).role).toBe(nameWidth);
+  });
+
+  test("[REQ-C, REQ-13] TEST-1008 keeps status before age and sizes badges from statusText with a four-cell text floor", () => {
+    const rows = [
+      row({ key: MANAGER, status: "working", since: NOW - 12_000 }),
+      row({ key: CHILD, role: "child", status: "idle", since: null }),
+    ];
+
+    const band = bandModel(rows, 200, 20, false, NOW)!;
+
+    expect(band.rows.map(r => ({ status: r.status, age: r.age }))).toEqual([
+      { status: "working", age: "12s" },
+      { status: "idle", age: "" },
+    ]);
+    expect(band.rows[0].statusText).toMatch(/^working\s+12s$/);
+    expect(band.rows[1].statusText).toBe("idle");
+    const widestText = Math.max(4, ...band.rows.map(r => r.statusText.length));
+    expect(planCells(band.rows, 200).status).toBe(widestText + BADGE_PAD);
+    for (const statusText of ["", "x", "idle"]) {
+      expect(planCells([{ ...band.rows[1], statusText }], 200).status).toBe(4 + BADGE_PAD);
+    }
+  });
+
+  test("[REQ-C, REQ-14] TEST-1009 exposes list badge parts alongside a readable plain-text line", () => {
+    const cases = [
+      { role: "triage", label: "triage-session", depth: 0, roleName: "triage" },
+      { role: "manager", label: "manager-session", depth: 1, roleName: "manager" },
+      { role: "child", label: "worker-session", depth: 2, roleName: "worker" },
+    ] as const;
+    const rows = cases.map(({ role, label, depth }) => row({
+      key: "list-" + role, role, label, depth, status: "idle",
+      since: NOW - 180_000, progress: { done: 3, total: 7 },
+    }));
+
+    const list = listModel(rows, { columns: 100, rows: 24 }, 0, NOW);
+
+    expect(list.lines).toHaveLength(cases.length);
+    for (const [i, { role, label, depth, roleName }] of cases.entries()) {
+      const line = list.lines[i];
+      expect({ role: line.role, roleKind: line.roleKind, age: line.age, progress: line.progress }).toEqual({
+        role: roleName, roleKind: role, age: "3m", progress: "3/7",
+      });
+      expect(line.lead).toMatch(depth === 0 ? /^○\s+/ : /^\s+○\s+/);
+      expect(line.lead).toContain(label);
+      expect(line.lead.indexOf("○")).toBeLessThan(line.lead.indexOf(label));
+      expect(typeof line.text).toBe("string");
+      expect(line.text).toContain(label);
+    }
+  });
+
+  test("[REQ-C, REQ-14] TEST-1010 uses the worker short form when a list line cannot fit its name", () => {
+    const worker = row({
+      key: CHILD, role: "child", depth: 1, label: "worker-session",
+      status: "idle", since: null, progress: null, waits: null,
+    });
+
+    const lines = Array.from({ length: 100 }, (_, i) =>
+      listModel([worker], { columns: i + 1, rows: 24 }, 0, NOW).lines[0]);
+
+    expect(lines[99].role).toBe("worker");
+    const abbreviated = lines.filter(line => line.role === "WRK");
+    expect(abbreviated.length).toBeGreaterThan(0);
+    for (const line of abbreviated) {
+      expect({ roleKind: line.roleKind, age: line.age, progress: line.progress }).toEqual({
+        roleKind: "child", age: "", progress: "",
+      });
+    }
+  });
+
+  test("[REQ-C, REQ-15] TEST-1011 exposes session state, age and progress/waits after the status", () => {
+    const cases = [
+      { status: "working", since: NOW - 12_000, progress: { done: 3, total: 7 }, waits: null, age: "12s", rest: ["3/7"] },
+      { status: "waiting", since: NOW - 180_000, progress: { done: 3, total: 7 }, waits: "release api 2.0", age: "3m", rest: ["3/7", "release api 2.0"] },
+      { status: "idle", since: null, progress: null, waits: null, age: "", rest: [] },
+    ] as const;
+
+    for (const { status, since, progress, waits, age, rest } of cases) {
+      const r = row({ status, since, progress, waits });
+      const screen: OrchestratorScreenState = { key: r.key, lines: [], at: NOW, error: null, misses: 0 };
+
+      const session = sessionModel(r, screen, { columns: 100, rows: 24 }, "tmux", NOW);
+
+      expect({ state: session.state, age: session.age }).toEqual({ state: status, age });
+      expect(session.status).toContain(status);
+      if (age) {
+        expect(session.status).toContain(age);
+        expect(session.status.indexOf(age)).toBeGreaterThan(session.status.indexOf(status));
+        expect(session.statusRest).not.toContain(age);
+      }
+      expect(session.statusRest).not.toContain(status);
+      for (const part of rest) expect(session.statusRest).toContain(part);
+      if (rest.length === 0) {
+        expect(session.statusRest).toBe("");
+      } else {
+        expect(session.status).toContain(session.statusRest);
+        expect(session.status.indexOf(session.statusRest)).toBeGreaterThan(session.status.indexOf(status));
+      }
+    }
+  });
+
+  test("[REQ-B, REQ-12] TEST-1012 titles a child session with the worker role name", () => {
+    const worker = row({
+      key: CHILD, role: "child", label: "deploy-worker",
+      ticket: { id: "example/service#8", url: null },
+    });
+    const screen: OrchestratorScreenState = { key: CHILD, lines: [], at: NOW, error: null, misses: 0 };
+
+    const session = sessionModel(worker, screen, { columns: 100, rows: 24 }, "tmux", NOW);
+
+    expect(session.title).toBe("deploy-worker · worker · example/service#8");
+  });
+
 });

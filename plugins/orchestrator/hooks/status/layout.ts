@@ -1,13 +1,15 @@
 // Pure: what the band and the panel draw, fitted to their width and rows. Rows in, plain
 // values out; band.tsx and panel.tsx only turn these into trees.
 
-import type { OrchestratorRow, OrchestratorScreenState, OrchestratorStatus } from '../../types'
+import type { OrchestratorRole, OrchestratorRow, OrchestratorScreenState, OrchestratorStatus } from '../../types'
 import {
+  BADGE_PAD,
   GONE_SCREEN_NOTE,
   NARROW_COLUMNS,
   NO_TARGET_NOTE,
   OTHER_MUX_NOTE,
   ROLE_BADGE,
+  ROLE_SHORT,
   SELF_SCREEN_NOTE,
   SHOW_ROWS,
   STATUS_GLYPH,
@@ -46,13 +48,16 @@ function pad(text: string, width: number): string {
 
 // ── actions ───────────────────────────────────────────────────────────────────
 
-/** Which buttons a row carries: Jump (a target, not self), Show (always), Open (a ticket URL), Msg (a name, not self). */
+/**
+ * Which buttons a row carries: Jump (a target, not self), Show (not self), Open (a ticket URL),
+ * Msg (a name, not self). The person is already in the self session, so it gets only Open.
+ */
 export type RowActions = { jump: boolean; show: boolean; open: boolean; msg: boolean }
 
 export function actionsOf(row: OrchestratorRow): RowActions {
   return {
     jump: row.target !== null && !row.isSelf,
-    show: true,
+    show: !row.isSelf,
     open: row.ticket?.url != null,
     msg: row.name !== null && !row.isSelf,
   }
@@ -92,10 +97,15 @@ export type BandRow = {
   indent: string
   glyph: string
   label: string
+  /** the role badge's name and its short form, and the role that picks its fill */
   role: string
+  roleShort: string
+  roleKind: OrchestratorRole
   ticket: string
   status: OrchestratorStatus
+  /** the status and its age, as one string: what the status cell's width is planned from */
   statusText: string
+  age: string
   progress: string
   waits: string
   needsYou: boolean
@@ -128,9 +138,12 @@ function bandRow(row: OrchestratorRow, now: number): BandRow {
     glyph: STATUS_GLYPH[row.status],
     label: row.adopted ? `${row.label} (no parent)` : row.label,
     role: ROLE_BADGE[row.role],
+    roleShort: ROLE_SHORT[row.role],
+    roleKind: row.role,
     ticket: row.ticket?.id ?? '',
     status: row.status,
     statusText: statusCell(row, now),
+    age: formatAge(row.since, now),
     progress: formatProgress(row.progress),
     waits: row.waits ?? '',
     needsYou: row.needsYou,
@@ -152,7 +165,8 @@ function widest(values: readonly string[]): number {
  */
 export function planCells(rows: readonly BandRow[], columns: number): CellPlan {
   const label = Math.max(LABEL_MIN, Math.min(LABEL_MAX, widest(rows.map(r => r.label))))
-  const status = Math.max(4, widest(rows.map(r => r.statusText)))
+  // the status word sits on a badge, padded inside
+  const status = Math.max(4, widest(rows.map(r => r.statusText))) + BADGE_PAD
   const plan: CellPlan = { indent: 0, label, role: 0, ticket: 0, status, progress: 0, waits: 0, jump: 0, open: 0, msg: 0, show: BUTTON_CELLS.show }
   // 2 cells for the glyph and its space, always drawn
   let used = 2 + label + GAP + status + GAP + plan.show
@@ -166,15 +180,17 @@ export function planCells(rows: readonly BandRow[], columns: number): CellPlan {
     ['msg', rows.some(r => r.actions.msg) ? BUTTON_CELLS.msg : 0],
     ['open', rows.some(r => r.actions.open) ? BUTTON_CELLS.open : 0],
     ['progress', widest(rows.map(r => r.progress))],
-    ['role', 1],
+    ['role', widest(rows.map(r => r.role)) + BADGE_PAD],
     ['ticket', Math.min(TICKET_MAX, widest(rows.map(r => r.ticket)))],
   ]
   for (const [cell, width] of want) {
     if (width <= 0) continue
-    const cost = width + (cell === 'indent' ? 0 : GAP)
-    if (used + cost > columns) continue
-    plan[cell] = width
-    used += cost
+    // a role badge with no room for the names takes the short forms
+    const fits = (w: number) => used + w + (cell === 'indent' ? 0 : GAP) <= columns
+    const w = fits(width) ? width : cell === 'role' && fits(widest(rows.map(r => r.roleShort)) + BADGE_PAD) ? widest(rows.map(r => r.roleShort)) + BADGE_PAD : 0
+    if (w === 0) continue
+    plan[cell] = w
+    used += w + (cell === 'indent' ? 0 : GAP)
   }
   const rest = columns - used - GAP
   if (rest >= WAITS_MIN && rows.some(r => r.waits !== '')) plan.waits = rest
@@ -251,8 +267,23 @@ export function panelFit(props: { bodyColumns?: unknown; placement?: unknown; sc
   return { columns: positive(props.bodyColumns, FALLBACK_COLUMNS), rows: props.placement === 'inline' ? Math.max(rows, SHOW_ROWS) : rows }
 }
 
-/** One line of the session list. */
-export type ListLine = { key: string; text: string; status: OrchestratorStatus; needsYou: boolean; isSelf: boolean; actions: RowActions }
+/**
+ * One line of the session list. `text` is the whole line as plain text; `lead`, `role`, `age`
+ * and `progress` are its parts, which the pane draws with the role and status as badges.
+ */
+export type ListLine = {
+  key: string
+  text: string
+  lead: string
+  role: string
+  roleKind: OrchestratorRole
+  age: string
+  progress: string
+  status: OrchestratorStatus
+  needsYou: boolean
+  isSelf: boolean
+  actions: RowActions
+}
 
 export type ListModel = {
   kind: 'list'
@@ -264,14 +295,36 @@ export type ListModel = {
   next: boolean
 }
 
+function listLead(row: OrchestratorRow): string {
+  return `${'  '.repeat(row.depth)}${STATUS_GLYPH[row.status]} ${row.adopted ? `${row.label} (no parent)` : row.label}`
+}
+
 function listText(row: OrchestratorRow, now: number, width: number): string {
-  const parts = [
-    `${'  '.repeat(row.depth)}${STATUS_GLYPH[row.status]} ${row.adopted ? `${row.label} (no parent)` : row.label}`,
-    ROLE_BADGE[row.role],
-    statusCell(row, now),
-    formatProgress(row.progress),
-  ].filter(p => p !== '')
+  const parts = [listLead(row), ROLE_BADGE[row.role], statusCell(row, now), formatProgress(row.progress)].filter(p => p !== '')
   return clip(parts.join('  '), width)
+}
+
+/** The lead cut so the lead, the role badge, the status badge and its age, and the progress fit `width`. */
+function listLine(row: OrchestratorRow, now: number, width: number): ListLine {
+  const age = formatAge(row.since, now)
+  const progress = formatProgress(row.progress)
+  const tailWith = (role: string) => 2 + role.length + BADGE_PAD + 2 + row.status.length + BADGE_PAD + (age ? 1 + age.length : 0) + (progress ? 2 + progress.length : 0)
+  // the role's name while the lead keeps LABEL_MIN cells beside it, else its short form
+  const role = width - tailWith(ROLE_BADGE[row.role]) >= LABEL_MIN ? ROLE_BADGE[row.role] : ROLE_SHORT[row.role]
+  const tail = tailWith(role)
+  return {
+    key: row.key,
+    text: listText(row, now, width),
+    lead: clip(listLead(row), Math.max(1, width - tail)),
+    role,
+    roleKind: row.role,
+    age,
+    progress,
+    status: row.status,
+    needsYou: row.needsYou,
+    isSelf: row.isSelf,
+    actions: actionsOf(row),
+  }
 }
 
 /** Row lines left for the list: the title and the pager take one row each. */
@@ -292,14 +345,7 @@ export function listModel(rows: readonly OrchestratorRow[], fit: PanelFit, page:
   return {
     kind: 'list',
     title: `orchestrator · ${rows.length} ${rows.length === 1 ? 'session' : 'sessions'}${pages > 1 ? ` · page ${p + 1}/${pages}` : ''}`,
-    lines: rows.slice(p * size, (p + 1) * size).map(r => ({
-      key: r.key,
-      text: listText(r, now, width),
-      status: r.status,
-      needsYou: r.needsYou,
-      isSelf: r.isSelf,
-      actions: actionsOf(r),
-    })),
+    lines: rows.slice(p * size, (p + 1) * size).map(r => listLine(r, now, width)),
     page: p,
     pages,
     prev: p > 0,
@@ -313,7 +359,12 @@ export type SessionModel = {
   kind: 'session'
   key: string
   title: string
+  /** the status line as plain text */
   status: string
+  /** the status line's parts: the state on its badge, its age, then the rest after a `·` */
+  state: OrchestratorStatus
+  age: string
+  statusRest: string
   needsYou: boolean
   actions: RowActions
   /** dependencies, holds and the tasks table: everything above the rule */
@@ -359,9 +410,10 @@ export function screenNote(row: OrchestratorRow, own: OwnMux): string | null {
  * lines cut to what is left of the pane. The title and List take the first row.
  */
 export function sessionModel(row: OrchestratorRow, screen: OrchestratorScreenState, fit: PanelFit, own: OwnMux, now: number): SessionModel {
-  const title = [row.label, row.role, row.ticket?.id].filter((p): p is string => typeof p === 'string' && p !== '').join(' · ')
+  const title = [row.label, ROLE_BADGE[row.role], row.ticket?.id].filter((p): p is string => typeof p === 'string' && p !== '').join(' · ')
   const progress = formatProgress(row.progress)
-  const status = [statusCell(row, now), progress && `${progress} tasks`, row.waits && `waits: ${row.waits}`].filter(Boolean).join(' · ')
+  const statusRest = [progress && `${progress} tasks`, row.waits && `waits: ${row.waits}`].filter(Boolean).join(' · ')
+  const status = [statusCell(row, now), statusRest].filter(Boolean).join(' · ')
   const details: SessionLine[] = []
   if (row.deps.length > 0) {
     details.push({ text: 'Depends on', dim: false, tone: 'plain' })
@@ -392,6 +444,9 @@ export function sessionModel(row: OrchestratorRow, screen: OrchestratorScreenSta
     key: row.key,
     title,
     status,
+    state: row.status,
+    age: formatAge(row.since, now),
+    statusRest,
     needsYou: row.needsYou,
     actions: actionsOf(row),
     details: cut,

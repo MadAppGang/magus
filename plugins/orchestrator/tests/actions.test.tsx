@@ -30,16 +30,28 @@ for (const surface of SURFACES) {
     expect(captures(h)).toHaveLength(before);
   });
 
-  test(`[REQ-3, REQ-6, REQ-9] TEST-1401 [R1.3, R1.6] ${surface} self Show contains tasks but never captures its own screen`, async ($, on) => {
+  test(`[REQ-A, REQ-3, REQ-6, REQ-9] TEST-1401 [R1.3, R1.6] ${surface} hides self Show and Msg while non-self Show opens its pane`, async ($, on) => {
     const h = machine(on), records = seedFamily(h);
-    h.seed({ ...records.find(r => r.key === MANAGER)!, tasks: taskRows() });
+    h.seed({ ...records.find(r => r.key === CHILD)!, tasks: taskRows() });
     await start($, h, surface);
     const band = await mountBand($, surface);
-    await pressRow(band, "api-manager", "Show");
+
+    // REQ-2, REQ-4: every Show and Msg belongs to a distinct non-self row.
+    const others = records.filter(r => r.key !== MANAGER);
+    for (const action of ["Show", "Msg"]) {
+      const keys = await Promise.all(others.map(r => rowAction(band, r.name!, action)));
+      for (const key of keys) expect(key).toBeDefined();
+      expect(new Set(keys).size).toBe(others.length);
+      const buttons = await band.findAll({ type: "Button", text: action });
+      expect(buttons.map(b => b.key ?? b.props.key).sort()).toEqual(keys.sort());
+    }
+
+    // REQ-7: the remaining Show action still opens the selected session.
+    await pressRow(band, "child-01", "Show");
     const pane = await mountPane($, surface);
-    expect(await textOf(pane)).toContain("Build API");
-    expect(captures(h)).toEqual([]);
-    expect(await rowAction(band, "api-manager", "Msg")).toBeUndefined();
+    const text = await textOf(pane);
+    expect(text).toContain("child-01");
+    expect(text).toContain("Build API");
   });
 
   test(`[REQ-3, REQ-6, REQ-9] TEST-1402 [R1.6] ${surface} Jump binds tmux switching to the own client then selects the target`, async ($, on) => {
