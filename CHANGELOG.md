@@ -4,6 +4,38 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [magus 7.15.0] - 2026-11-17
+
+### Fixed
+
+- **A company plugin changed on this machine shows as changed, and `p` publishes it
+  (MTL-501).** When a Claude Code session edits a company plugin, it edits the plugin's
+  local version, the one Claude Code loads. magus now compares that local version with the
+  version it came from. `market status` lists it in `plugins[]`, the plugin row shows its
+  scope badge, and `p`, or `magus market publish --plugin <p@m> --from local-version`,
+  publishes only the changed files, keeping GitHub's other changes. A file GitHub also
+  changed, or a base found only by its version, needs `--force`.
+- **An update asks before it replaces those changes.** Before an update, install, repair
+  or load move would replace or stop loading a company plugin's local version with
+  unpublished changes, magus asks Overwrite or Stop, per scope and across the repository's
+  checkouts. With no way to ask (`--yes`, no terminal) it stops. Other marketplaces never
+  ask, and removal never asks. The startup repair leaves such a plugin out and names it.
+- **`e edit here` and `x remove skill` work on a plugin row.** A plugin with one skill
+  acts on that skill, and one with several asks which. The footer leaves both keys out
+  where no skill is in reach.
+
+---
+
+## [magus plugin 1.0.1] - 2026-11-17
+
+### Fixed
+
+- **The `market` skill finds changes made to a company plugin itself.** "Publish my
+  edits" reads `plugins[]` from `market status` and publishes a changed plugin with
+  `--from local-version`, after the skill copies. Needs magus 7.15.0.
+
+---
+
 ## [meroku 2.4.0] - 2026-11-17
 
 ### Changed

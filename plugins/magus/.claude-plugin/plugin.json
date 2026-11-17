@@ -1,6 +1,6 @@
 {
   "name": "magus",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Teaches the magus CLI and TUI: profiles and scopes, install, update and upgrade, doctor, per-subagent model routing, every TUI tab, what to commit to git, and company plugin marketplaces. Answers from the real commands and drives magus market to publish skill edits.",
   "author": {
     "name": "Jack Rudenko",

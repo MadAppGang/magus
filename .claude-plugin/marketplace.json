@@ -597,7 +597,7 @@
       "name": "magus",
       "source": "./plugins/magus",
       "description": "Teaches the magus CLI and TUI: profiles and scopes, install, update and upgrade, doctor, per-subagent model routing, every TUI tab, what to commit to git, and company plugin marketplaces. Answers from the real commands and drives magus market to publish skill edits.",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -615,6 +615,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "1.0.1",
+          "date": "2026-11-17",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "The market skill finds changes made to a company plugin itself"
+        },
         {
           "version": "1.0.0",
           "date": "2026-11-14",

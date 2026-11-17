@@ -23,8 +23,8 @@ published changes the same way.
 - Run a changing verb **without** `--yes` first. Apply only with `--yes=<planId>`, the
   `planId` taken from the JSON of the plan the user approved. Never plain `--yes`: it
   plans again and can apply a plan the user never saw.
-- `--force` only after a `conflict` or `no-base` answer, and only when the user has
-  explicitly agreed to replace the plugin's version.
+- `--force` only after a `conflict`, `no-base` or `base-guessed` answer, and only when
+  the user has explicitly agreed to replace the plugin's version.
 
 ## 1. Check magus
 
@@ -40,6 +40,7 @@ user to run `magus upgrade`, and stop.
 | change a company skill | `magus market skill edit <skill> --json` (copies it into this project; edit that copy) |
 | send edits back | `magus market publish <skill> --json` |
 | update the plugin (several of its skills edited) | `magus market publish --plugin <p@m> --json` — every `edited` skill as one version; `no-base`/`conflict` copies are left out, each goes on its own with `--force` |
+| publish changes made to the plugin's local version (`market status` lists it in `plugins[]` as `changed` or `conflict`) | `magus market publish --plugin <p@m> --from local-version --json` — only the files changed locally, as one version; a file GitHub also changed fails with `error.code: "conflict"`, and `--force` replaces GitHub's version of it |
 | add a project or USER skill to a plugin | `magus market skill add <skill> --plugin <p@m> --json` (`--from global` for a USER skill; `--create-plugin` when the plugin does not exist yet) |
 | add a plugin folder of the user's own | `magus market plugin add <path> [--to <m>] --json` (the folder holds `.claude-plugin/plugin.json`; it stays in place) |
 | remove a skill from a plugin | `magus market skill remove <skill> --plugin <p@m> --json` |
@@ -54,15 +55,22 @@ marketplace. `magus market --help` lists every flag.
 **The user would rather do it by hand:** the same operations are on the screen
 `magus edit` (run it in their own terminal; it needs a TTY, so never run it yourself).
 There, `a` adds the selected skill or plugin folder, `e` copies a company skill here to
-edit, `p` publishes (on a plugin row: every skill edited here as one version), `?` lists
-every key.
+edit, `p` publishes (on a plugin row: its changed local version when it has one, else
+every skill edited here as one version), `?` lists every key.
 
-**Publish without a named skill:** run `magus market status --json` and read `skills[]`.
+**Publish without a named skill:** run `magus market status --json` and read both
+`skills[]` and `plugins[]`.
 
-- any `not-checked` row → `magus market fetch --json`, then `status` again
-- `edited`, `no-base` and `conflict` rows are candidates. None → say there is nothing to
-  publish. One → publish it. Several → list them and ask which; several `edited` rows of
-  one plugin can go together with `publish --plugin <p@m>`.
+- any `not-checked` row in either → `magus market fetch --json`, then `status` again
+- candidates: `skills[]` rows `edited`, `no-base` or `conflict`, and `plugins[]` rows
+  `changed` or `conflict` with at least one `files[]` entry (a row with only
+  `notPublished[]` shows a change that is never published). None → say there is nothing
+  to publish. One → publish it: a `plugins[]` row with
+  `publish --plugin <p@m> --from local-version`. Several → list them and ask which;
+  several `edited` rows of one plugin can go together with `publish --plugin <p@m>`.
+- `error.code: "base-guessed"` on a local-version publish → the version it came from
+  could not be pinned down, so a listed file may be a teammate's GitHub change. Show
+  `files[]`; only if the user confirms they are their changes, rerun with `--force`.
 - `ambiguous` (`owners[]`) → ask which plugin, then pass `--plugin <p@m>`
 - `plugin-newer` → the plugin has a newer version of this skill; nothing to publish
 
@@ -87,6 +95,8 @@ From the final JSON, in plain words:
   request moves no install and keeps the local copy.
 - `version.from` → `version.to` of the plugin.
 - `installs[]` — per scope (USER, PROJECT, LOCAL): moved to which version, or why not.
+  An install whose local version has changes the change does not carry stays at its
+  version; the plan names it, and so does its row's `message`.
 - `localCopy` — removed, kept or created, with its `reason`. A removed project copy is a
   deletion under `.claude/skills/` to commit.
 - "Takes effect in new sessions, or after /reload-plugins."
