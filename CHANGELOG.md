@@ -4,6 +4,24 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [magus 7.15.1] - 2026-11-17
+
+### Fixed
+
+- **`magus upgrade` installs this machine's program at the new version (MTL-501).** It
+  installed only `magus-cli@latest`, and while npm still served the previous program, the
+  package manager kept it without an error: `magus --version` said 7.14.2 after an upgrade
+  to 7.15.0. The upgrade now installs `magus-cli` and this machine's program package at the
+  same exact version, then checks the version that runs and names the fix when they differ.
+  magus itself also warns on every run while the two differ.
+- **magus no longer writes plugin files into Claude Code's cache.** After Claude Code's own
+  command updated a plugin, magus re-copied that plugin's files from the marketplace into
+  Claude Code's cache and rewrote its install record, replacing what Claude Code had just
+  put there, a plugin's local changes included. magus now notes only the version that
+  landed, in its own settings field.
+
+---
+
 ## [magus 7.15.0] - 2026-11-17
 
 ### Fixed
