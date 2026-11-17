@@ -2,7 +2,7 @@
 
 A map, not the truth. The truth is the project's own copy: what its
 `infrastructure/env/main.hbs` reads and its `infrastructure/modules/` create. This file is
-current as of meroku 6.2.0, plus the 6.4.0 and 6.5.0 sections below; read the template before relying on any row.
+current as of meroku 6.2.0, plus the 6.4.0, 6.5.0 and 6.7.0 sections below; read the template before relying on any row.
 
 ## How to tell what this project's meroku has
 
@@ -13,6 +13,7 @@ current as of meroku 6.2.0, plus the 6.4.0 and 6.5.0 sections below; read the te
 | Whether this copy has meroku 6.1.0's vaults | `infrastructure/version.txt` is `v6.1.0` or later. `main.hbs` has `module "vaults" {` from 6.0.0 on, so that sign does not tell the two apart. In the YAML, a 6.0.x vault has no `secrets` key |
 | Whether this copy has meroku 6.2.0's KMS signing keys | `infrastructure/version.txt` is `v6.2.0` or later, the primary test; the copy's `infrastructure/modules/kms_keys/` and a `module "kms_keys"` in `main.hbs` confirm it. Older: no `kms_keys` |
 | Whether this copy has meroku 6.5.0's HMAC keys | `infrastructure/version.txt` is `v6.5.0` or later, the test. A 6.2.0 to 6.4.x copy already has `modules/kms_keys/` and `module "kms_keys"`, so those signs do not tell the two apart. `v6.2.0` to `v6.4.x`: signing keys only |
+| Whether this copy reads a `custom/pre` `backend_policies` output and refuses `workload.backend_policies` and `workload.policies` | `infrastructure/version.txt` is `v6.7.0` or later; `main.hbs` has `module.custom_pre.backend_policies`. Older: all three are ignored |
 | Whether a feature exists in this copy | the block in `infrastructure/env/main.hbs` that reads its key. No block reading the key: the copy does not have it |
 | What a module creates and accepts | `infrastructure/modules/<module>/main.tf` and `variables.tf` |
 | Whether a module exists in this env | most sit under an `{{#if <section>.enabled}}` wrapper in `main.hbs`, and need that section in the env YAML. In 6.0.0, `data_bucket`, `vaults` and `events` render in every env; `valkey` renders under `{{#if _valkey}}` |
@@ -29,7 +30,7 @@ you need.
 | A long-running container | `services[]` | per-service image, port, size, `network_access` |
 | A job on a schedule | `scheduled_tasks[]` | `schedule` is `rate(...)` or `cron(...)`, UTC |
 | A job started by an EventBridge pattern | `event_processor_tasks[]` | `rules[]` hold the patterns |
-| IAM permissions for the backend | `workload.policy` | statements added to the backend task's role. Before 6.0.0 no other workload had `policy`; in 6.0.0 every one has, see below |
+| IAM permissions for the backend | `workload.policy`, the one key | statements added to the backend task's role. Before 6.0.0 no other workload had `policy`; in 6.0.0 every one has, see below. Never `workload.backend_policies` or `workload.policies`: neither was ever rendered, and 6.7.0 refuses both |
 | An SNS topic or SQS queue for the backend | `extensions.sns_topics`, `extensions.sqs_queues` | reach the backend's env only (`add_to_backend_env`), not other services. `sns:Publish` is granted for `add_to_backend_env` topics |
 | A shared queue with an access policy | `sqs` | one queue; services and tasks get its access policy |
 | A user pool and its app clients | `cognito` | `module.cognito` exists only while `cognito.enabled` is true |
@@ -181,6 +182,19 @@ services:
 A partner outside AWS cannot check an HMAC key's MAC: a token a third party verifies needs
 a signing key. Read `../../yaml/references/kms-keys.md` before writing a key.
 
+### Shipped in 6.7.0: present only when this copy is 6.7.0 or later
+
+No new YAML key. `workload.policy` stays the one key for backend IAM statements; what
+changes is what else meroku reads and refuses.
+
+| Need | Where | What the backend gets | Sign |
+|---|---|---|---|
+| The backend's IAM on a resource a `custom/pre` module creates | that module's `output "backend_policies"`, statements in the `policy` shape | the statements, after `workload.policy`, in the one custom policy on its task role | `module.custom_pre.backend_policies` in `main.hbs` |
+
+On an older copy the output is ignored, and so are `workload.backend_policies` and
+`workload.policies`: generate, plan and apply pass, and the backend meets `AccessDenied`
+at runtime. The rules for the output are in `places.md`, "`custom/pre/`".
+
 ## On a copy older than 6.0.0
 
 The project's `main.hbs` wins. When `infrastructure/version.txt` is older than
@@ -267,6 +281,24 @@ No migration and no breaking change: it adds the `HMAC_*` types. A workload conn
 to signing keys keeps its policy byte for byte and its variables, so the update changes no
 existing key. On a copy older than 6.2.0, the 6.2.0 checks above apply first.
 
+## Before recommending the update to 6.7.0
+
+One migration (v33), and it can grant new permissions. Check the env YAMLs for two keys:
+
+1. **`workload.backend_policies` with statements.** Before 6.7.0 they were never rendered,
+   so the backend never had them. v33 moves them into `workload.policy`, after the
+   statements already there, and the next apply grants them. Read them with the user
+   before that apply: a statement written years ago and never in effect may be wider
+   than anyone now wants.
+2. **A non-empty `workload.policies`** (managed policy ARNs). Never attached, and not
+   migrated: generate refuses it after the update. Before the update, turn each into
+   `workload.policy` statements, or into an `aws_iam_role_policy_attachment` in
+   `custom/post/` (`places.md`), then remove the key.
+
+A `custom/pre` module with an `output "backend_policies"` starts to count with the update:
+its statements join the backend's policy on the next apply. Check it against the rules in
+`places.md` first.
+
 ## What `meroku generate` refuses in 6.0.0
 
 Avoid these when writing YAML or custom `.tf`:
@@ -313,6 +345,16 @@ In 6.2.0 it also refuses, and names the field:
 - a custom `.tf` that declares `module "kms_keys"`.
 
 The two exact messages upstream gives are in `../../yaml/references/kms-keys.md`.
+
+In 6.7.0 it also refuses, under `invalid backend IAM configuration:`:
+
+- a `workload.backend_policies` that still holds anything (migration v33 moves a list
+  into `workload.policy`; what is left is a value it could not move, or one written by
+  hand after it);
+- a non-empty `workload.policies` (managed policy ARNs).
+
+An empty list of either passes. The plan, not generate, checks the statements a
+`custom/pre` `backend_policies` output adds.
 
 ## Not a meroku resource
 

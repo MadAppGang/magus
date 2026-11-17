@@ -10,7 +10,7 @@ The env YAML is the one file that describes an environment. meroku migrates it, 
 it through a Handlebars template into Terraform, and runs Terraform. A configuration fix
 is a change to this file, followed by a meroku rerun. Never a hand edit of `env/<env>/`.
 
-Written against meroku 6.2.0 (plus 6.4.0's event-consumer grants and 6.5.0's HMAC keys) and schema v32. When this text disagrees with the project,
+Written against meroku 6.2.0 (plus 6.4.0's event-consumer grants, 6.5.0's HMAC keys and 6.7.0's backend IAM keys) and schema v32 (v33 from 6.7.0). When this text disagrees with the project,
 the project wins: its `schema_version`, its `infrastructure/env/main.hbs`, and its
 `infrastructure/modules/`. For the pipeline and the commands, read `../meroku/SKILL.md`.
 
@@ -66,13 +66,30 @@ services:
         - { detail_types: [order.retry.requested] }   # orders subscribes to it
 ```
 
+**`policy` is the one key for IAM statements**, on the backend (`workload.policy`) as on
+services and both task kinds. Each statement is `actions` and `resources` (both
+non-empty), with optional `effect` (`Allow` or `Deny`, default `Allow`) and `conditions`
+(`test`, `variable`, `values`; never two with the same `test` and `variable`).
+
+- Never write `workload.backend_policies`. Before 6.7.0 it was never rendered: its
+  statements granted nothing. From 6.7.0, migration v33 moves it into `workload.policy`
+  (after the statements already there), and generate refuses one that still holds
+  anything. Read `references/dangerous-fields.md`, "Backend IAM keys", before the first
+  apply after that migration.
+- Never write `workload.policies` (managed policy ARNs). It was never attached, and from
+  6.7.0 generate refuses a non-empty one. Write the permissions as `policy` statements,
+  or attach a managed policy from `custom/post` (`../extend/SKILL.md`).
+- The backend needs a permission on a resource a `custom/pre` module creates: that
+  module's `backend_policies` output, from 6.7.0 (`../extend/references/places.md`).
+  Never its ARN in the YAML.
+
 ## Find the file
 
 1. The env name comes from the briefing, the user, or `env/<env>/`.
 2. meroku looks for `<env>.yaml` at the project root, then `project/<env>.yaml`. The
    first one found is the file. Edit that one.
-3. Read its `schema_version`. Read `references/migrations.md` when it is below 32, when
-   it is missing, or when the user asks about migrations or backups.
+3. Read its `schema_version`. Read `references/migrations.md` when it is below 32 (33 on
+   a 6.7.0 copy), when it is missing, or when the user asks about migrations or backups.
 
 ## Create a new env YAML
 
@@ -178,8 +195,8 @@ Read `references/kms-keys.md` before any change to `kms_keys` or to a workload's
 
 - Read `references/schema.md` only when you need to know which section a key belongs to,
   what it controls, or where its rules are checked.
-- Read `references/migrations.md` only when `schema_version` is below 32 or missing, a
-  backup is involved, or the user asks to migrate.
+- Read `references/migrations.md` only when `schema_version` is below 32 (33 on a 6.7.0
+  copy) or missing, a backup is involved, or the user asks to migrate.
 - Read `references/dangerous-fields.md` before any change to `vpc_cidr`, `use_default_vpc`,
   `project`, `env`, any `name`, `bucket_postfix`, `region`, the state keys, `domain` or
   `ses` zones and records, `postgres.aurora`, `ecr_strategy`, the backend health
@@ -206,3 +223,5 @@ Read `references/kms-keys.md` before any change to `kms_keys` or to a workload's
 - never fix the problem in AWS instead of the YAML
 - never write an ARN, account id or generated AWS resource name into the YAML, and never a
   `policy` statement for a resource meroku creates
+- never write `workload.backend_policies` or `workload.policies`; backend statements go
+  under `workload.policy`

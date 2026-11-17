@@ -7,7 +7,7 @@ A command, an agent and skills for meroku projects: create and change env YAMLs,
 
 | | |
 |---|---|
-| Version | `2.3.0` |
+| Version | `2.4.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 0 |
 | Subagents | 1 |

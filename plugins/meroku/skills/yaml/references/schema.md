@@ -16,7 +16,8 @@ backend health check, compute pools; in 6.0.0 also workload names (unique, not
 `backend`, `vault`, `task` or `shared`), reserved env var names, events, vaults, valkey,
 Amplify rules and policy statements; in 6.1.0 also each vault's `secrets` list and the
 vault name collisions it can see in the YAML; in 6.2.0 also `kms_keys`, its connections,
-the variable names a key gives each workload, and a custom `module "kms_keys"`). A refusal there names the key; that is the
+the variable names a key gives each workload, and a custom `module "kms_keys"`; in 6.7.0
+also a non-empty `workload.backend_policies` or `workload.policies`). A refusal there names the key; that is the
 cheapest place to find a mistake.
 
 Turning a section or an item off removes what it built. `postgres.enabled: false`
@@ -69,7 +70,10 @@ Storage: `bucket_postfix` (part of the bucket name), `bucket_public`.
 IAM: `policy`, a list of statements (`actions`, `resources`, optional `effect` and
 `conditions`) on the backend task role. Before 6.0.0 a `Deny` or a condition deployed as
 an unconditional Allow. Only for resources outside meroku: see `../SKILL.md`, "The YAML
-describes the system, not AWS".
+describes the system, not AWS". It is the one IAM key: `backend_policies` was never
+rendered (v33 moves it into `policy` from 6.7.0), and `policies` (managed policy ARNs) was
+never attached; 6.7.0's generate refuses either when non-empty. From 6.7.0 a `custom/pre`
+module's `backend_policies` output joins this policy too.
 In 6.0.0: `events` (`subscribes`, `queue`, `produces`) and `vaults`, as for services below.
 In 6.2.0: `kms_keys` connections (`name`, `access`), as for services below.
 

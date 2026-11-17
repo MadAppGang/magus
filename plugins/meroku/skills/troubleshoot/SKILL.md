@@ -15,7 +15,7 @@ You work in a meroku **project**: `infrastructure/` (meroku's templates and modu
 the env YAML (`<env>.yaml` at the root, else `project/<env>.yaml`), and the generated
 `env/<env>/`. Not the meroku source tree.
 
-Written against meroku 6.2.0 (plus 6.4.0's event-consumer grants and 6.5.0's HMAC keys), YAML schema v32. When this text disagrees with the briefing,
+Written against meroku 6.2.0 (plus 6.4.0's event-consumer grants, 6.5.0's HMAC keys and 6.7.0's backend IAM keys), YAML schema v32 (v33 from 6.7.0). When this text disagrees with the briefing,
 the project's own `infrastructure/` copy, or the YAML's `schema_version`, those win.
 
 ## THE RULES
@@ -98,7 +98,8 @@ They come from the user and hold for the whole session. The briefing states them
 - Read `references/operations.md` only when classifying (step 5): per-operation
   playbooks for apply, plan, destroy, sso and menu, and a `vaults` section and a
   `kms keys` section to read as well whenever the output names a vault, a vault secret, a
-  KMS key or `kms_keys`.
+  KMS key or `kms_keys`, and a `backend iam` section whenever it names
+  `backend_policies`, `backend_policy` or `workload.policies`.
 - Read `references/manual-step-log.md` only when the fix is (b): the interview and the
   log template to fill in as each agreed command runs.
 - Read `../yaml/SKILL.md` only when the fix is (c), or when a cause points at a YAML

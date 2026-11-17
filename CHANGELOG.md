@@ -4,6 +4,31 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [meroku 2.4.0] - 2026-11-17
+
+### Changed
+
+- **The skills name `workload.policy` as the one key for the backend's IAM statements,
+  as meroku 6.7.0 ships it.** The same key works on services and both task kinds;
+  `effect` is optional (default `Allow`), `actions` and `resources` must be non-empty,
+  and no two conditions in a statement share a `test` and `variable`.
+- `workload.backend_policies` and `workload.policies` are described as never rendered:
+  migration v33 moves `backend_policies` into `workload.policy`, and 6.7.0's generate
+  refuses a leftover one and any non-empty `policies`. A managed policy is attached from
+  `custom/post`, never listed in the env YAML.
+
+### Added
+
+- `meroku:extend` documents a `custom/pre` module's `backend_policies` output (6.7.0):
+  how generate finds it, a fixed list with literal `actions`, and why a `for` of
+  apply-time length fails with "Invalid count argument". It adds a check before the
+  update to 6.7.0, because v33 turns old statements into live grants.
+- `meroku:yaml`'s migrations and dangerous-fields references cover v33.
+- `meroku:troubleshoot` gains a backend IAM section: the generate refusal, the plan
+  failures from a `custom/pre` output, and backend `AccessDenied` on an older copy.
+
+---
+
 ## [orchestrator 0.4.1] - 2026-11-17
 
 ### Fixed

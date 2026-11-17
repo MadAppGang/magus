@@ -162,6 +162,19 @@ absent keys render nothing.
 
 Each key costs about $1 a month, retired keys included.
 
+## Backend IAM keys (6.7.0)
+
+`workload.policy` is the one key. No change here replaces a resource; the backend's
+custom policy (`aws_iam_policy.backend_custom_policy`) is created, changed in place, or
+removed, and the plan names the statements.
+
+| Change on a deployed env | Effect |
+|---|---|
+| migration v33 on a YAML with `workload.backend_policies` statements | the statements move into `workload.policy` and are granted at the next apply, for the first time: before 6.7.0 they were never rendered. Read them with the user before that apply |
+| a non-empty `workload.policies` after the update | generate refuses it; nothing is migrated. Rewrite it as `policy` statements, or attach the managed policy from `custom/post` |
+| adding `output "backend_policies"` to a `custom/pre` module | its statements join the backend's policy on the next apply, after a `meroku generate` |
+| a `backend_policies` output whose length is known only after apply | the plan fails ("Invalid count argument"); nothing changes |
+
 ## Not replacements, still changes people notice
 
 - `services[].network_access`: narrowing cuts traffic. Deleting the key renders
@@ -177,5 +190,7 @@ Each key costs about $1 a month, retired keys included.
   declaring `module "kms_keys"` is refused at generate after the update.
 - Updating to 6.5.0 adds no migration and changes no existing key: a workload connected
   only to signing keys keeps its policy byte for byte.
+- Updating to 6.7.0 replaces nothing, but migration v33 turns old
+  `workload.backend_policies` statements into live grants: "Backend IAM keys" above.
 - `auto_deploy` and per-target `auto_deploy`: decide whether a push deploys.
 - `pubsub_appsync.api_key_enabled: false` deletes a live API key its clients may hold.

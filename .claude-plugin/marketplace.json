@@ -975,7 +975,7 @@
       "name": "meroku",
       "source": "./plugins/meroku",
       "description": "A command, an agent and skills for meroku projects: create and change env YAMLs, add AWS infrastructure beside meroku's own, and fix a failed operation from its Fix with AI briefing. Investigates read-only, asks before any write, and leaves generic AWS and Terraform to the official plugins.",
-      "version": "2.3.0",
+      "version": "2.4.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -993,6 +993,15 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "2.4.0",
+          "date": "2026-11-17",
+          "kinds": [
+            "Changed",
+            "Added"
+          ],
+          "summary": "The skills name workload.policy as the one key for the backend's IAM statements, as meroku\u2026"
+        },
         {
           "version": "2.3.0",
           "date": "2026-11-17",
@@ -1026,15 +1035,6 @@
             "Changed"
           ],
           "summary": "The skills cover meroku 6.2.0's KMS signing keys"
-        },
-        {
-          "version": "2.0.0",
-          "date": "2026-11-15",
-          "kinds": [
-            "Changed",
-            "Removed"
-          ],
-          "summary": "/meroku:meroku is the plugin's one command"
         }
       ]
     }

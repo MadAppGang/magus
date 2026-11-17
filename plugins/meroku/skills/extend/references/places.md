@@ -77,10 +77,32 @@ resource "aws_cognito_user_pool_client" "admin_dashboard" {
   | `project`, `env`, `region`, `account_id` | from the env YAML |
   | `vpc_id`, `subnet_ids` | the env's VPC and subnets |
 
-- Output: **`backend_env_vars` is the only one meroku reads.** A list of
-  `{ name, value }` objects, added to the backend container's environment. meroku reads it
-  through `try(..., [])`, so a misspelt output name fails silently: the backend simply
-  gets no variable. Any other output is ignored.
+- Outputs: **meroku reads `backend_env_vars`, and from 6.7.0 `backend_policies`.** Any
+  other output is ignored, and so is `backend_policies` on a copy older than 6.7.0.
+  - `backend_env_vars`: a list of `{ name, value }` objects, added to the backend
+    container's environment. meroku reads it through `try(..., [])`, so a misspelt output
+    name fails silently: the backend simply gets no variable.
+  - `backend_policies` (6.7.0): IAM statements merged into the backend task role's custom
+    policy, after `workload.policy` from the YAML. It is the way to grant the backend a
+    resource this module creates, since the YAML never carries its ARN. The rules:
+    - `meroku generate` reads it only when a `custom/pre/*.tf` file declares
+      `output "backend_policies"`, and then references it directly, with no `try()`.
+      Regenerate after adding the output. A file that does not parse as HCL is skipped
+      with a warning, so its output is left out.
+    - Each statement has the `policy` shape: `actions` and `resources`, with optional
+      `effect` (`Allow` or `Deny`, default `Allow`) and `conditions` (`test`, `variable`,
+      `values`).
+    - A fixed list with literal `actions`: Terraform must know the number of statements
+      at plan. `resources` may name resources created in the same apply. A `for` whose
+      length is only known after apply (over a computed list attribute, or `split()` of a
+      computed ID) fails the plan with "Invalid count argument". A `for` over a resource
+      with a literal `count`, or a `for_each` over keys written in the configuration, is
+      fine.
+    - Every statement needs non-empty `actions` and `resources`, and no two conditions
+      with the same `test` and `variable`. generate does not see these statements; the
+      plan checks them and fails naming `backend_policy`.
+    - Statements only, never managed policy ARNs: a managed policy is attached in
+      `custom/post/` (below).
 
 Example:
 
@@ -101,6 +123,13 @@ resource "aws_kms_key" "exports" {
 # custom/pre/outputs.tf
 output "backend_env_vars" {
   value = [{ name = "EXPORTS_KMS_KEY_ARN", value = aws_kms_key.exports.arn }]
+}
+
+# 6.7.0: the backend may use the key. A literal list; the ARN is known only at apply
+output "backend_policies" {
+  value = [
+    { actions = ["kms:Encrypt", "kms:Decrypt", "kms:GenerateDataKey"], resources = [aws_kms_key.exports.arn] }
+  ]
 }
 ```
 
@@ -151,6 +180,21 @@ resource "aws_sns_topic_subscription" "billing_to_api" {
 }
 ```
 
+A managed IAM policy for the backend is attached here, never listed in the env YAML
+(`workload.policies` is refused from 6.7.0). `backend_task_role` is the role's name,
+`<project>_backend_task_<env>`:
+
+```hcl
+# custom/post/main.tf
+resource "aws_iam_role_policy_attachment" "backend_s3_read" {
+  role       = var.backend_task_role
+  policy_arn = "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+}
+```
+
+Prefer `workload.policy` statements scoped to the resources the backend uses; attach a
+managed policy only when the user asks for that policy.
+
 ## Checking the result
 
 The user runs `meroku generate <env>` and a plan. Read the plan for:
@@ -158,4 +202,7 @@ The user runs `meroku generate <env>` and a plan. Read the plan for:
 - the custom resources as adds, under their own addresses (`aws_*.<name>`,
   `module.custom_pre.*`, `module.custom_post.*`);
 - no `must be replaced` and no destroy on anything meroku owns;
-- for a pre hook, the backend task definition changing only by the new env var.
+- for a pre hook, the backend task definition changing only by the new env var;
+- for a pre `backend_policies` output, the backend's custom policy
+  (`aws_iam_policy.backend_custom_policy` in `module.workloads`) created or updated in
+  place, with the new statements.

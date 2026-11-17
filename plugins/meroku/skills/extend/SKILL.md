@@ -10,7 +10,7 @@ Put a new AWS resource where the next meroku run keeps it, without a second copy
 anything meroku already creates. Success: the user's plan adds the new resources and
 replaces nothing meroku owns, and every custom folder says why it exists.
 
-Written against meroku 6.2.0 (plus 6.4.0's event-consumer grants and 6.5.0's HMAC keys). When this text disagrees with the project, the project wins:
+Written against meroku 6.2.0 (plus 6.4.0's event-consumer grants, 6.5.0's HMAC keys and 6.7.0's backend IAM keys). When this text disagrees with the project, the project wins:
 its `infrastructure/env/main.hbs` is what renders, and `infrastructure/version.txt` names
 the copy's version. For the pipeline itself, read `../meroku/SKILL.md`.
 
@@ -36,6 +36,11 @@ They hold for the whole task.
   permission meroku does not grant on its own resource is a meroku gap: report it for
   github.com/MadAppGang/meroku, write no `policy`. The wrong and right example is in
   `../yaml/SKILL.md`, "The YAML describes the system, not AWS".
+- **`policy` is the one IAM key**, `workload.policy` for the backend. Never
+  `workload.backend_policies` or `workload.policies` (managed policy ARNs): from 6.7.0
+  generate refuses both. A grant on a resource `custom/pre` creates comes from that
+  module's `backend_policies` output (6.7.0); a managed policy is attached in
+  `custom/post`.
 - **Every custom folder has a `README.md`** with the four answers below, written in the
   same change as the code. Nothing without one merges.
 - **No AWS writes from here either**: inspecting what exists uses the read-only allowlist
@@ -105,7 +110,7 @@ They hold for the whole task.
 | Place | What it is | Pick it when | Examples |
 |---|---|---|---|
 | `custom/terraform/<env>/`, or `custom/terraform/_shared/` for every env | plain `.tf` files appended to `main.tf`; they read any meroku module directly (`module.cognito.user_pool_id`). The most common place | a few resources that sit beside meroku's | SNS SMS account settings; a CodeArtifact repository; an extra app client on meroku's Cognito pool |
-| `custom/pre/` | a module meroku reads, for every env. Today meroku reads only its `backend_env_vars` output, added to the backend container's environment | meroku's own resources need a value you create | a value created here that the backend must see as an env var |
+| `custom/pre/` | a module meroku reads, for every env. meroku reads its `backend_env_vars` output, added to the backend container's environment, and from 6.7.0 its `backend_policies` output, merged into the backend's `workload.policy` | meroku's own resources need a value you create | a value created here that the backend must see as an env var; the backend's IAM statements on a resource created here (6.7.0) |
 | `custom/post/` | a module that receives meroku's outputs, for every env. Its `variables.tf` declares every input, or the plan fails | the code is big enough to be its own module | an SNS subscription that calls the API; a CloudWatch alarm on the cluster; a DNS record in the env zone |
 
 A request can span places (a pre output plus a custom file): one README per folder.
@@ -138,6 +143,9 @@ One in `custom/pre/`, one in `custom/post/`, one in each `custom/terraform/<env>
 | "an SQS queue for the ai service" | `events.subscribes` on the `ai` service in the env YAML: its own queue, two DLQs and `EVENT_QUEUE_URL` (and `EVENT_DLQ_URL` from 6.4.0). A publisher needs `events.produces` | meroku 6.0.0's default; the shared `sqs` section only when one queue for every workload fits; a custom queue only on a pre-6.0.0 copy, with a README naming the update; never a queue the app creates at boot |
 | "a private bucket for a service" | nothing to add: its data bucket folder `<name>/` exists (`DATA_BUCKET_*`); `data_bucket.shared` to share one | meroku 6.0.0's default |
 | "IAM permissions for a service" | `services[].policy`, for resources outside meroku only | meroku 6.0.0's default, on the service's task role; meroku's own resources are granted by their YAML keys |
+| "IAM permissions for the backend" | `workload.policy`, for resources outside meroku only | the one key; never `workload.backend_policies` or `workload.policies`, which 6.7.0 refuses |
+| "the backend must decrypt with the key our pre module creates" | that module's `backend_policies` output, on a 6.7.0 copy | the YAML cannot carry the key's ARN; on an older copy meroku ignores the output, so the grant needs the update |
+| "attach AmazonS3ReadOnlyAccess to the backend" / any managed policy | `custom/post/`: an `aws_iam_role_policy_attachment` on `var.backend_task_role` | the env YAML carries no ARNs; `policy` statements are the other answer |
 | "let the worker send to its queue" / "send to the orders queue" | nothing for its own queue and application DLQ on 6.4.0 or later (`meroku update` on an older copy); `events.produces` for another workload's queue | meroku grants it; a `policy` with a queue ARN is a hand-written duplicate of meroku's grant |
 | "a Redis or Valkey cache" | `valkey` | meroku 6.0.0's default |
 | "one API key for three services" | top-level `vaults[]` with the key's name in `secrets`, and `vaults` on each of the three; the user sets the value in the web UI's Vaults tab | meroku's default since 6.0.0, in the 6.1.0 shape; never a copy of the parameter under each workload's own path, never a custom SSM parameter |
@@ -168,7 +176,13 @@ One in `custom/pre/`, one in `custom/post/`, one in each `custom/terraform/<env>
 - A custom folder without a `README.md`.
 - A post hook whose `variables.tf` misses an input, or declares a conditional one without
   `default = null`.
-- Relying on a pre-hook output other than `backend_env_vars`: meroku reads no other.
+- Relying on a pre-hook output other than `backend_env_vars` and, from 6.7.0,
+  `backend_policies`: meroku reads no other. On an older copy `backend_policies` is
+  ignored too.
+- `workload.backend_policies` or `workload.policies` in the env YAML: never rendered, and
+  refused at generate from 6.7.0.
+- A `backend_policies` output built by a `for` whose length is only known after apply:
+  the plan fails with "Invalid count argument".
 - Referencing `module.<name>` for a section the YAML has turned off: that module does not
   exist, and the plan fails.
 - Proposing a meroku pull request before steps 2 and 3.

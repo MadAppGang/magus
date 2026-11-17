@@ -3,7 +3,8 @@
 The operation is in the briefing's file name (`<time>-<operation>.md`) and in its
 "Where it ran" table. Read only the section that matches it, and "vaults" or "kms keys"
 at the end as well whenever the output names a vault, a vault secret, a KMS key or
-`kms_keys`. THE RULES in `SKILL.md` apply
+`kms_keys`, and "backend iam" whenever it names `backend_policies`, `backend_policy` or
+`workload.policies`. THE RULES in `SKILL.md` apply
 to every section; nothing here relaxes them.
 
 Every Terraform command below runs from `env/<env>/` with the briefing's profile:
@@ -79,6 +80,11 @@ retire, a task still on the old revision has lost the grant. Read "kms keys" bel
 `kms:GenerateMac` or `kms:VerifyMac`, or an `HMAC_*` `key_spec` that generate refuses:
 read "kms keys" below.
 
+**After an update to 6.7.0.** Migration v33 moved `workload.backend_policies` into
+`workload.policy`, so the apply grants those statements for the first time. A generate
+refusal `invalid backend IAM configuration`, or a backend `AccessDenied` on a resource
+outside meroku: read "backend iam" below.
+
 ## plan
 
 Opened with `a` on meroku's failed-plan screen. Nothing in AWS changed.
@@ -102,6 +108,9 @@ given or could reach:
   collision. Read "vaults" below for both.
 - KMS keys: a warning naming a key whose type in AWS differs from `kms_keys` (from the
   check `key_spec_unchanged`) is never why the plan failed. Read "kms keys" below.
+- backend IAM: "Invalid count argument" near `backend_custom_policy`, or a failed
+  `backend_policy` validation, comes from a `custom/pre` `backend_policies` output. Read
+  "backend iam" below.
 
 `terraform plan` without `-out` is safe to rerun while you investigate. In a Neon env it
 fails on the Neon providers (this pane lacks their credentials): read state instead, and
@@ -321,3 +330,46 @@ next apply. Without the import Terraform creates a new key. After 7 days the key
 **`KMS_<NAME>_PUBLIC_KEY` will not parse.** It is a multi-line PEM; read it as is and hand
 it to the PEM parser. **It is not set at all:** the key is an HMAC key, which has no public
 key; the workload gets only `KMS_<NAME>_KEY_ARN`.
+
+## backend iam
+
+Not an operation: read it under any of them when the output names `backend_policies`,
+`backend_policy`, `workload.policies` or `invalid backend IAM configuration`, or when the
+backend meets `AccessDenied` on a resource outside meroku. It describes meroku 6.7.0.
+`workload.policy` is the one key for the backend's IAM statements.
+
+**`meroku generate` refuses with `invalid backend IAM configuration:`.** One line per key:
+
+```
+invalid backend IAM configuration:
+  workload.backend_policies is not read: move its statements under workload.policy ({effect, actions, resources, conditions}, effect defaults to Allow)
+  workload.policies (managed policy ARNs) is not supported: write the permissions as workload.policy statements, or attach a managed policy to the backend task role from custom/post
+```
+
+Both are configuration fixes (c). For `backend_policies`, migration v33 already moved
+every list it could; what is left was not a list, or was written after the migration.
+Move its statements under `workload.policy` and delete the key. For `policies`, write
+each ARN's permissions as `policy` statements, or attach the managed policy with an
+`aws_iam_role_policy_attachment` on `<project>_backend_task_<env>` in `custom/post/`
+(`../../extend/references/places.md`). Never an empty `policy` statement or a hand edit
+of `schema_version` to get past it.
+
+**The plan fails with "Invalid count argument" near `backend_custom_policy`.** A
+`custom/pre` module's `backend_policies` output has a length known only after apply: a
+`for` over a computed list, or over `split()` of a computed ID. The fix is in that module
+(c): a fixed list with literal `actions`; `resources` may still name resources from the
+same apply.
+
+**The plan fails a `backend_policy` validation.** The message names the rule: a statement
+with an empty `actions` or `resources` list, or two conditions with the same `test` and
+`variable`. Statements from `workload.policy` are refused earlier, at generate, so a plan
+failure points at the `custom/pre` `backend_policies` output (c).
+
+**`AccessDenied` on the backend, on a resource outside meroku.**
+
+| Copy | Cause | Fix |
+|---|---|---|
+| older than `v6.7.0`, YAML has `workload.backend_policies` or `workload.policies` | neither was ever rendered; the backend only ever had `workload.policy` | the statements under `workload.policy` (c), or `meroku update` to 6.7.0, which migrates `backend_policies` and refuses `policies` |
+| older than `v6.7.0`, a `custom/pre` module has `output "backend_policies"` | the output is ignored | `meroku update` to 6.7.0; never the resource's ARN in the YAML |
+| `v6.7.0` or later, a `custom/pre` `backend_policies` output added | `meroku generate` was not rerun, or the file does not parse as HCL (generate warns and leaves it out) | regenerate; fix the file (c) |
+| any | the statement is missing or too narrow | a `workload.policy` statement (c), only for a resource meroku does not create; on meroku's own resources read "`AccessDenied` on a resource meroku creates" above |

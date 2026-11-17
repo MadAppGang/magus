@@ -1,6 +1,6 @@
 # schema_version, migrations and backups
 
-Written against meroku 6.2.0, where the current schema is still v32. The authority is the
+Written against meroku 6.2.0, where the current schema is still v32; 6.7.0 adds v33. The authority is the
 meroku that runs: `meroku migrate` with no argument prints the current schema version.
 In the project, `infrastructure/app/migrations.go` (when the copy carries it) holds
 `CurrentSchemaVersion`, the per-version history in the comment above it, and
@@ -57,6 +57,7 @@ these are the ones a user may notice in a diff:
 | v30 | `services[].network_access: full_open` on every existing service; an absent key renders `public` |
 | v31 | name-based policy written as flags: `auto_deploy` true only in `dev`, every non-dev target's auto-deploy turned off, `is_prod` for `prod` and `production`, prod's domain settings |
 | v32 | an existing `neon:` block gets `owner_role`, `create: false` per database, and `project.pg_version` in create mode; a file with no `neon:` block changes only `schema_version` |
+| v33 (6.7.0) | appends the statements of `workload.backend_policies` (never rendered) to `workload.policy`, after the ones already there, and removes the key; an empty one is just removed. The moved statements are granted from the next apply. A `backend_policies` or `policy` that is not a list is left, with a warning, and generate refuses it. `workload.policies` (managed policy ARNs) is not migrated; generate refuses it when non-empty |
 
 meroku 6.0.0 added no migration: its new sections are optional, and absent means off.
 
@@ -72,6 +73,10 @@ migration; read `vaults.md`.
 
 meroku 6.2.0 added no migration either: `kms_keys` is optional, and an absent block
 creates no key. 6.5.0's HMAC keys add none: they are new `key_spec` values.
+
+meroku 6.7.0 adds v33. It is the first migration since v32 that changes what AWS grants:
+statements that sat in `workload.backend_policies` doing nothing become real backend
+permissions at the next apply. Read `dangerous-fields.md`, "Backend IAM keys", before it.
 
 For the full table, read `infrastructure/ai_docs/MIGRATIONS.md` in the project, when present.
 
