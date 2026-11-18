@@ -21,7 +21,7 @@ export function machine(on: On, options: { selfId?: string; mux?: "tmux" | "herd
   const h = {
     clock, stateDir, sessionsDir, files, starts, fsCalls, commands, effects, toasts, fills, opens, closes,
     panes: [] as UiPane[], placed: options.placed !== false, fillAllowed: true,
-    denyPs: false, denyReads: false, captureExit: 0, captureText: "live screen\ntrailing spaces   ",
+    denyPs: false, psExit: 0, denyReads: false, captureExit: 0, captureText: "live screen\ntrailing spaces   ",
     herdrAtFallback: options.herdrAtFallback ?? false, herdrUnavailable: options.herdrUnavailable ?? false,
     openerExits: [0], client: "/dev/tty-test\tproduct\n",
     seed(r: OrchestratorRecord) {
@@ -78,7 +78,8 @@ export function machine(on: On, options: { selfId?: string; mux?: "tmux" | "herd
     if (herdr && (h.herdrUnavailable || (argv[0] === "herdr" && h.herdrAtFallback))) return { deny: "herdr executable unavailable" };
     if (argv[0] === "env" && argv.includes("ps")) {
       if (h.denyPs) return { deny: "ps unavailable" };
-      const pids = argv[argv.indexOf("-p") + 1]!.split(",").map(Number);
+      if (h.psExit !== 0) return { value: ok("", h.psExit, "ps failed") };
+      const pids = argv.includes("-A") ? [...starts.keys()] : argv[argv.indexOf("-p") + 1]!.split(",").map(Number);
       return { value: ok(pids.filter(pid => starts.has(pid)).map(pid => pid + " " + starts.get(pid)).join("\n")) };
     }
     if ((argv[0] === "tmux" && argv[1] === "capture-pane") || (herdr && argv[1] === "pane" && argv[2] === "read"))

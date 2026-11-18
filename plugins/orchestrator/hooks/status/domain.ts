@@ -28,6 +28,8 @@ export const AGE_REFRESH_MS = 10_000
 export const STALE_RECORD_MS = 24 * 3_600_000
 /** Every host command the mod runs gives up after this long. */
 export const RUN_TIMEOUT_MS = 3_000
+/** A process found live is checked against a fresh `ps` snapshot again after this long. */
+export const LIVE_RECHECK_MS = 10_000
 /** Below this many band columns a row keeps only its label, its status and Show. */
 export const NARROW_COLUMNS = 60
 

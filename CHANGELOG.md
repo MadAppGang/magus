@@ -4,6 +4,22 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [orchestrator 0.4.3] - 2026-11-18
+
+### Fixed
+
+- **The status band no longer keeps several CPU cores busy.** Every session checked
+  whether the others were still running with one `ps -p` call over all their process ids.
+  On macOS, `ps` takes 5 to 7 seconds whenever `-p` names more than one process, and the
+  band ran it every 2 seconds in every session, so with 30 to 46 sessions open the checks
+  took about 3 cores on average and up to 9. The calls also ran past their 3 second limit,
+  so every row read "unknown". The band now reads one list of all processes (a fraction of
+  a second), checks a running session again every 10 seconds and a new one at once, and
+  never checks a finished session twice. A session whose process id was reused by another
+  program still reads "gone", now within 10 seconds.
+
+---
+
 ## [orchestrator 0.4.2] - 2026-11-17
 
 ### Changed

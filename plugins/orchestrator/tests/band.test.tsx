@@ -37,7 +37,7 @@ for (const surface of SURFACES) {
     expect(engineOwn(await band.drawn())).toEqual(ENGINE_DRAWING);
   });
 
-  test(`[REQ-1, REQ-2, REQ-5, REQ-8] TEST-1303 [R1.8; §6 Mod wiring] ${surface} removes dead/reused-pid live fields in the next active tick`, async ($, on) => {
+  test(`[REQ-1, REQ-2, REQ-5, REQ-8] TEST-1303 [R1.8; §6 Mod wiring] ${surface} removes dead/reused-pid live fields and never adopts the reused pid's file`, async ($, on) => {
     const h = machine(on), records = seedFamily(h);
     const child = records.find(r => r.key === CHILD)!;
     h.native(child, "busy");
@@ -50,13 +50,13 @@ for (const surface of SURFACES) {
       pid, procStart: LATER_START, sessionId: "different1", status: "busy", name: "replacement",
       tmux: "other:@99.%999", statusUpdatedAt: NOW, updatedAt: NOW,
     }));
-    const before = h.fsCalls.length;
-    await h.clock.advance(2000);
+    for (let t = 0; t < 12_000; t += 2000) await h.clock.advance(2000);
     const text = await textOf(band);
     expect(text).toContain("gone");
     expect(text).not.toContain("replacement");
     expect(text).toContain("child-01");
-    expect(h.fsCalls.slice(before).filter(c => c.op === "read" && c.path === h.sessionsDir + "/" + pid + ".json")).toHaveLength(0);
+    expect(text).not.toContain("other:@99");
+    expect(text).not.toContain("%999");
     h.starts.delete(pid);
     await h.clock.advance(2000);
     expect(await textOf(band)).toContain("gone");

@@ -117,6 +117,9 @@ test("[REQ-417] TEST-2702 a manager outside herdr or under tmux-in-herdr gets ex
   error(await c.run(["list"], "", { TMUX: "host" }), 10);
   expect(inputCalls(c)).toEqual([]);
 }, 15_000);
+// Five opens start about 170 simulated herdr calls and wait out each shell-ready
+// window. Measured: 17 s on a CI runner, 24 s locally at load 100, and 30 s,
+// the old limit, at load 219. The limit leaves twice the loaded time.
 test("[REQ-418, REQ-428] TEST-2703 five opens keep start order, exact open/list JSON, launch claims, stable focus and geometry", async () => {
   const c = await space(), opened: string[] = [];
   for (let i = 1; i <= 5; i++) {
@@ -148,7 +151,7 @@ test("[REQ-418, REQ-428] TEST-2703 five opens keep start order, exact open/list 
   expect(readFileSync(c.path, "utf8")).toBe(before);
   const sim = c.s.sim(); expect(sim.tabs).toHaveLength(1); expect(sim.tabs[0]!.focused).toBe("w1:p1");
   expect(rectsOf(sim, "w1:t1").get("w1:p1")).toEqual({ x: 0, y: 0, width: 52, height: 49 });
-}, 30_000);
+}, 60_000);
 test("[REQ-419] TEST-2704 seeded ten-child limit exits 12, past-limit opens and duplicate name exits 3", async () => {
   const c = await space();
   for (let i = 0; i < 10; i++) c.seed();
@@ -583,6 +586,8 @@ test("[REQ-425] TEST-2720 delivery with the right terminal but no remaining agen
   expect(r.code).toBe(5); expect(json(r).outcome).toBe("gone");
   expect(c.s.calls().filter(a => a[1] === "send-text")).toEqual([]);
 }, 30_000);
+// Measured: 16 s on a CI runner and 24 s locally at load 100 to 219, against
+// the old 30 s limit. The limit leaves twice the loaded time.
 test("[REQ-422, REQ-427, REQ-435] TEST-2721 full trust recovery keeps the old refusal scoped to its launch, retypes once and delivers one new prompt", async () => {
   const c = await space();
   mutateSim(c, s => { s.splitQueue = [{ onRun: [
@@ -612,7 +617,7 @@ test("[REQ-422, REQ-427, REQ-435] TEST-2721 full trust recovery keeps the old re
   const delivered = await c.run(["prompt", "--pane", e.pane, "--prompt-file", c.promptFile("report the result")]);
   expect(delivered.code).toBe(0); expect(json(delivered).outcome).toBe("sent");
   expect(c.s.calls().filter(a => a[1] === "send-text" && a[3] === "report the result")).toHaveLength(1);
-}, 30_000);
+}, 60_000);
 test("[REQ-427] TEST-2723 trust/retype refuse bound claims; expired claims fail and busy agents are never re-launched", async () => {
   const c = await space(), bound = c.seed();
   error(await c.run(["trust", "--pane", bound.pane]), 13, "bound");

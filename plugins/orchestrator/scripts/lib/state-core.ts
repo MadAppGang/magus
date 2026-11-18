@@ -685,13 +685,23 @@ export function sameProcess(procStart: string | null | undefined, lstart: string
 /**
  * The argv that lists pids with their start time in the form `parseLstart`
  * reads: `ps` under `TZ=UTC LC_ALL=C`, so the store and the mod compare the
- * same string.
+ * same string. For one pid: macOS `ps` takes a multi-second path whenever `-p`
+ * holds more than one entry, so more pids go through `psAllArgv` instead.
  */
 export function psArgv(pids: readonly number[]): string[] {
   return ["env", "TZ=UTC", "LC_ALL=C", "ps", "-o", "pid=,lstart=", "-p", pids.join(",")];
 }
 
-/** `psArgv`'s answer: pid → lstart for each running pid listed. */
+/**
+ * The argv that lists every process with its start time, in `psArgv`'s form.
+ * One `-A` snapshot costs a fraction of a second where a `-p` list of two or
+ * more pids costs seconds on macOS.
+ */
+export function psAllArgv(): string[] {
+  return ["env", "TZ=UTC", "LC_ALL=C", "ps", "-A", "-o", "pid=,lstart="];
+}
+
+/** `psArgv`'s or `psAllArgv`'s answer: pid → lstart for each running pid listed. */
 export function parsePsStarts(stdout: string): Map<number, string> {
   const out = new Map<number, string>();
   for (const line of stdout.split("\n")) {

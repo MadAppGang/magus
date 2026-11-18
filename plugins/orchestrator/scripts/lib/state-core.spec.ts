@@ -4,7 +4,7 @@ import {
   parseIdentity, parseProgress, parseRecord, mergeRecord, parseClaim, emptyProgress,
   recordFromClaim, rebindIdentity, nextUpdatedAt, applyOp, depKey, parseDepSpec,
   resolveDeps, openDeps, normaliseTicketId, parseTasksTable, renderTasksTable,
-  progressOf, parseLstart, sameProcess, psArgv, parsePsStarts, parseTmuxField,
+  progressOf, parseLstart, sameProcess, psArgv, psAllArgv, parsePsStarts, parseTmuxField,
   type OrchestratorOp,
 } from "./state-core";
 import { identity, progress, record, claim, taskRows, NOW, START, MANAGER, TRIAGE, SELF, PRODUCT } from "../../tests/testdata";
@@ -207,6 +207,7 @@ describe("formats and limits [R1.2, R1.8, R5.3, R5.6; §4.1]", () => {
       expect(sameProcess(START, value)).toBe(false);
     }
     expect(psArgv([701, 702])).toEqual(["env", "TZ=UTC", "LC_ALL=C", "ps", "-o", "pid=,lstart=", "-p", "701,702"]);
+    expect(psAllArgv()).toEqual(["env", "TZ=UTC", "LC_ALL=C", "ps", "-A", "-o", "pid=,lstart="]);
     expect([...parsePsStarts("  701 " + START + "\n702 Sun Nov  8 12:39:31 2026\n").entries()]).toEqual([[701, START], [702, "Sun Nov  8 12:39:31 2026"]]);
   });
 

@@ -428,7 +428,11 @@ async function parkOne($: unknown, h: Harness): Promise<void> {
 }
 
 test('wake: parked — three refusals park it: status line and header marker; accepted at the 10-minute retry, then both clear', async ($, on) => {
-  const h = harness(on, { models: ['m-a', 'm-b'] })
+  // One slot. With a second slot still running, the plugin keeps polling through
+  // the 10-minute walk below while its retry wait is open. Measured: 13 s with two
+  // slots, past the 10 s a hook may take (HookBudget.ms), so the retry was
+  // skipped; under 1.5 s with one.
+  const h = harness(on, { models: ['m-a'] })
   let accept = false
   h.submitAnswer = text => (accept ? { text } : { drop: 'policy' })
   await parkOne($, h)

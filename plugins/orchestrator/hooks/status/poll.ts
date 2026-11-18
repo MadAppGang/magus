@@ -2,12 +2,12 @@
 //
 // A tick: is this session in a family (its index entry exists and names a record whose
 // sessionId is its own id)? If not, nothing else is read and the next check is 5 s away. If
-// so: every record, one `ps` over the recorded pids, the session files of the live ones, the
+// so: every record, a `ps` snapshot of every process when one is due, the session files of the live ones, the
 // merge into rows, ROWS. The capture loop reads the shown session's screen into SCREEN once a
 // second while the pane is placed.
 
 import type { OrchestratorRecord, OrchestratorRow } from '../../types'
-import { isSessionId, parseIdentity, parsePsStarts, psArgv } from '../../scripts/lib/state-core'
+import { isSessionId, parseIdentity, parsePsStarts, psAllArgv } from '../../scripts/lib/state-core'
 import {
   ACTIVE_TICK_MS,
   AGE_REFRESH_MS,
@@ -16,6 +16,7 @@ import {
   CAPTURE_MISSES,
   CAPTURE_MS,
   GONE_SCREEN_NOTE,
+  LIVE_RECHECK_MS,
   PLAIN_CHECK_MS,
   QUIET_TICK_MS,
   RUN_TIMEOUT_MS,
@@ -36,7 +37,6 @@ import {
   parseRecords,
   parseSessionFile,
   pathsOf,
-  pidsToCheck,
   progressPathOf,
   sameRows,
   type Liveness,
@@ -54,6 +54,12 @@ type Phase = 'idle' | 'scheduled' | 'running'
 const loop: { phase: Phase; rerun: boolean; failures: number; gen: number } = { phase: 'idle', rerun: false, failures: 0, gen: 0 }
 /** The capture loop: its generation (a stop or a restart bumps it) and whether one is pending. */
 const capture: { gen: number; live: boolean } = { gen: 0, live: false }
+/**
+ * The last `ps` snapshot (pid → lstart) and when it was taken, and the incarnations
+ * (`pid|procStart`) a snapshot found gone: a process that ended never comes back, and a pid
+ * reused by another process carries another start time, so it is another key.
+ */
+const procs: { snapshot: Map<number, string>; at: number; dead: Set<string> } = { snapshot: new Map(), at: -Infinity, dead: new Set() }
 /** The environment does not change under a running process: read once per load. */
 let envCache: OrchestratorEnv | null = null
 
@@ -132,24 +138,42 @@ async function scanSessionFiles(host: Host, paths: Paths): Promise<SessionFile[]
 }
 
 /**
- * Liveness of every candidate: one `ps` over the recorded pids (and, for a record with no
- * recorded incarnation, the pids of session files carrying its id), then the session file of
- * each live recorded pid. `known: false` when `ps` could not run at all.
+ * Liveness of every candidate, from a `ps` snapshot of every process: macOS `ps` takes
+ * seconds when `-p` names more than one pid, while one `-A` listing takes a fraction of one.
+ * The incarnations checked are every recorded (pid, procStart) and, for a record with none,
+ * those of the session files carrying its id; one found gone earlier is not checked again.
+ * A fresh snapshot is taken when the last is LIVE_RECHECK_MS old, is dated after now (the
+ * clock stepped back), or does not confirm some incarnation (a new pid, or no snapshot yet).
+ * Then the session file of each live recorded pid is read. `known: false` when `ps` could not
+ * run or exited non-zero.
  */
-async function livenessAll(host: Host, paths: Paths, candidates: readonly OrchestratorRecord[]): Promise<{ live: Map<string, Liveness>; known: boolean }> {
+async function livenessAll(host: Host, paths: Paths, candidates: readonly OrchestratorRecord[], now: number): Promise<{ live: Map<string, Liveness>; known: boolean }> {
   const scanned = candidates.some(r => !hasIncarnation(r)) ? await scanSessionFiles(host, paths) : []
-  const pids = pidsToCheck(candidates, scanned)
-  let starts = new Map<number, string>()
+  const incarnations: { pid: number; procStart: string | null }[] = []
+  for (const r of candidates) {
+    if (r.pid !== null && r.procStart !== null) incarnations.push({ pid: r.pid, procStart: r.procStart })
+    else for (const f of scanned) if (f.sessionId === r.sessionId) incarnations.push({ pid: f.pid, procStart: f.procStart })
+  }
+  const toCheck = incarnations.filter(i => !procs.dead.has(`${i.pid}|${i.procStart}`))
+  const confirmed = (i: { pid: number; procStart: string | null }) => sameProcess(i.procStart, procs.snapshot.get(i.pid) ?? null)
+  let starts = procs.snapshot
   let known = true
-  if (pids.length > 0) {
-    // ps exits non-zero when some pid is not running; what it printed still counts
-    const r = await host.run(psArgv(pids), RUN_TIMEOUT_MS)
-    if (r === null) known = false
-    else starts = parsePsStarts(r.stdout)
+  if (toCheck.length > 0 && (now - procs.at >= LIVE_RECHECK_MS || now < procs.at || !toCheck.every(confirmed))) {
+    const r = await host.run(psAllArgv(), RUN_TIMEOUT_MS)
+    // a successful `ps -A` always exits 0; any other result is no snapshot at all
+    if (r === null || r.exitCode !== 0) {
+      known = false
+      starts = new Map()
+    } else {
+      procs.snapshot = starts = parsePsStarts(r.stdout)
+      procs.at = now
+      for (const i of toCheck) if (!confirmed(i)) procs.dead.add(`${i.pid}|${i.procStart}`)
+    }
   }
   const files = new Map<number, SessionFile>()
   for (const r of candidates) {
-    // only the recorded incarnation's file: a pid now held by another process is never read
+    // read only for a pid the snapshot confirms, and adopted only when its own procStart matches
+    // the record (livenessOf), so a pid reused since the last snapshot is never adopted
     if (r.pid === null || files.has(r.pid) || !sameProcess(r.procStart, starts.get(r.pid) ?? null)) continue
     const text = await host.read(`${paths.sessionsDir}/${r.pid}.json`)
     const file = text === null ? null : parseSessionFile(text)
@@ -167,7 +191,7 @@ async function familyRows(host: Host, paths: Paths, selfKey: string, now: number
   if (!self) return []
   const inTree = new Set(familyTree(selfKey, records).map(e => e.key))
   const candidates = records.filter(r => r.product === self.product || inTree.has(r.key))
-  const { live, known } = await livenessAll(host, paths, candidates)
+  const { live, known } = await livenessAll(host, paths, candidates, now)
   return mergeRows({ selfKey, records: candidates, live, known, now })
 }
 
