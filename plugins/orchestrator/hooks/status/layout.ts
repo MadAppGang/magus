@@ -1,11 +1,12 @@
 // Pure: what the band and the panel draw, fitted to their width and rows. Rows in, plain
 // values out; band.tsx and panel.tsx only turn these into trees.
 
-import type { OrchestratorRole, OrchestratorRow, OrchestratorScreenState, OrchestratorStatus } from '../../types'
+import type { OrchestratorRole, OrchestratorRow, OrchestratorScreenState, OrchestratorStatus, OrchestratorTask } from '../../types'
 import {
   BADGE_PAD,
   GONE_SCREEN_NOTE,
   NARROW_COLUMNS,
+  NEEDS_YOU_GLYPH,
   NO_TARGET_NOTE,
   OTHER_MUX_NOTE,
   ROLE_BADGE,
@@ -13,6 +14,7 @@ import {
   SELF_SCREEN_NOTE,
   SHOW_ROWS,
   STATUS_GLYPH,
+  statusWordOf,
 } from './domain'
 import type { OwnMux } from './mux'
 
@@ -39,11 +41,6 @@ export function clip(text: string, width: number): string {
   const chars = [...text]
   if (chars.length <= width) return text
   return width === 1 ? '…' : `${chars.slice(0, width - 1).join('')}…`
-}
-
-function pad(text: string, width: number): string {
-  const t = clip(text, width)
-  return t + ' '.repeat(Math.max(0, width - [...t].length))
 }
 
 // ── actions ───────────────────────────────────────────────────────────────────
@@ -75,7 +72,7 @@ const GAP = 1
 const LABEL_MIN = 8
 const LABEL_MAX = 24
 const TICKET_MAX = 18
-const WAITS_MIN = 6
+const DETAIL_MIN = 6
 
 /** Which cells the band draws at this width, and how wide each is (0 = dropped). */
 export type CellPlan = {
@@ -85,7 +82,8 @@ export type CellPlan = {
   ticket: number
   status: number
   progress: number
-  waits: number
+  /** the last column: what the session needs, waits on, or does now */
+  detail: number
   jump: number
   open: number
   msg: number
@@ -96,26 +94,37 @@ export type BandRow = {
   key: string
   indent: string
   glyph: string
+  /** fitted to the plan's label cell by `bandModel`, never losing the ticket id it leads with */
   label: string
+  /** the ticket id the label leads with; null when it does not lead with one */
+  labelTicket: string | null
   /** the role badge's name and its short form, and the role that picks its fill */
   role: string
   roleShort: string
   roleKind: OrchestratorRole
+  /** the ticket cell; empty when the label already leads with the ticket id */
   ticket: string
   status: OrchestratorStatus
-  /** the status and its age, as one string: what the status cell's width is planned from */
+  /** the word the status badge shows: the status, or `needs you` */
+  statusWord: string
+  /** the status word and its age, as one string: what the status cell's width is planned from */
   statusText: string
   age: string
   progress: string
-  waits: string
+  detail: string
+  detailTone: DetailTone
   needsYou: boolean
   isSelf: boolean
   adopted: boolean
   actions: RowActions
 }
 
+export type HeaderTone = 'plain' | 'attention' | 'error'
+
 export type BandModel = {
   header: string
+  /** error while states are unreadable, attention while a row needs the user */
+  headerTone: HeaderTone
   needYou: number
   panelOpen: boolean
   plan: CellPlan
@@ -126,26 +135,72 @@ export type BandModel = {
   moreInHeader: boolean
 }
 
+/** The status word and its age, as the badge shows them: `needs you 4m` while the row needs the user. */
 function statusCell(row: OrchestratorRow, now: number): string {
   const age = formatAge(row.since, now)
-  return age === '' ? row.status : `${row.status} ${age}`
+  const word = statusWordOf(row.status, row.needsYou)
+  return age === '' ? word : `${word} ${age}`
+}
+
+/**
+ * A label cut to `width` by its name part: a label led by `labelTicket` keeps the ticket id
+ * whole, and with no room beside it is the ticket id alone; only a cell narrower than the id
+ * cuts the id itself.
+ */
+export function fitLabel(label: string, labelTicket: string | null, width: number): string {
+  if ([...label].length <= width) return label
+  if (labelTicket === null || !label.startsWith(`${labelTicket} `)) return clip(label, width)
+  const lead = [...labelTicket].length
+  if (width < lead) return clip(labelTicket, width)
+  if (width < lead + 2) return labelTicket
+  return `${labelTicket} ${clip(label.slice(labelTicket.length + 1), width - lead - 1)}`
+}
+
+const NOW_STATE_RE = /^in progress\b/i
+const NEXT_STATE_RE = /^next\b/i
+const DONE_STATE_RE = /^(done|moved|dropped)\b/i
+
+export type DetailTone = 'plain' | 'attention'
+export type Detail = { text: string; tone: DetailTone }
+
+/**
+ * The band's last column, first match wins: the row needs the user (`? <reason>`); an open
+ * session dependency (`⇠ <its label> (<note>)`); another open dependency (`⇠ <kind> <ref>`);
+ * an active session's step in progress, else its first next step (`▶ <step>`); nothing.
+ */
+export function rowDetail(row: OrchestratorRow): Detail {
+  if (row.needsYou) return { text: row.waits ? `? ${row.waits}` : '?', tone: 'attention' }
+  const open = row.deps.filter(d => d.open)
+  const session = open.find(d => d.kind === 'session')
+  if (session) return { text: `⇠ ${session.label ?? session.ref}${session.note ? ` (${session.note})` : ''}`, tone: 'plain' }
+  const other = open[0]
+  if (other) return { text: `⇠ ${other.kind} ${other.ref}`, tone: 'plain' }
+  if (row.status !== 'done' && row.status !== 'gone') {
+    const step = row.tasks.find(t => NOW_STATE_RE.test(t.state.trim())) ?? row.tasks.find(t => NEXT_STATE_RE.test(t.state.trim()))
+    if (step) return { text: `▶ ${step.step}`, tone: 'plain' }
+  }
+  return { text: '', tone: 'plain' }
 }
 
 function bandRow(row: OrchestratorRow, now: number): BandRow {
+  const detail = rowDetail(row)
   return {
     key: row.key,
     indent: '  '.repeat(row.depth),
-    glyph: STATUS_GLYPH[row.status],
+    glyph: row.needsYou ? NEEDS_YOU_GLYPH : STATUS_GLYPH[row.status],
     label: row.adopted ? `${row.label} (no parent)` : row.label,
+    labelTicket: row.labelTicket ?? null,
     role: ROLE_BADGE[row.role],
     roleShort: ROLE_SHORT[row.role],
     roleKind: row.role,
-    ticket: row.ticket?.id ?? '',
+    ticket: row.labelTicket ? '' : row.ticket?.id ?? '',
     status: row.status,
+    statusWord: statusWordOf(row.status, row.needsYou),
     statusText: statusCell(row, now),
     age: formatAge(row.since, now),
     progress: formatProgress(row.progress),
-    waits: row.waits ?? '',
+    detail: detail.text,
+    detailTone: detail.tone,
     needsYou: row.needsYou,
     isSelf: row.isSelf,
     adopted: row.adopted,
@@ -159,18 +214,28 @@ function widest(values: readonly string[]): number {
 
 /**
  * The cells that fit `columns`. Label, status and Show always stay; below NARROW_COLUMNS
- * nothing else does. Above it the rest is added in this order while it fits: indent, Jump,
- * Msg, Open, progress, role, ticket; waits takes what is left (at least WAITS_MIN cells), so
+ * nothing else does, and when those three do not fit, the status cell drops its age, then the
+ * label shrinks (to one cell at least). Otherwise the label cell is never narrower than the
+ * widest ticket id a label leads with. Above NARROW_COLUMNS the rest is added in this order while it fits: indent, Jump, Msg,
+ * Open, progress, role, ticket; the detail takes what is left (at least DETAIL_MIN cells), so
  * it is the first to shrink and drop.
  */
 export function planCells(rows: readonly BandRow[], columns: number): CellPlan {
-  const label = Math.max(LABEL_MIN, Math.min(LABEL_MAX, widest(rows.map(r => r.label))))
+  const floor = widest(rows.map(r => r.labelTicket ?? ''))
+  const label = Math.max(floor, LABEL_MIN, Math.min(LABEL_MAX, widest(rows.map(r => r.label))))
   // the status word sits on a badge, padded inside
   const status = Math.max(4, widest(rows.map(r => r.statusText))) + BADGE_PAD
-  const plan: CellPlan = { indent: 0, label, role: 0, ticket: 0, status, progress: 0, waits: 0, jump: 0, open: 0, msg: 0, show: BUTTON_CELLS.show }
+  const plan: CellPlan = { indent: 0, label, role: 0, ticket: 0, status, progress: 0, detail: 0, jump: 0, open: 0, msg: 0, show: BUTTON_CELLS.show }
   // 2 cells for the glyph and its space, always drawn
   let used = 2 + label + GAP + status + GAP + plan.show
   if (columns < NARROW_COLUMNS) {
+    // too wide: first the status cell loses its age, then the label shrinks, the ticket-id
+    // floor included, down to one cell
+    if (used > columns) {
+      const bare = Math.max(4, widest(rows.map(r => r.statusWord))) + BADGE_PAD
+      used -= status - bare
+      plan.status = bare
+    }
     if (used > columns) plan.label = Math.max(1, label - (used - columns))
     return plan
   }
@@ -193,7 +258,7 @@ export function planCells(rows: readonly BandRow[], columns: number): CellPlan {
     used += w + (cell === 'indent' ? 0 : GAP)
   }
   const rest = columns - used - GAP
-  if (rest >= WAITS_MIN && rows.some(r => r.waits !== '')) plan.waits = rest
+  if (rest >= DETAIL_MIN && rows.some(r => r.detail !== '')) plan.detail = rest
   return plan
 }
 
@@ -222,24 +287,56 @@ export function pickRows(rows: readonly OrchestratorRow[], room: number): Orches
 }
 
 /**
- * The band: a header (`orchestrator · <n> sessions · <k> need you`), the rows that fit, and
- * when some do not, a `+N more` line whose More opens the panel's session list. With room for
- * one row only, More sits on the header. Null when there is no row.
+ * The header: `orchestrator · <n> sessions`, then `<k> need(s) you`, `<k> waiting` (waiting on
+ * something other than the user) and `<k> done`, each only above zero. While states are
+ * unreadable it names why instead of the counts, which would all read unknown.
  */
-export function bandModel(rows: readonly OrchestratorRow[], bodyColumns: number, maxRows: number, panelOpen: boolean, now: number): BandModel | null {
+export function bandHeader(rows: readonly OrchestratorRow[], unreadable: string | null): string {
+  const lead = `orchestrator · ${rows.length} ${rows.length === 1 ? 'session' : 'sessions'}`
+  if (unreadable !== null) return `${lead} · ⚠ states unreadable: ${unreadable}`
+  const needYou = rows.filter(r => r.needsYou).length
+  const waiting = rows.filter(r => r.status === 'waiting' && !r.needsYou).length
+  const done = rows.filter(r => r.status === 'done').length
+  const parts = [
+    needYou > 0 ? `${needYou} need${needYou === 1 ? 's' : ''} you` : '',
+    waiting > 0 ? `${waiting} waiting` : '',
+    done > 0 ? `${done} done` : '',
+  ].filter(p => p !== '')
+  return [lead, ...parts].join(' · ')
+}
+
+/**
+ * The band: the header, one line per session that fits, and when some do not, a `+N more`
+ * line whose More opens the panel's session list. With room for one row only, More sits on
+ * the header. Null when there is no row.
+ */
+export function bandModel(
+  rows: readonly OrchestratorRow[],
+  bodyColumns: number,
+  maxRows: number,
+  panelOpen: boolean,
+  now: number,
+  unreadable: string | null = null,
+): BandModel | null {
   if (rows.length === 0) return null
   const needYou = rows.filter(r => r.needsYou).length
-  const header = `orchestrator · ${rows.length} ${rows.length === 1 ? 'session' : 'sessions'}${needYou > 0 ? ` · ${needYou} need${needYou === 1 ? 's' : ''} you` : ''}`
   const fitsAll = rows.length <= maxRows - 1
   const room = fitsAll ? rows.length : Math.max(0, maxRows - 2)
   const drawn = pickRows(rows, room).map(r => bandRow(r, now))
   const more = rows.length - drawn.length
+  const plan = planCells(drawn.length > 0 ? drawn : rows.map(r => bandRow(r, now)), bodyColumns)
   return {
-    header,
+    header: bandHeader(rows, unreadable),
+    headerTone: unreadable !== null ? 'error' : needYou > 0 ? 'attention' : 'plain',
     needYou,
     panelOpen,
-    plan: planCells(drawn.length > 0 ? drawn : rows.map(r => bandRow(r, now)), bodyColumns),
-    rows: drawn,
+    plan,
+    // a status cell planned narrower than its text has dropped the age
+    rows: drawn.map(r => ({
+      ...r,
+      label: fitLabel(r.label, r.labelTicket, plan.label),
+      ...([...r.statusText].length + BADGE_PAD > plan.status ? { age: '', statusText: r.statusWord } : {}),
+    })),
     more,
     moreInHeader: more > 0 && maxRows < 2,
   }
@@ -280,6 +377,8 @@ export type ListLine = {
   age: string
   progress: string
   status: OrchestratorStatus
+  /** the word the status badge shows */
+  statusWord: string
   needsYou: boolean
   isSelf: boolean
   actions: RowActions
@@ -308,7 +407,8 @@ function listText(row: OrchestratorRow, now: number, width: number): string {
 function listLine(row: OrchestratorRow, now: number, width: number): ListLine {
   const age = formatAge(row.since, now)
   const progress = formatProgress(row.progress)
-  const tailWith = (role: string) => 2 + role.length + BADGE_PAD + 2 + row.status.length + BADGE_PAD + (age ? 1 + age.length : 0) + (progress ? 2 + progress.length : 0)
+  const statusWord = statusWordOf(row.status, row.needsYou)
+  const tailWith = (role: string) => 2 + role.length + BADGE_PAD + 2 + statusWord.length + BADGE_PAD + (age ? 1 + age.length : 0) + (progress ? 2 + progress.length : 0)
   // the role's name while the lead keeps LABEL_MIN cells beside it, else its short form
   const role = width - tailWith(ROLE_BADGE[row.role]) >= LABEL_MIN ? ROLE_BADGE[row.role] : ROLE_SHORT[row.role]
   const tail = tailWith(role)
@@ -321,6 +421,7 @@ function listLine(row: OrchestratorRow, now: number, width: number): ListLine {
     age,
     progress,
     status: row.status,
+    statusWord,
     needsYou: row.needsYou,
     isSelf: row.isSelf,
     actions: actionsOf(row),
@@ -363,11 +464,13 @@ export type SessionModel = {
   status: string
   /** the status line's parts: the state on its badge, its age, then the rest after a `·` */
   state: OrchestratorStatus
+  /** the word the state's badge shows */
+  statusWord: string
   age: string
   statusRest: string
   needsYou: boolean
   actions: RowActions
-  /** dependencies, holds and the tasks table: everything above the rule */
+  /** dependencies, holds, the task groups and the family: everything above the rule */
   details: SessionLine[]
   /** the screen lines, cut to the rows and columns left, or a note why there are none */
   screen: string[]
@@ -381,19 +484,106 @@ function depLine(d: OrchestratorRow['deps'][number], now: number): SessionLine {
   return { text: `  ${d.kind} ${d.ref}${note} · ${state}${age ? ` · ${age}` : ''}`, dim: !d.open, tone: d.problem ? 'error' : 'plain' }
 }
 
-const DONE_STATE_RE = /^(done|moved|dropped)\b/i
+/**
+ * Text broken into lines of at most `width` cells at word boundaries; a word longer than the
+ * width is broken inside itself. Nothing is cut: every word appears, in order.
+ */
+export function wrapText(text: string, width: number): string[] {
+  const w = Math.max(1, Math.floor(width))
+  const lines: string[] = []
+  let line = ''
+  for (const word of text.split(/\s+/).filter(Boolean)) {
+    let rest = [...word]
+    if (line !== '' && [...line].length + 1 + rest.length <= w) {
+      line += ` ${word}`
+      continue
+    }
+    if (line !== '') lines.push(line)
+    while (rest.length > w) {
+      lines.push(rest.slice(0, w).join(''))
+      rest = rest.slice(w)
+    }
+    line = rest.join('')
+  }
+  if (line !== '') lines.push(line)
+  return lines.length > 0 ? lines : ['']
+}
 
-function taskLines(tasks: OrchestratorRow['tasks'], columns: number): SessionLine[] {
+const WAIT_STATE_RE = /^wait(?:s|ing)?\s+on\b\s*(.*)$/i
+const SELF_WHO_RE = /^this session$/i
+/** numbers joined by spaces, commas, `and` or `&`, and nothing else */
+const ROW_LIST_RE = /^\d+(?:\s*(?:,|&|\band\b)?\s*\d+)*$/i
+
+/**
+ * What a task waits on, from its state: `Waiting on 2, 3` or `Waits on 2 and 3`, where the
+ * text after `on` is only a list of numbers naming other rows, reads
+ * `after 2 <first two words of step 2> · 3 <…>`. A waiting state whose text is anything else, or
+ * whose numbers name no other row, reads as written; any other state is no wait (null).
+ */
+export function taskWait(task: OrchestratorTask, tasks: readonly OrchestratorTask[]): string | null {
+  const state = task.state.trim()
+  const m = WAIT_STATE_RE.exec(state)
+  if (m === null) return null
+  const rest = m[1] ?? ''
+  // only a list of row numbers names rows: `v2 of 3 reviews` is text, read as written
+  if (!ROW_LIST_RE.test(rest)) return state
+  const named: OrchestratorTask[] = []
+  for (const n of rest.match(/\d+/g) ?? []) {
+    const t = tasks.find(x => x.n === Number(n) && x !== task)
+    if (t && !named.includes(t)) named.push(t)
+  }
+  if (named.length === 0) return state
+  return `after ${named.map(t => `${t.n} ${t.step.split(/\s+/).filter(Boolean).slice(0, 2).join(' ')}`).join(' · ')}`
+}
+
+/**
+ * The task groups: Now (state in progress), Next (every other unfinished row) and Done (done,
+ * moved or dropped; dim), each under its heading, empty groups not drawn. A task's step wraps
+ * to `columns` under a hanging indent; a dim line below it names who does it (when not this
+ * session) and what it waits on.
+ */
+function taskLines(tasks: readonly OrchestratorTask[], columns: number): SessionLine[] {
   if (tasks.length === 0) return []
   const nW = Math.max(1, widest(tasks.map(t => String(t.n))))
-  const whoW = Math.min(16, Math.max(3, widest(tasks.map(t => t.who))))
-  const stateW = Math.min(18, Math.max(5, widest(tasks.map(t => t.state))))
-  const stepW = Math.max(4, columns - nW - whoW - stateW - 6)
-  const line = (n: string, step: string, who: string, state: string) => `${pad(n, nW)}  ${pad(step, stepW)}  ${pad(who, whoW)}  ${clip(state, stateW)}`
-  return [
-    { text: line('#', 'Step', 'Who', 'State'), dim: false, tone: 'plain' },
-    ...tasks.map(t => ({ text: line(String(t.n), t.step, t.who, t.state), dim: DONE_STATE_RE.test(t.state.trim()), tone: 'plain' as const })),
+  // ` ▶ ` then the number, then two spaces: the step text starts here
+  const indent = 3 + nW + 2
+  const stepW = Math.max(1, columns - indent)
+  const hang = ' '.repeat(indent)
+  const isNow = (t: OrchestratorTask) => NOW_STATE_RE.test(t.state.trim())
+  const isDone = (t: OrchestratorTask) => DONE_STATE_RE.test(t.state.trim())
+  const groups: { heading: string; glyph: string; dim: boolean; tasks: OrchestratorTask[] }[] = [
+    { heading: 'Now', glyph: '▶', dim: false, tasks: tasks.filter(isNow) },
+    { heading: 'Next', glyph: '○', dim: false, tasks: tasks.filter(t => !isNow(t) && !isDone(t)) },
+    { heading: 'Done', glyph: '✓', dim: true, tasks: tasks.filter(isDone) },
   ]
+  const out: SessionLine[] = []
+  for (const g of groups) {
+    if (g.tasks.length === 0) continue
+    out.push({ text: g.heading, dim: g.dim, tone: 'plain' })
+    for (const t of g.tasks) {
+      const n = String(t.n)
+      const lead = ` ${g.glyph} ${n}${' '.repeat(nW - n.length)}  `
+      wrapText(t.step, stepW).forEach((l, i) => out.push({ text: `${i === 0 ? lead : hang}${l}`, dim: g.dim, tone: 'plain' }))
+      const who = t.who.trim() !== '' && !SELF_WHO_RE.test(t.who.trim()) ? t.who : ''
+      const second = [who, taskWait(t, tasks) ?? ''].filter(p => p !== '').join(' · ')
+      if (second !== '') for (const l of wrapText(second, stepW)) out.push({ text: `${hang}${l}`, dim: true, tone: 'plain' })
+    }
+  }
+  return out
+}
+
+/**
+ * The family block: every session waiting on this one, then what this one waits on, or
+ * `waits on nothing`. The viewed session is `this session` when it is self, else its label.
+ */
+function familyLines(row: OrchestratorRow): SessionLine[] {
+  const me = row.isSelf ? 'this session' : row.label
+  const out: SessionLine[] = [{ text: 'Family', dim: false, tone: 'plain' }]
+  for (const w of row.waitedOnBy ?? []) out.push({ text: ` ${w.label} (${ROLE_BADGE[w.role]}) ⇠ waits on ${me}`, dim: false, tone: 'plain' })
+  const own = row.deps.filter(d => d.open && d.kind === 'session')
+  if (own.length === 0) out.push({ text: ` ${me} ⇠ waits on nothing`, dim: true, tone: 'plain' })
+  for (const d of own) out.push({ text: ` ${me} ⇠ waits on ${d.label ?? d.ref}`, dim: false, tone: d.problem ? 'error' : 'plain' })
+  return out
 }
 
 /** Why there is no screen to show for a row, or null when a capture is the answer. */
@@ -405,14 +595,18 @@ export function screenNote(row: OrchestratorRow, own: OwnMux): string | null {
 }
 
 /**
- * One session: title `<label> · <role> · <ticket>`, the status line, then dependencies (open
- * first, with their age), holds, the tasks table (finished rows dim), a rule, and the screen
- * lines cut to what is left of the pane. The title and List take the first row.
+ * One session: title `<label> · <role>` (and `· <ticket>` when the label does not lead with
+ * it), the status line `<state> <age> · <done>/<total> done` (and `? <reason>` while it needs
+ * the user), then dependencies (open first, with their age), holds, the task groups, the
+ * family, a rule, and the screen lines cut to what is left of the pane. The title and List take
+ * the first row.
  */
 export function sessionModel(row: OrchestratorRow, screen: OrchestratorScreenState, fit: PanelFit, own: OwnMux, now: number): SessionModel {
-  const title = [row.label, ROLE_BADGE[row.role], row.ticket?.id].filter((p): p is string => typeof p === 'string' && p !== '').join(' · ')
+  const title = [row.label, ROLE_BADGE[row.role], row.labelTicket ? null : row.ticket?.id]
+    .filter((p): p is string => typeof p === 'string' && p !== '')
+    .join(' · ')
   const progress = formatProgress(row.progress)
-  const statusRest = [progress && `${progress} tasks`, row.waits && `waits: ${row.waits}`].filter(Boolean).join(' · ')
+  const statusRest = [progress && `${progress} done`, row.needsYou ? rowDetail(row).text : ''].filter(Boolean).join(' · ')
   const status = [statusCell(row, now), statusRest].filter(Boolean).join(' · ')
   const details: SessionLine[] = []
   if (row.deps.length > 0) {
@@ -427,8 +621,10 @@ export function sessionModel(row: OrchestratorRow, screen: OrchestratorScreenSta
       details.push({ text: `  ${h.what}${age ? ` · ${age}` : ''}`, dim: false, tone: 'plain' })
     }
   }
-  details.push(...taskLines(row.tasks, fit.columns))
+  // task lines are already wrapped to the width; only the other lines are cut
   const cut = details.map(l => ({ ...l, text: clip(l.text, fit.columns) }))
+  cut.push(...taskLines(row.tasks, fit.columns))
+  cut.push(...familyLines(row).map(l => ({ ...l, text: clip(l.text, fit.columns) })))
   let note = screenNote(row, own)
   let lines: string[] = []
   if (note === null) {
@@ -445,6 +641,7 @@ export function sessionModel(row: OrchestratorRow, screen: OrchestratorScreenSta
     title,
     status,
     state: row.status,
+    statusWord: statusWordOf(row.status, row.needsYou),
     age: formatAge(row.since, now),
     statusRest,
     needsYou: row.needsYou,

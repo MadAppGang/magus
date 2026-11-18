@@ -47,11 +47,22 @@ export const ROLE_SHORT: Readonly<Record<'triage' | 'manager' | 'child', string>
 export const STATUS_GLYPH: Readonly<Record<'working' | 'idle' | 'waiting' | 'blocked' | 'done' | 'gone' | 'unknown', string>> = {
   working: '●',
   idle: '○',
-  waiting: '◆',
+  waiting: '◷',
   blocked: '■',
   done: '✓',
   gone: '×',
   unknown: '?',
+}
+
+/** The glyph before a row's label while it needs the user, whatever its status. */
+export const NEEDS_YOU_GLYPH = '⚠'
+
+/** The word a status badge shows while its row needs the user, whatever its status. */
+export const NEEDS_YOU_WORD = 'needs you'
+
+/** The word a status badge shows: the status, or NEEDS_YOU_WORD while the row needs the user. */
+export function statusWordOf(status: keyof typeof STATUS_GLYPH, needsYou: boolean): string {
+  return needsYou ? NEEDS_YOU_WORD : status
 }
 
 /** The theme fill of a status badge; a row that needs the user fills `warning` instead. */

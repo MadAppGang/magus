@@ -9,6 +9,7 @@ import type {
   OrchestratorRowDep,
   OrchestratorStatus,
   OrchestratorTarget,
+  OrchestratorWaiter,
 } from '../../types'
 import { isFamilyKey, parseRecord, progressOf, resolveDeps, sameProcess, type SessionTargetState } from '../../scripts/lib/state-core'
 import { STALE_RECORD_MS } from './domain'
@@ -239,6 +240,38 @@ export function livenessOf(
   return { live: false, file: null }
 }
 
+const PROBLEM_MAX = 60
+
+const CONTROL_RE = /[\u0000-\u001f\u007f]/g
+
+/**
+ * The first non-empty line of `text`, control characters turned to spaces and runs of space
+ * collapsed, cut to PROBLEM_MAX characters (code points, so a surrogate pair is never split).
+ * `dropDigits` also removes every run of digits.
+ */
+function firstLine(text: string, dropDigits = false): string {
+  const raw = text.split(/\r?\n/).find(l => l.trim() !== '') ?? ''
+  const plain = (dropDigits ? raw.replace(/\d+/g, '') : raw).replace(CONTROL_RE, ' ').replace(/\s+/g, ' ').trim()
+  const chars = [...plain]
+  return chars.length > PROBLEM_MAX ? `${chars.slice(0, PROBLEM_MAX - 1).join('')}…` : plain
+}
+
+/**
+ * Why a `ps` run gave no snapshot, short: `ps refused (<the error's first line>)` when it could
+ * not start, `ps exited <code> (<stderr's first line>)` when it exited non-zero; null when it
+ * succeeded. A refusal's message loses its digit runs (pids, timings), so a refusal that
+ * repeats reads the same and the rows are not rewritten for it.
+ */
+export function psProblem(r: { exitCode: number; stderr: string } | { refused: string }): string | null {
+  if ('refused' in r) {
+    const why = firstLine(r.refused, true)
+    return why === '' ? 'ps refused' : `ps refused (${why})`
+  }
+  if (r.exitCode === 0) return null
+  const why = firstLine(r.stderr)
+  return why === '' ? `ps exited ${r.exitCode}` : `ps exited ${r.exitCode} (${why})`
+}
+
 /** A record skipped at read time: its session is gone and it was not updated for 24 h. */
 export function isStale(r: OrchestratorRecord, live: boolean, now: number): boolean {
   return !live && now - r.updatedAt > STALE_RECORD_MS
@@ -297,6 +330,33 @@ export function sessionResolver(
       .map(r => (r.state === 'done' ? 'done' : liveOf(r.key) ? 'live' : 'gone'))
 }
 
+// ── labels ─────────────────────────────────────────────────────────────────────
+
+/**
+ * A row's label: name ?? ticket id ?? key. A name led by the lower-cased ticket id and `-`
+ * reads `<ticket id> <rest of the name>`, and `labelTicket` names the id it leads with.
+ */
+export function ticketLabel(
+  name: string | null,
+  ticket: { id: string } | null,
+  key: string,
+): { label: string; labelTicket: string | null } {
+  if (name !== null && ticket !== null && ticket.id !== '') {
+    const lead = `${ticket.id.toLowerCase()}-`
+    if (name.startsWith(lead) && name.length > lead.length) return { label: `${ticket.id} ${name.slice(lead.length)}`, labelTicket: ticket.id }
+  }
+  return { label: name ?? ticket?.id ?? key, labelTicket: null }
+}
+
+/**
+ * The one record a session dependency's ref names (key or name, of `product`), as
+ * `sessionResolver` matches it; null when none or more than one does.
+ */
+function sessionTarget(product: string, records: readonly OrchestratorRecord[], ref: string): OrchestratorRecord | null {
+  const matches = records.filter(r => r.product === product && (r.key === ref || r.name === ref))
+  return matches.length === 1 ? matches[0]! : null
+}
+
 // ── rows ───────────────────────────────────────────────────────────────────────
 
 export type MergeInput = {
@@ -313,7 +373,8 @@ export type MergeInput = {
 /**
  * The rows of `selfKey`'s family, in tree order. Records gone for more than 24 h are skipped
  * (never self). Session dependencies resolve against every non-skipped record of self's
- * product, before the tree rule picks the rows.
+ * product, before the tree rule picks the rows; each row also lists the unfinished, not gone
+ * sessions of the product, drawn or not, whose open session dependency names it.
  */
 export function mergeRows(input: MergeInput): OrchestratorRow[] {
   const { selfKey, now, known } = input
@@ -323,13 +384,36 @@ export function mergeRows(input: MergeInput): OrchestratorRow[] {
   if (!self) return []
   const byKey = new Map(kept.map(r => [r.key, r] as const))
   const resolve = sessionResolver(self.product, kept, liveOf)
+  const nameOf = (r: OrchestratorRecord) => input.live.get(r.key)?.file?.name ?? r.name
+  const labelOf = (r: OrchestratorRecord) => ticketLabel(nameOf(r), r.ticket, r.key)
+  const depsOf = (r: OrchestratorRecord): OrchestratorRowDep[] =>
+    (resolveDeps(r, resolve) as OrchestratorRowDep[]).map(d => {
+      const to = d.kind === 'session' ? sessionTarget(self.product, kept, d.ref) : null
+      return { ...d, label: to === null ? null : labelOf(to).label }
+    })
+  // the reverse edges: every unfinished, not gone session of the product with an open session
+  // dependency on a record, in record order
+  const waiters = new Map<string, OrchestratorWaiter[]>()
+  for (const w of kept) {
+    // a gone session waits on nobody; with liveness unreadable, nobody is known gone
+    if (w.product !== self.product || w.state === 'done' || (known && !liveOf(w.key))) continue
+    for (const d of resolveDeps(w, resolve)) {
+      if (d.kind !== 'session' || !d.open) continue
+      const to = sessionTarget(self.product, kept, d.ref)
+      if (to === null || to.key === w.key) continue
+      const list = waiters.get(to.key) ?? []
+      if (!list.some(x => x.key === w.key)) list.push({ key: w.key, label: labelOf(w).label, role: w.role })
+      waiters.set(to.key, list)
+    }
+  }
   return familyTree(selfKey, kept).flatMap(entry => {
     const r = byKey.get(entry.key)
     if (!r) return []
     const live = input.live.get(r.key) ?? { live: false, file: null }
-    const deps = resolveDeps(r, resolve) as OrchestratorRowDep[]
+    const deps = depsOf(r)
     const view = statusOf(r, live, deps, known)
-    const name = live.file?.name ?? r.name
+    const name = nameOf(r)
+    const { label, labelTicket } = labelOf(r)
     const target: OrchestratorTarget | null = targetOf(r, live.file)
     const row: OrchestratorRow = {
       key: r.key,
@@ -337,7 +421,8 @@ export function mergeRows(input: MergeInput): OrchestratorRow[] {
       depth: entry.depth,
       role: r.role,
       name,
-      label: name ?? r.ticket?.id ?? r.key,
+      label,
+      labelTicket,
       ticket: r.ticket,
       status: view.status,
       since: view.since,
@@ -350,6 +435,7 @@ export function mergeRows(input: MergeInput): OrchestratorRow[] {
       isSelf: r.key === selfKey,
       adopted: entry.adopted,
       target,
+      waitedOnBy: waiters.get(r.key) ?? [],
     }
     return [row]
   })

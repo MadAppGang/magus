@@ -4,7 +4,7 @@
 import type { RenderElement } from 'claude-code'
 import type { OrchestratorStatus } from '../../types'
 import type { Els } from './action-button'
-import { ROLE_FILL, STATUS_FILL } from './domain'
+import { ROLE_FILL, STATUS_FILL, statusWordOf } from './domain'
 
 /** A badge: ` text ` on `fill`. */
 export function badge(els: Els, key: string, text: string, fill: string): RenderElement {
@@ -19,13 +19,13 @@ export function statusFill(status: OrchestratorStatus, needsYou: boolean): strin
   return needsYou ? 'warning' : STATUS_FILL[status]
 }
 
-/** The status badge, then its age as text in the badge's colour. */
+/** The status badge (its word `needs you` while the row needs the user), then its age as text in the badge's colour. */
 export function statusBadge(els: Els, key: string, status: OrchestratorStatus, needsYou: boolean, age: string): RenderElement {
   const { Text } = els
   const fill = statusFill(status, needsYou)
   return (
     <Text key={key} wrap="truncate-end">
-      {badge(els, 'state', status, fill)}
+      {badge(els, 'state', statusWordOf(status, needsYou), fill)}
       {age !== '' && <Text key="age" wrap="truncate-end" color={fill} bold>{` ${age}`}</Text>}
     </Text>
   ) as RenderElement

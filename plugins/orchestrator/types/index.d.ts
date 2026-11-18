@@ -64,7 +64,15 @@ export type OrchestratorClaim = {
 /** `unknown`: only where liveness could not be read at all (fs or ps refused). */
 export type OrchestratorStatus = 'working' | 'idle' | 'waiting' | 'blocked' | 'done' | 'gone' | 'unknown'
 
-export type OrchestratorRowDep = OrchestratorDep & { open: boolean; problem: 'gone' | 'not found' | null }
+export type OrchestratorRowDep = OrchestratorDep & {
+  open: boolean
+  problem: 'gone' | 'not found' | null
+  /** a session dependency naming exactly one record: that session's label; else null */
+  label?: string | null
+}
+
+/** A session of the product with an open session dependency on a row's session. */
+export type OrchestratorWaiter = { key: string; label: string; role: OrchestratorRole }
 
 export type OrchestratorTarget =
   | { mux: 'tmux'; pane: string; window: string | null; session: string | null }
@@ -79,8 +87,13 @@ export type OrchestratorRow = {
   role: OrchestratorRole
   /** session file name ?? record name; null hides Msg */
   name: string | null
-  /** name ?? ticket id ?? key */
+  /**
+   * name ?? ticket id ?? key; a name led by the lower-cased ticket id and `-` reads
+   * `<ticket id> <rest of the name>` instead
+   */
   label: string
+  /** the ticket id `label` leads with, when it does; null otherwise */
+  labelTicket: string | null
   ticket: OrchestratorTicket | null
   status: OrchestratorStatus
   /** ms epoch the status began */
@@ -96,10 +109,18 @@ export type OrchestratorRow = {
   /** listed by triage as an orphan of its product */
   adopted: boolean
   target: OrchestratorTarget | null
+  /** the sessions of the product with an open session dependency on this one */
+  waitedOnBy: OrchestratorWaiter[]
 }
 
 /** Every row of this session's family (the tree rule), not cut to what the band fits. */
-export type OrchestratorRowsState = { at: number; selfKey: string | null; rows: OrchestratorRow[] }
+export type OrchestratorRowsState = {
+  at: number
+  selfKey: string | null
+  rows: OrchestratorRow[]
+  /** why liveness could not be read (`ps` refused or failed), short; null when it was read */
+  unreadable: string | null
+}
 
 /** The panel: closed; open with `key: null` is the session list; open with a key shows that session. */
 export type OrchestratorShowState = { open: boolean; key: string | null; page: number }

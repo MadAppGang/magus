@@ -51,6 +51,7 @@ export function row(patch: Partial<OrchestratorRow> = {}): OrchestratorRow {
     status: "idle", since: NOW - 180_000, needsYou: false, waits: null,
     progress: null, tasks: [], deps: [], holds: [], isSelf: false, adopted: false,
     target: { mux: "tmux", pane: "%702", window: "@12", session: "product" },
+    labelTicket: null, waitedOnBy: [],
     ...patch,
   };
 }

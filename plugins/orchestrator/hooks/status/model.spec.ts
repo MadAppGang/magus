@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   pathsOf, keyOfFileName, SESSION_FILE_RE, parseSessionFile, parseRecords, familyTree,
   visibleKeys, orphansOf, pidsToCheck, hasIncarnation, livenessOf, isStale,
-  sessionActivity, statusOf, sessionResolver, mergeRows, isActive, sameRows,
+  sessionActivity, statusOf, sessionResolver, mergeRows, isActive, sameRows, ticketLabel, psProblem,
   type SessionFile, type Liveness,
 } from "./model";
 import { identity, progress, record, row, NOW, START, LATER_START, ROOT, PRODUCT, SELF, TRIAGE, MANAGER, CHILD, taskRows } from "../../tests/testdata";
@@ -181,5 +181,84 @@ describe("status precedence and row values [R1.2, R1.8; §4.7]", () => {
     expect(isActive(row({ status: "unknown" }))).toBe(true);
     expect(sameRows(result, JSON.parse(JSON.stringify(result)))).toBe(true);
     expect(sameRows(result, result.map(r => ({ ...r, status: "blocked" })))).toBe(false);
+  });
+});
+
+describe("ticket-first labels and the family's waits", () => {
+  test("TEST-907 a name led by the lower-cased ticket id reads ticket first", () => {
+    const t = { id: "ABC-463", url: null };
+    expect(ticketLabel("abc-463-auth-config-dir-key", t, MANAGER)).toEqual({ label: "ABC-463 auth-config-dir-key", labelTicket: "ABC-463" });
+    expect(ticketLabel("triage2", t, MANAGER)).toEqual({ label: "triage2", labelTicket: null });
+    expect(ticketLabel("abc-463", t, MANAGER)).toEqual({ label: "abc-463", labelTicket: null });
+    expect(ticketLabel("abc-4630-other", t, MANAGER)).toEqual({ label: "abc-4630-other", labelTicket: null });
+    expect(ticketLabel("abc-463-x", null, MANAGER)).toEqual({ label: "abc-463-x", labelTicket: null });
+    expect(ticketLabel(null, t, MANAGER)).toEqual({ label: "ABC-463", labelTicket: null });
+    expect(ticketLabel(null, null, MANAGER)).toEqual({ label: MANAGER, labelTicket: null });
+    const rows = mergeRows({
+      selfKey: MANAGER, records: [record({ name: "abc-463-auth-config", ticket: t })],
+      live: new Map([[MANAGER, live({ name: null })]]), known: true, now: NOW,
+    });
+    expect(rows[0]).toMatchObject({ name: "abc-463-auth-config", label: "ABC-463 auth-config", labelTicket: "ABC-463" });
+  });
+
+  test("TEST-909 a ps that gave no snapshot says why, short", () => {
+    expect(psProblem({ refused: "operation not permitted\nat spawn" })).toBe("ps refused (operation not permitted)");
+    expect(psProblem({ refused: "" })).toBe("ps refused");
+    expect(psProblem({ exitCode: 1, stderr: "\nps: bad option\nusage" })).toBe("ps exited 1 (ps: bad option)");
+    expect(psProblem({ exitCode: 2, stderr: "" })).toBe("ps exited 2");
+    expect(psProblem({ exitCode: 0, stderr: "noise" })).toBeNull();
+    expect(psProblem({ refused: "x".repeat(200) })!.length).toBeLessThan(80);
+  });
+
+  test("TEST-910 a ps reason is cut by characters, carries no control characters, and a repeated refusal reads the same", () => {
+    const emoji = psProblem({ refused: "😀".repeat(100) })!;
+    expect(emoji).toBe("ps refused (" + "😀".repeat(59) + "…)");
+    expect(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/.test(emoji)).toBe(false);
+    expect(psProblem({ refused: "denied\u001b[0m\tby\u0007 policy" })).toBe("ps refused (denied [m by policy)");
+    expect(psProblem({ exitCode: 1, stderr: "bad\u0000 option\u007f" })).toBe("ps exited 1 (bad option)");
+    const a = psProblem({ refused: "spawn ps EPERM (pid 4242, after 3001 ms)" });
+    const b = psProblem({ refused: "spawn ps EPERM (pid 977, after 12 ms)" });
+    expect(a).toBe(b);
+    expect(a).not.toMatch(/\d/);
+  });
+
+  test("TEST-911 a waiter whose session is gone does not wait on anyone", () => {
+    const dep = { kind: "session" as const, ref: MANAGER, note: null, since: NOW - 1000, doneAt: null };
+    const waiter = { ...child(), deps: [dep] };
+    const gone = { ...child(), key: "s-gonewait1", sessionId: "gonew001", name: "gone-waiter", deps: [dep] };
+    const records = [triage(), manager(), waiter, gone];
+    const liveness = new Map<string, Liveness>(records.map(x => [x.key, { live: x.key !== gone.key, file: null }]));
+    const rows = mergeRows({ selfKey: MANAGER, records, live: liveness, known: true, now: NOW });
+    expect(rows.find(r => r.key === MANAGER)!.waitedOnBy.map(w => w.key)).toEqual([CHILD]);
+  });
+
+  test("TEST-908 session dependencies carry the target's label, and every row lists who waits on it, by key or by name", () => {
+    const dep = (ref: string, patch: Record<string, unknown> = {}) => ({ kind: "session" as const, ref, note: null, since: NOW - 1000, doneAt: null, ...patch });
+    const t = { id: "ABC-427", url: null };
+    const m = record({ name: "abc-427-status-poll", ticket: t });
+    const tr = { ...triage(), name: "triage2", ticket: null, deps: [dep(MANAGER)] };
+    const c = { ...child(), deps: [dep("abc-427-status-poll", { note: "redesign" })] };
+    const done = { ...child(), key: "s-donewait1", sessionId: "donew001", name: "done-waiter", deps: [dep(MANAGER, { doneAt: NOW - 10 })] };
+    const foreign = record({ key: "s-foreign1", sessionId: "foreign1", product: ROOT + "/other", parent: null, name: "foreign", deps: [dep(MANAGER)] });
+    const sib = { ...sibling(), deps: [dep("abc-427-status-poll")] };
+    const records = [tr, m, c, done, foreign, sib];
+    const liveness = new Map(records.map(x => [x.key, { live: true, file: null }] as const));
+    const rows = mergeRows({ selfKey: MANAGER, records, live: liveness, known: true, now: NOW });
+    const mrow = rows.find(r => r.key === MANAGER)!;
+    // the sibling is not drawn, but it is of the product, so it still waits on this session
+    expect(rows.map(r => r.key)).not.toContain(sib.key);
+    expect(mrow.waitedOnBy).toEqual([
+      { key: TRIAGE, label: "triage2", role: "triage" },
+      { key: CHILD, label: "api-child", role: "child" },
+      { key: sib.key, label: "sibling", role: "manager" },
+    ]);
+    const crow = rows.find(r => r.key === CHILD)!;
+    expect(crow.deps[0]).toMatchObject({ open: true, label: "ABC-427 status-poll", note: "redesign" });
+    expect(crow.waitedOnBy).toEqual([]);
+    const trow = rows.find(r => r.key === TRIAGE)!;
+    expect(trow.deps[0]).toMatchObject({ open: true, label: "ABC-427 status-poll" });
+    // a dependency naming no single record has no label
+    const lone = mergeRows({ selfKey: MANAGER, records: [record({ deps: [dep("missing")] })], live: new Map([[MANAGER, live()]]), known: true, now: NOW });
+    expect(lone[0].deps[0]).toMatchObject({ open: true, problem: "not found", label: null });
   });
 });

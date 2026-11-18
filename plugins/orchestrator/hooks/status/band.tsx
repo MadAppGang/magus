@@ -60,8 +60,8 @@ function row(els: Els, r: BandRow, plan: CellPlan, actions: BandActions): Render
       {plan.ticket > 0 && cell(els, 'ticket', plan.ticket, r.ticket, { bold: true })}
       <Box key="status" width={plan.status} flexShrink={0}>{statusBadge(els, 'status', r.status, r.needsYou, r.age)}</Box>
       {plan.progress > 0 && cell(els, 'progress', plan.progress, r.progress, { bold: true })}
-      <Box key="waits" flexGrow={1} flexShrink={1}>
-        {plan.waits > 0 && r.waits !== '' && <Text wrap="truncate-end" dimColor>{r.waits}</Text>}
+      <Box key="detail" flexGrow={1} flexShrink={1}>
+        {plan.detail > 0 && r.detail !== '' && <Text wrap="truncate-end" {...(r.detailTone === 'attention' ? { color: 'warning' } : { dimColor: true })}>{r.detail}</Text>}
       </Box>
       {plan.jump > 0 && actionButtonCell(els, `jump:${r.key}`, BUTTON_CELLS.jump, 'Jump', 'primary', r.actions.jump ? () => actions.jump(r.key) : null)}
       {actionButtonCell(els, `show:${r.key}`, BUTTON_CELLS.show, 'Show', 'primary', r.actions.show ? () => actions.show(r.key) : null)}
@@ -69,6 +69,11 @@ function row(els: Els, r: BandRow, plan: CellPlan, actions: BandActions): Render
       {plan.msg > 0 && actionButtonCell(els, `msg:${r.key}`, BUTTON_CELLS.msg, 'Msg', 'secondary', r.actions.msg ? () => actions.msg(r.key) : null)}
     </Box>
   ) as RenderElement
+}
+
+/** The header's colour by its tone: error while states are unreadable, warning while a row needs the user. */
+function headerColor(model: BandModel): { color?: string } {
+  return model.headerTone === 'error' ? { color: 'error' } : model.headerTone === 'attention' ? { color: 'warning' } : {}
 }
 
 /** The band: the header (Hide while the pane is open), the rows that fit, and `+N more [More]`. */
@@ -79,7 +84,7 @@ export function bandTree(els: Els, model: BandModel, actions: BandActions): Rend
     <Box flexDirection="column">
       <Box key="header" flexDirection="row" gap={1}>
         <Box flexGrow={1} flexShrink={1}>
-          <Text wrap="truncate-end" bold {...(model.needYou > 0 ? { color: 'warning' } : {})}>{model.header}</Text>
+          <Text wrap="truncate-end" bold {...headerColor(model)}>{model.header}</Text>
         </Box>
         {model.moreInHeader && <Box flexShrink={0}>{moreButton}</Box>}
         {model.panelOpen && <Box flexShrink={0}>{actionButton(els, 'hide', 'Hide', 'secondary', () => actions.hide())}</Box>}

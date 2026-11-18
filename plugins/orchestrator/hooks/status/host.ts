@@ -42,6 +42,8 @@ export type Host = {
   exists(path: string): Promise<boolean>
   /** null when the command could not start, timed out, or was refused */
   run(argv: readonly string[], timeoutMs: number): Promise<RunResult | null>
+  /** as `run`, but a command that could not start, timed out or was refused says why */
+  attempt(argv: readonly string[], timeoutMs: number): Promise<RunResult | { refused: string }>
   /** this conversation's id, which changes on /clear */
   sessionId(): Promise<string>
   toast(text: string, timeoutMs?: number): void
@@ -79,7 +81,7 @@ export function capped<T>(fn: (v: T) => T): (v: T) => T {
 
 export const CLOSED_SHOW: OrchestratorShowState = { open: false, key: null, page: 0 }
 export const EMPTY_SCREEN: OrchestratorScreenState = { key: null, lines: [], at: 0, error: null, misses: 0 }
-export const EMPTY_ROWS: OrchestratorRowsState = { at: 0, selfKey: null, rows: [] }
+export const EMPTY_ROWS: OrchestratorRowsState = { at: 0, selfKey: null, rows: [], unreadable: null }
 
 /** An error's message, short, for a toast or the debug log. */
 export function messageOf(err: unknown): string {

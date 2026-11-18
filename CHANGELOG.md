@@ -4,6 +4,28 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [orchestrator 0.5.0] - 2026-11-19
+
+### Changed
+
+- **The status band says what each session is doing and what it waits on.** Each session
+  still takes one line, now led by its ticket id and a short name instead of a cut-off
+  folder name. The rest of the line says what the session is doing now (its task in
+  progress), which session it waits on, or what it needs from you. The header counts the
+  sessions that need you, wait or are done. A session that needs you reads "needs you"
+  with a warning sign, and one that waits on something has its own sign.
+- **The session view no longer cuts its steps.** Tasks are grouped into Now, Next and Done,
+  and each step wraps over as many lines as it needs. "Who" shows only when another session
+  does the step, and a step that waits on others names those steps, not only their numbers.
+  A Family block lists who waits on this session and what it waits on.
+
+### Fixed
+
+- **An unreadable process list is no longer a silent "unknown" on every row.** When `ps`
+  is refused or fails, the band header says so and gives the reason.
+
+---
+
 ## [orchestrator 0.4.3] - 2026-11-18
 
 ### Fixed

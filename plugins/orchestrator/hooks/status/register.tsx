@@ -19,7 +19,7 @@ import { herdrFallbackArgv } from './mux'
 import * as poll from './poll'
 
 // The three atoms. plugin and key are literals HERE: the scan reads no reference from another file.
-const ROWS = atom({ plugin: 'orchestrator', key: 'rows' } as const, { at: 0, selfKey: null, rows: [] })
+const ROWS = atom({ plugin: 'orchestrator', key: 'rows' } as const, { at: 0, selfKey: null, rows: [], unreadable: null })
 const SHOW = atom({ plugin: 'orchestrator', key: 'show' } as const, { open: false, key: null, page: 0 })
 const SCREEN = atom({ plugin: 'orchestrator', key: 'screen' } as const, { key: null, lines: [], at: 0, error: null, misses: 0 })
 
@@ -61,6 +61,11 @@ function bindHost($: EngineInterface): Host {
       if (second !== null) herdrAtFallback = true
       return second
     },
+    attempt: (argv, timeoutMs) =>
+      $.process.run(argv, { timeoutMs }).then(
+        r => ({ exitCode: r.exitCode, stdout: r.stdout, stderr: r.stderr }),
+        (err: unknown) => ({ refused: messageOf(err) }),
+      ),
     sessionId: () => $.session.id(),
     toast: (msg, timeoutMs) => $.ui.toast(msg, timeoutMs === undefined ? undefined : { timeoutMs }),
     fill: msg => $.prompt.fill({ text: msg, mode: 'replace' }).then(r => r.isFilled, () => false),
@@ -147,7 +152,7 @@ export const register: Register = on => {
     const panes = await $.ui.panes()
     if (e.props.hasSurvey || state.selfKey === null || state.rows.length === 0) return next(e)
     const panelOpen = panes.some(p => p.id === SHOW_PANE_ID && p.isPlaced)
-    const model = bandModel(state.rows, e.props.bodyColumns, e.props.maxRows, panelOpen, await $.clock.now())
+    const model = bandModel(state.rows, e.props.bodyColumns, e.props.maxRows, panelOpen, await $.clock.now(), state.unreadable ?? null)
     if (model === null) return next(e)
     const { Box, Text, Button } = $.ui.resolve(e)
     return bandTree({ Box, Text, Button }, model, rowActions(host, bindPressUi($), state.rows))

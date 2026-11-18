@@ -37,6 +37,7 @@ import {
   parseRecords,
   parseSessionFile,
   pathsOf,
+  psProblem,
   progressPathOf,
   sameRows,
   type Liveness,
@@ -145,9 +146,14 @@ async function scanSessionFiles(host: Host, paths: Paths): Promise<SessionFile[]
  * A fresh snapshot is taken when the last is LIVE_RECHECK_MS old, is dated after now (the
  * clock stepped back), or does not confirm some incarnation (a new pid, or no snapshot yet).
  * Then the session file of each live recorded pid is read. `known: false` when `ps` could not
- * run or exited non-zero.
+ * run or exited non-zero, and `unreadable` then says why.
  */
-async function livenessAll(host: Host, paths: Paths, candidates: readonly OrchestratorRecord[], now: number): Promise<{ live: Map<string, Liveness>; known: boolean }> {
+async function livenessAll(
+  host: Host,
+  paths: Paths,
+  candidates: readonly OrchestratorRecord[],
+  now: number,
+): Promise<{ live: Map<string, Liveness>; known: boolean; unreadable: string | null }> {
   const scanned = candidates.some(r => !hasIncarnation(r)) ? await scanSessionFiles(host, paths) : []
   const incarnations: { pid: number; procStart: string | null }[] = []
   for (const r of candidates) {
@@ -158,10 +164,12 @@ async function livenessAll(host: Host, paths: Paths, candidates: readonly Orches
   const confirmed = (i: { pid: number; procStart: string | null }) => sameProcess(i.procStart, procs.snapshot.get(i.pid) ?? null)
   let starts = procs.snapshot
   let known = true
+  let unreadable: string | null = null
   if (toCheck.length > 0 && (now - procs.at >= LIVE_RECHECK_MS || now < procs.at || !toCheck.every(confirmed))) {
-    const r = await host.run(psAllArgv(), RUN_TIMEOUT_MS)
+    const r = await host.attempt(psAllArgv(), RUN_TIMEOUT_MS)
     // a successful `ps -A` always exits 0; any other result is no snapshot at all
-    if (r === null || r.exitCode !== 0) {
+    unreadable = psProblem(r)
+    if ('refused' in r || unreadable !== null) {
       known = false
       starts = new Map()
     } else {
@@ -181,18 +189,18 @@ async function livenessAll(host: Host, paths: Paths, candidates: readonly Orches
   }
   const live = new Map<string, Liveness>()
   for (const r of candidates) live.set(r.key, livenessOf(r, starts, files, scanned))
-  return { live, known }
+  return { live, known, unreadable }
 }
 
-/** The rows of `selfKey`'s family, read now. */
-async function familyRows(host: Host, paths: Paths, selfKey: string, now: number): Promise<OrchestratorRow[]> {
+/** The rows of `selfKey`'s family, read now, and why liveness could not be read (null when it was). */
+async function familyRows(host: Host, paths: Paths, selfKey: string, now: number): Promise<{ rows: OrchestratorRow[]; unreadable: string | null }> {
   const records = await readRecords(host, paths)
   const self = records.find(r => r.key === selfKey)
-  if (!self) return []
+  if (!self) return { rows: [], unreadable: null }
   const inTree = new Set(familyTree(selfKey, records).map(e => e.key))
   const candidates = records.filter(r => r.product === self.product || inTree.has(r.key))
-  const { live, known } = await livenessAll(host, paths, candidates, now)
-  return mergeRows({ selfKey, records: candidates, live, known, now })
+  const { live, known, unreadable } = await livenessAll(host, paths, candidates, now)
+  return { rows: mergeRows({ selfKey, records: candidates, live, known, now }), unreadable }
 }
 
 /** One tick; then the next is scheduled by what it found. */
@@ -209,9 +217,11 @@ export async function tick(host: Host): Promise<void> {
       if (before.selfKey !== null || before.rows.length > 0) await host.store.rows.update(() => EMPTY_ROWS)
     } else {
       const now = await host.now()
-      const rows = await familyRows(host, paths, selfKey, now)
+      const { rows, unreadable } = await familyRows(host, paths, selfKey, now)
       await host.store.rows.update(prev =>
-        prev.selfKey === selfKey && sameRows(prev.rows, rows) && now - prev.at < AGE_REFRESH_MS ? prev : { at: now, selfKey, rows },
+        prev.selfKey === selfKey && sameRows(prev.rows, rows) && (prev.unreadable ?? null) === unreadable && now - prev.at < AGE_REFRESH_MS
+          ? prev
+          : { at: now, selfKey, rows, unreadable },
       )
       if (before.selfKey === null) host.invalidate()
       delay = rows.some(isActive) ? ACTIVE_TICK_MS : QUIET_TICK_MS
