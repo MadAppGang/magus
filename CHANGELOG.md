@@ -174,6 +174,27 @@
 
 ---
 
+## [code-search 8.7.1] - 2026-11-18
+
+### Fixed
+
+- **Every engine's directory is in the ignore conventions, and CLAUDE.md gets one Code
+  Search section.** The conventions magus applies listed only `.mnemex/`. They now list
+  `.codegraph/`, `graphify-out/` and `.serena/cache/` as well. Setup and
+  magus also wrote two different CLAUDE.md sections, and setup's had no magus markers, so
+  magus added a second `## Code Search`. There is now one template, and setup writes it in
+  the same marked block magus maintains.
+- `/code-search:setup` replaces a Code Search section an earlier setup appended, leaves a
+  current marked block alone, and writes nothing when the markers are broken: it names
+  `magus doctor --fix` instead.
+- The guard against force-adding private paths now also covers `.codegraph`,
+  `graphify-out` and `.serena/cache`. No paths were removed from it.
+- A project that already has both an older setup's Code Search section and magus's block
+  keeps both until `/code-search:setup` runs again. Its CLAUDE.md step then removes the
+  older section.
+
+---
+
 ## [orchestrator 0.4.2] - 2026-11-17
 
 ### Changed

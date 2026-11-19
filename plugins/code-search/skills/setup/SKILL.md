@@ -200,8 +200,14 @@ Ask: `Index now` or `Later`. On yes, run with a Bash timeout of 600000:
 
 `index_failed` and `index_marker_missing` carry the command and stderr tail; show them.
 
-On success, if `data.gitignore` is not already in `<project>/.gitignore`, explain that it is
-generated and machine-specific, and ask whether to add it. On yes, append that one line.
+On success, `data.gitignore` is one of this plugin's convention entries
+(`conventions.gitignore.project` in `<root>/.claude-plugin/plugin.json`). magus also writes
+those entries on install and on `magus doctor --fix`. If `data.gitignore` is not already a
+line in `<project>/.gitignore`, explain that the directory is generated and
+machine-specific, and ask whether to add it. On yes, append that one line exactly as
+`data.gitignore` spells it.
+
+Serena has no index step. Its cache entry, `.serena/cache/`, is covered by the conventions.
 
 ## 7. Verify
 
@@ -259,12 +265,45 @@ someone set `USE_BUILTIN_RIPGREP` without a code-search shim, and it is theirs.
 
 ## 9. Project CLAUDE.md
 
-Say in text: `<root>/templates/claude-md-rules.md` documents the code-search tools and the
-routing rule for every session in this project; without it the tools still work, but
-sessions get no routing guidance. Ask: `Add to CLAUDE.md` or `Skip`.
+Say in text: `<root>/templates/claude-md-conventions.md` documents the code-search tools and
+the routing rule for every session in this project. It is the same section magus keeps
+current for this plugin. Without it the tools still work, but sessions get no routing
+guidance. Ask: `Add to CLAUDE.md` or `Skip`.
 
-On yes, append the template to `<project>/CLAUDE.md`. If the template's first heading is
-already in the file, replace that section instead of adding a second copy.
+On yes, write the block exactly as magus writes it. `<version>` is
+`conventions.claudemd.version` in `<root>/.claude-plugin/plugin.json`:
+
+```
+<!-- BEGIN magus:code-search v<version> -->
+<the template file, verbatim>
+<!-- END magus:code-search -->
+```
+
+Work through `<project>/CLAUDE.md` in three passes:
+
+1. **Broken markers.** If the `code-search` markers are unbalanced, duplicated or inside a
+   code block, write nothing. Tell the user to run `magus doctor --fix`, which repairs them.
+   Report `skipped` and stop.
+2. **An earlier setup's copy.** Look outside any marked block for a `## Code Search` heading
+   whose next lines include "Added by the `code-search` plugin.". An earlier setup wrote it.
+   The section starts at that heading and ends at the line starting
+   "- Centrality is tiers, not a threshold.", the last bullet of its `### Discipline` list.
+   It never extends past a `<!-- BEGIN magus:` or `<!-- END magus:` line, a `---` line or
+   a `## ` heading. If one of those, or the end of the file, comes before the end line, the section was edited by
+   hand: leave it, and tell the user it is there.
+   Otherwise, if a marked `code-search` block also exists, delete the section. If none
+   exists, replace the section in place with the marked block. Either way, report
+   `replaced`. The same line inside a marked block does not count: the template carries it.
+3. **The marked block.**
+
+   | Found | Do | Report |
+   |---|---|---|
+   | a marked `code-search` block with the same version | leave it | already present, or `replaced` if pass 2 changed the file |
+   | a marked `code-search` block with an older version | replace it, from the BEGIN line through the END line, with the new block | replaced |
+   | a marked `code-search` block with a newer version | leave it; the installed plugin is older than the block | already present |
+   | no marked block | append the block at the end of the file, after one blank line | added |
+
+A `## Code Search` heading without the "Added by" line is the user's own section. Leave it.
 
 ## 10. Report
 
