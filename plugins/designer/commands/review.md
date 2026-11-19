@@ -99,6 +99,7 @@ agent: review
   ```
   team(mode="run", task_type="design-review", path="{PANEL_DIR}",
     models=[<the resolved model IDs>],
+    efforts=<per model, from the `frontend_ui` column — claudish:claudish-usage, "Reasoning effort per model">,
     agent="designer:review",
     input_file="{PANEL_DIR}/prompt.md",
     require_pattern="Diff [Pp]ercentage.*[0-9.]+%",

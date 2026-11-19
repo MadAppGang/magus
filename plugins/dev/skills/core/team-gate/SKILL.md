@@ -73,11 +73,21 @@ named input file) and call:
 ```
 team(mode="run", path=<gate dir>, models=[...], input_file=<gate dir>/prompt.md,
      task_type=<the site's task_type>,
+     efforts=<per model, from the site's column — claudish:claudish-usage, "Reasoning effort per model">,
      require_pattern=<the line the brief mandates>, min_output_bytes=400, agent=<if any>)
 ```
 
-Each gate site passes its own `task_type` (`plan-review`, `code-review`,
-`root-cause-review`, `audit`), and a re-run of a failed slot passes the same value.
+Each gate site passes its own `task_type`, and takes its `efforts` from the column of the
+live **Recommended effort by task type** table that matches it:
+
+| `task_type` | Column |
+|---|---|
+| `plan-review` | `planning` |
+| `code-review` | `code_review` |
+| `root-cause-review` | `debugging` |
+| `audit` | `code_review` |
+
+A re-run of a failed slot passes the same `task_type` and the same `efforts`.
 
 Never pass `input` beside `input_file`. The tool rejects the pair with
 `Pass input_file or input, not both`, and the audit counted 32 gate calls lost to exactly

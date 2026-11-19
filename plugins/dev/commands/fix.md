@@ -599,6 +599,7 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep, Write, Edit, Ski
           ```
           claudish team(mode="run", task_type="root-cause-review", path=${SESSION_PATH},
             models=[MODELS from config.json — skip this call when "none"],
+            efforts=<per model, from the `debugging` column — claudish:claudish-usage, "Reasoning effort per model">,
             input_file=${SESSION_PATH}/vote-prompt-root-cause.md,
             require_pattern="VERDICT:")
           ```
@@ -993,6 +994,7 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep, Write, Edit, Ski
         ```
         claudish team(mode="run", task_type="code-review", path=${SESSION_PATH},
           models=[MODELS from config.json],
+          efforts=<per model, from the `code_review` column — claudish:claudish-usage, "Reasoning effort per model">,
           input_file=${SESSION_PATH}/vote-prompt-patch.md,
           require_pattern="VERDICT:")
         ```
@@ -1034,6 +1036,7 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep, Write, Edit, Ski
         ```
         claudish team(mode="run", task_type="code-review", path=${SESSION_PATH}/patch-review-internal,
           models=["internal"],
+          efforts=<per model, from the `code_review` column — claudish:claudish-usage, "Reasoning effort per model">,
           agent="dev:reviewer",
           input_file=${SESSION_PATH}/patch-review-internal/prompt.md,
           require_pattern="\*\*Verdict\*\*: (PASS|CONDITIONAL|FAIL)",

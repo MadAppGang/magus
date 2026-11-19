@@ -141,6 +141,7 @@ tools: Read, Write, Glob, Grep, Bash, WebSearch, WebFetch, Agent, mcp__plugin_cl
     # 1. Write the subquestion prompt — stating the output shape it must
     #    return — to SESSION_PATH/input.md, then:
     team(mode="run", path=SESSION_PATH, models=[...resolved live...],
+         efforts=<per model, from the `research` column — claudish:claudish-usage, "Reasoning effort per model">,
          input_file=`${SESSION_PATH}/input.md`,
          require_pattern=<regex for that shape>, agent="dev:researcher")
     #    `agent=` is optional: omit it when dev:researcher was found absent above,

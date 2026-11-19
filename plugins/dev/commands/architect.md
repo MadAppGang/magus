@@ -104,11 +104,7 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, Skill, Glob, Grep, EnterPlanM
       - `task_type="plan"`: the same kind as `/multimodel:team --type plan`
       - `input`: the plan slot prompt below, with `{TASK}` = `Architect: {$ARGUMENTS}.`
       - `require_pattern`: `## Proposal[\s\S]*## Trade-offs`
-      - `efforts`: from the `planning` column of `list_models` → **Recommended effort by task
-        type**: an external model with a level there gets it; a model with `-`, no row, or a
-        native name (`internal`, `default`, `opus`, `sonnet`, `haiku`, a bare Claude ID) gets no
-        entry; `{}` when nobody has one. Always pass it: without it claudish answers
-        `needs_effort` and nothing starts.
+      - `efforts`: per model, from the `planning` column — claudish:claudish-usage, "Reasoning effort per model"
       - `claude_flags`: `"--disallowedTools Edit,Write,NotebookEdit"`, as `/multimodel:team
         --type plan` passes: slots run with permissions bypassed, and this keeps them out of the
         checkout and puts the whole proposal in the reply.

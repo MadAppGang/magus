@@ -2,7 +2,6 @@
 name: deep-analysis
 description: Audits a codebase across seven dimensions, from architecture to code health, scoring each finding with evidence. Use for a full codebase review, tech-debt assessment, or post-incident analysis.
 allowed-tools: Bash, Agent, Read, Grep, Glob
-model: opus
 user-invocable: false
 ---
 

@@ -18,18 +18,21 @@ An unknown preset is an error listing the valid names — never a near match.
 
 | Preset | Main session | smart | normal | cheap |
 |---|---|---|---|---|
-| `fable-advisor` (default) | opus, xhigh | fable, medium | opus, xhigh | sonnet, high |
+| `fable-advisor` (default) | opus, medium | fable, medium | opus, medium | sonnet, high |
 | `fable-lead` | fable, medium | fable, medium | fable, medium | sonnet, high |
-| `fable-top` | fable, xhigh | fable, xhigh | opus, xhigh | sonnet, high |
-| `opus-lead` | opus, xhigh | opus, xhigh | opus, xhigh | sonnet, high |
-| `sonnet-economy` | sonnet, xhigh everywhere; external models at medium | | | |
+| `fable-top` | fable, medium | fable, medium | opus, medium | sonnet, high |
+| `opus-lead` | opus, medium | opus, medium | opus, medium | sonnet, high |
+| `sonnet-economy` | sonnet, high everywhere; external models at medium | | | |
 
 **Tiers.** smart = judgement work (Plan, dev:architect, dev:reviewer, dev:debugger,
 multimodel:deep-analyst). normal = dev:spec-writer, dev:aggregator, and any agent not
 listed. cheap = search and lookup (code-search:analyze, Explore, dev:stack-detector,
 dev:docs, terminal:tui-navigator, statusline-setup).
 
-Effort is low, medium, high or xhigh, and is set once per model per preset.
+Effort is low, medium, high or xhigh, and is set once per model per preset. Two agents
+are exceptions, in every preset: dev:debugger runs at high when opus serves it, and
+dev:reviewer at xhigh when sonnet does; the hook sets that effort on the Agent call itself,
+and a caller that sets its own model or effort keeps it.
 
 ## What it writes
 

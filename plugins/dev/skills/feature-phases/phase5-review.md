@@ -131,6 +131,7 @@ with no externals the call still runs, as `models=["internal"]`:
 ```
 claudish team(mode="run", task_type="code-review", path=${GATE_DIR},
   models=["internal", ...selectedModels.models],
+  efforts=<per model, from the `code_review` column — claudish:claudish-usage, "Reasoning effort per model">,
   agent="dev:reviewer",
   input_file=${GATE_DIR}/prompt.md,
   require_pattern="\*\*Verdict\*\*: (PASS|CONDITIONAL|FAIL)",

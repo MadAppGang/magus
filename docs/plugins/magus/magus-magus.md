@@ -6,7 +6,7 @@ Explains magus - profiles, install/update/upgrade, doctor, model routing, TUI ta
 
 Part of [`magus`](./magus.md).
 
-**6 reference documents, about 400 lines.**
+**6 reference documents, about 403 lines.**
 
 The skill itself does not contain them. It reads your question and names the one or two
 worth opening — which is the point, because loading everything below to answer one
@@ -19,7 +19,7 @@ question would cost more than the answer is worth.
 | [`alias-and-styles.md`](https://github.com/MadAppGang/magus/blob/main/plugins/magus/skills/magus/references/alias-and-styles.md) | The Alias and Styles tabs | 44 |
 | [`commands.md`](https://github.com/MadAppGang/magus/blob/main/plugins/magus/skills/magus/references/commands.md) | install, update, upgrade, doctor — and magus itself | 79 |
 | [`git.md`](https://github.com/MadAppGang/magus/blob/main/plugins/magus/skills/magus/references/git.md) | magus and git | 49 |
-| [`models.md`](https://github.com/MadAppGang/magus/blob/main/plugins/magus/skills/magus/references/models.md) | Per-subagent model routing | 49 |
+| [`models.md`](https://github.com/MadAppGang/magus/blob/main/plugins/magus/skills/magus/references/models.md) | Per-subagent model routing | 52 |
 | [`profiles.md`](https://github.com/MadAppGang/magus/blob/main/plugins/magus/skills/magus/references/profiles.md) | Profiles and scopes | 97 |
 | [`tui.md`](https://github.com/MadAppGang/magus/blob/main/plugins/magus/skills/magus/references/tui.md) | The magus TUI | 82 |
 

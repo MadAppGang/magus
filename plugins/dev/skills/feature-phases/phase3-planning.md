@@ -249,6 +249,7 @@ a code-review scale that no plan reviewer was asked to use.
      ---
      claudish team(mode="run", task_type="plan-review", path=${SESSION_PATH}/reviews/plan-review,
        models=[{model1}, {model2}, ...],
+       efforts=<per model, from the `planning` column — claudish:claudish-usage, "Reasoning effort per model">,
        input_file=${SESSION_PATH}/reviews/plan-review/prompt.md,
        require_pattern="\*\*Verdict\*\*: (PASS|CONDITIONAL|FAIL)",
        min_output_bytes=400)

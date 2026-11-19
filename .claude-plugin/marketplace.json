@@ -15,7 +15,7 @@
       "name": "code-search",
       "source": "./plugins/code-search",
       "description": "Read-only code search and investigation behind one stable tool surface. Finds code by meaning or structure, traces callers, callees and blast radius, and dispatches an analyze agent for deep dives. The search engine is named in project settings and is swappable.",
-      "version": "8.7.1",
+      "version": "8.8.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -37,6 +37,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "8.8.0",
+          "date": "2026-11-19",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "deep-analysis no longer pins its model to opus; it runs on the model the session routes it to"
+        },
         {
           "version": "8.7.1",
           "date": "2026-11-18",
@@ -62,11 +70,6 @@
           "version": "8.6.1",
           "date": "2026-10-20",
           "summary": "In a project managed by magus profiles, /code-search:setup writes a project-level engine choice\u2026"
-        },
-        {
-          "version": "8.6.0",
-          "date": "2026-10-20",
-          "summary": "Dependencies declared in requires schema 2"
         }
       ]
     },
@@ -74,7 +77,7 @@
       "name": "claudish",
       "source": "./plugins/claudish",
       "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting, manages async sessions, and shows the session's runs live above the prompt, with stop and live-screen tabs. Required by code-search, dev, multimodel and designer.",
-      "version": "2.17.2",
+      "version": "2.18.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -94,6 +97,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "2.18.0",
+          "date": "2026-11-19",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "The claudish-usage skill states the effort rule: take a model's effort from the live catalog's\u2026"
+        },
         {
           "version": "2.17.2",
           "date": "2026-11-19",
@@ -125,14 +136,6 @@
             "Fixed"
           ],
           "summary": "A notice that was not delivered now shows before the agent badge in the band header"
-        },
-        {
-          "version": "2.16.0",
-          "date": "2026-11-07",
-          "kinds": [
-            "Added"
-          ],
-          "summary": "The status band shows a run's task type and its agent as badges"
         }
       ]
     },
@@ -204,7 +207,7 @@
       "name": "multimodel",
       "source": "./plugins/multimodel",
       "description": "Multi-model collaboration and orchestration. Runs one task across several AI models under a task type (judge, research, plan, debug, brainstorm, implement, test, collaborate), each with its own result, or delegates it to one model running a full Claude Code session.",
-      "version": "6.2.0",
+      "version": "6.3.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -228,6 +231,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "6.3.0",
+          "date": "2026-11-19",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "deep-analyst and /multimodel:delegate pass each external model the live catalog's effort for\u2026"
+        },
         {
           "version": "6.2.0",
           "date": "2026-11-12",
@@ -256,11 +267,6 @@
           "version": "5.9.1",
           "date": "2026-10-23",
           "summary": "Multi-model-validation picks the review route by cli-sessions.md \u00a71. Inside a claudish child it\u2026"
-        },
-        {
-          "version": "5.9.0",
-          "date": "2026-10-22",
-          "summary": "Multi-model-validation seats the internal reviewer as the internal slot in every code-review\u2026"
         }
       ]
     },
@@ -268,7 +274,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "9.7.1",
+      "version": "9.8.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -308,6 +314,14 @@
       "strict": true,
       "releases": [
         {
+          "version": "9.8.0",
+          "date": "2026-11-19",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "Multimodel gates pass a reasoning effort to each external model, taken from the live claudish\u2026"
+        },
+        {
           "version": "9.7.1",
           "date": "2026-11-19",
           "kinds": [
@@ -338,14 +352,6 @@
             "Fixed"
           ],
           "summary": "/dev:qa external writers read their own prompt (MTL-283)"
-        },
-        {
-          "version": "9.6.0",
-          "date": "2026-10-24",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "/dev:qa and /dev:dev Phase 6 try GPT, then Gemini, then another non-Claude family for the test\u2026"
         }
       ]
     },
@@ -598,7 +604,7 @@
       "name": "magus",
       "source": "./plugins/magus",
       "description": "Teaches the magus CLI and TUI: profiles and scopes, install, update and upgrade, doctor, per-subagent model routing, every TUI tab, what to commit to git, and company plugin marketplaces. Answers from the real commands and drives magus market to publish skill edits.",
-      "version": "1.0.1",
+      "version": "1.1.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -616,6 +622,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "1.1.0",
+          "date": "2026-11-19",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "The models reference lists the new preset efforts and per-agent effort"
+        },
         {
           "version": "1.0.1",
           "date": "2026-11-17",
@@ -744,7 +758,7 @@
       "name": "designer",
       "source": "./plugins/designer",
       "description": "UI design validation. Compares a rendered screen against its reference by pixel diff, then reviews the result for spacing, hierarchy and design-system consistency.",
-      "version": "0.12.0",
+      "version": "0.13.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -766,6 +780,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.13.0",
+          "date": "2026-11-19",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "Review and UI analysis pass each external vision model the live catalog's frontend_ui effort"
+        },
         {
           "version": "0.12.0",
           "date": "2026-11-12",
@@ -791,11 +813,6 @@
           "version": "0.10.0",
           "date": "2026-09-27",
           "summary": "/designer:ui serves artboards over 127.0.0.1, because browser-use does not load file:// pages,\u2026"
-        },
-        {
-          "version": "0.9.1",
-          "date": "2026-09-25",
-          "summary": "/designer:create-style drops its task-list steps, compare no longer passes a flag the script\u2026"
         }
       ]
     },

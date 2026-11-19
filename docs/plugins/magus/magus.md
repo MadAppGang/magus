@@ -7,7 +7,7 @@ Teaches the magus CLI and TUI: profiles and scopes, install, update and upgrade,
 
 | | |
 |---|---|
-| Version | `1.0.1` |
+| Version | `1.1.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 0 |
 | Subagents | 0 |

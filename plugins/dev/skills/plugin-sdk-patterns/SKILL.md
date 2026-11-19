@@ -214,7 +214,7 @@ unlike the kebab-case of skills, and a misspelled key is dropped without an erro
   preloaded; its entry is silently empty. A preload costs its full length on every run, so
   for large content that only some tasks need, a table of *read this file when* rows in the
   prompt is cheaper.
-- `model` takes an alias (`sonnet`, `opus`, `haiku`), a full model id, or `inherit`.
+- `model` takes an alias (`sonnet`, `opus`, `haiku`, `fable`), a full model id, or `inherit`.
 
 ```markdown
 ---

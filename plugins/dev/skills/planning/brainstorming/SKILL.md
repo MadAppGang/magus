@@ -109,6 +109,7 @@ vendors, so averaging it measures nothing. "What would change your mind" tells y
 
 ````
 team(mode="run", task_type="brainstorm", path=<dir>/explore, models=[...resolved...],
+     efforts=<per model, from the `planning` column — claudish:claudish-usage, "Reasoning effort per model">,
      input_file=<dir>/explore/input.md, require_pattern="```approaches",
      min_output_bytes=400, agent="dev:architect")
 ````

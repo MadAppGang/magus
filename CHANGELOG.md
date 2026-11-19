@@ -4,6 +4,87 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [magus 7.16.0] - 2026-11-19
+
+### Changed
+
+- **Every model preset runs opus and fable at medium effort and sonnet at high.** The five
+  presets (fable-advisor, fable-lead, fable-top, opus-lead, sonnet-economy) keep their tier
+  layout; sonnet-economy now runs sonnet at high on every tier.
+- **The Models tab chart shows the workflows the plugins run today**: one shared `main`
+  row, then dev, fix, debug, investigate, research, architect and audit, each with its
+  external steps.
+
+### Added
+
+- **Per-agent effort.** A preset can set one agent's effort for one model, applied by the
+  routing hook on that agent's call only. The presets ship two: `dev:debugger` runs at high
+  when opus serves it, and `dev:reviewer` at xhigh when sonnet serves it. `magus models`
+  and the Models tab list them under the preset.
+
+### Migration notes
+
+- A project that applied a preset before this release shows as **Custom** until the
+  preset is applied again with `magus models use <preset>`.
+
+---
+
+## [magus plugin 1.1.0] - 2026-11-19
+
+### Changed
+
+- The models reference lists the new preset efforts and per-agent effort.
+
+---
+
+## [dev 9.8.0] - 2026-11-19
+
+### Changed
+
+- **Multimodel gates pass a reasoning effort to each external model**, taken from the
+  live claudish catalog's column for the gate's task: plan review uses planning, code
+  review and audit use code_review, root-cause review uses debugging, and the `/dev:qa`
+  writer uses implementation. A model with no catalog value gets none.
+
+---
+
+## [designer 0.13.0] - 2026-11-19
+
+### Changed
+
+- Review and UI analysis pass each external vision model the live catalog's
+  `frontend_ui` effort.
+
+---
+
+## [multimodel 6.3.0] - 2026-11-19
+
+### Changed
+
+- `deep-analyst` and `/multimodel:delegate` pass each external model the live
+  catalog's effort for the task: research for deep analysis, the task's own column for
+  delegation.
+
+---
+
+## [claudish 2.18.0] - 2026-11-19
+
+### Changed
+
+- The claudish-usage skill states the effort rule: take a model's effort from the live
+  catalog's column for the task, and pass none when the catalog has no value.
+
+---
+
+## [code-search 8.8.0] - 2026-11-19
+
+### Changed
+
+- `deep-analysis` no longer pins its model to opus; it runs on the model the session
+  routes it to.
+
+---
+
 ## [madbench 0.12.9] - 2026-11-19
 
 ### Changed

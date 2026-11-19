@@ -116,6 +116,7 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, Write, Glob, Grep, mcp__plugi
          model = <resolved id>,
          agent = "qa-engineer",                  // the sandbox's own copy, from phase 0
          task_type = "qa",                       // the kind of work, in one short word
+         effort = <from the `implementation` column — claudish:claudish-usage, "Reasoning effort per model">,
          work_dir = "${SESSION_PATH}/qa/sandbox",
          timeout_seconds = 900,
          prompt = <the writer prompt below, with sandbox-relative paths>
@@ -143,8 +144,7 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, Write, Glob, Grep, mcp__plugi
        Record each family tried and why it failed. The first family that writes tests is
        the writer: `writer: <id> (<family>)`.
     4. Every family failed, or claudish is absent: stop and ask. Do not pick a writer
-       yourself. When claudish is absent, MTL-171's CLI-session route to a non-Claude
-       model will run here, before the question; until it ships, ask straight away.
+       yourself. When claudish is absent, ask straight away.
        `AskUserQuestion`: say which families were tried and why each failed (or that
        claudish is absent), then offer two options:
        - retry the chain from step 2;

@@ -75,6 +75,7 @@ team(mode="run",
      task_type="design-review",
      path="${JUDGE_DIR}",
      models=["${JUDGE_MODEL}"],
+     efforts=<from the `frontend_ui` column — claudish:claudish-usage, "Reasoning effort per model">,
      input_file="${JUDGE_DIR}/input.md",
      require_pattern="\"overallScore\"")
 ```

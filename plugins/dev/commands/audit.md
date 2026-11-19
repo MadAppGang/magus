@@ -196,6 +196,7 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, mcp__plugin_claudish_claudis
          ```
          claudish team(mode="run", task_type="audit", path="${AUDIT_PATH}",
            models=["internal", a, b, c],
+           efforts=<per model, from the `code_review` column — claudish:claudish-usage, "Reasoning effort per model">,
            agent="dev:reviewer",
            input_file="${AUDIT_PATH}/prompt.md",
            require_pattern="\*\*Verdict\*\*: (PASS|CONDITIONAL|FAIL)",

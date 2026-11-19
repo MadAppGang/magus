@@ -356,7 +356,20 @@ Before `team`, `create_session` or `run_prompt` on an external model:
    as in `models`, or `create_session(..., effort: "<level>")`, or
    `run_prompt(..., effort: "<level>")`.
 
-A model with no row, or `-` in your column, gets no entry: it keeps Claude Code's own effort.
+Call sites name their column; the column names are the live table's headers. A workflow
+step that names one (`code_review`, `planning`, …) takes the cell from that column and
+restates none of the rules below.
+
+**When there is no cell to pass:**
+
+- **A native name gets no entry**: `internal`, `default`, `opus`, `sonnet`, `haiku`,
+  `fable`, or a bare Claude id. It runs at the effort of the user's own Claude Code.
+- **`team`**: always pass `efforts`. A model with no row, or `-` in your column, gets no
+  key; when no model has a key, pass `efforts: {}`.
+- **`create_session`** (and `run_prompt`): a model with a row but `-` in your column passes
+  `effort: "default"`. A model with no row passes no `effort`.
+
+Either way the model keeps Claude Code's own effort.
 
 If you call without any effort while a model has a row, nothing starts: the tool answers
 `needs_effort:` with each model's levels by task type. Pick your column and call again. To keep

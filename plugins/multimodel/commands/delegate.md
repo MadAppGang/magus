@@ -129,6 +129,8 @@ Build prompt: `{EXPLICIT_COMMAND} {TASK_DESCRIPTION}` (omit EXPLICIT_COMMAND if 
 
 Call the claudish `create_session` MCP tool:
 - model: MODEL
+- effort: from the column that matches the delegated task (`implementation`, `debugging`,
+  `code_review`, `planning`, `research`, …) — claudish:claudish-usage, "Reasoning effort per model"
 - prompt: TASK_PROMPT
 - timeout_seconds: 300
 - agent: EXPLICIT_AGENT from Step 1d (omit if no agent was parsed)
