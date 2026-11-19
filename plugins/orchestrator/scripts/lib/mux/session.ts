@@ -1,21 +1,23 @@
-// Gathers the facts the multiplexer rules in mux-choice.ts decide on, the same
-// way for the hook and for every script, so they cannot disagree about where a
-// session lives.
+// Gathers the facts the multiplexer rules in hooks/lib/mux-core.ts decide on,
+// the same way for the hooks and for every script, so they cannot disagree
+// about where a session lives.
 
 import { existsSync } from "node:fs";
-import { type HerdrRunner, herdrRunner, resolveHerdrBin } from "./herdr-cli.ts";
 import {
   type Multiplexer,
   type SessionMux,
-  type WindowMux,
   ancestry,
-  chooseWindowMux,
   detectSessionMux,
+  herdrEnvPresent,
   herdrHostsSelf,
   parseProcessInfo,
   parsePsTable,
-} from "./mux-choice.ts";
-import { readUserConfig } from "./user-config.ts";
+  resolveHerdrBin,
+} from "../../../hooks/lib/mux-core.ts";
+import { type HerdrRunner, herdrRunner } from "../herdr-cli.ts";
+import { type WindowMux, chooseWindowMux } from "../mux-choice.ts";
+import type { OrchestratorMux } from "../state-core.ts";
+import { readUserConfig } from "../user-config.ts";
 
 export interface MuxDeps {
   /** Default: a runner for the resolved herdr binary. */
@@ -68,13 +70,21 @@ function probeHostsSelf(env: Env, pane: string, deps: MuxDeps): boolean | null {
 }
 
 /**
- * Where this session lives. herdr is asked only when nothing is forced and the
- * session claims a herdr pane.
+ * Where this session lives. herdr is asked only when the session claims a
+ * herdr pane and either nothing is forced, or a valid force meets both
+ * multiplexers' variables, where the answer decides the nesting reported. So a
+ * forced session that is not nested pays nothing.
  */
 export function sessionMuxNow(env: Env, deps: MuxDeps): SessionMux {
-  const pane = env.HERDR_PANE_ID;
-  const claimsHerdr = !env.ORCHESTRATOR_MULTIPLEXER && env.HERDR_ENV === "1" && Boolean(pane);
-  return detectSessionMux({ env, hostsSelf: claimsHerdr ? probeHostsSelf(env, pane ?? "", deps) : null });
+  const forced = env.ORCHESTRATOR_MULTIPLEXER;
+  const nestedForce = (forced === "tmux" || forced === "herdr") && Boolean(env.TMUX);
+  const probe = herdrEnvPresent(env) && (!forced || nestedForce);
+  return detectSessionMux({ env, hostsSelf: probe ? probeHostsSelf(env, env.HERDR_PANE_ID ?? "", deps) : null });
+}
+
+/** What a session record stores of `session`: its multiplexer and nesting, or null outside both. */
+export function recordMuxOf(session: SessionMux): OrchestratorMux | null {
+  return session.ok ? { kind: session.mux, nesting: session.nesting } : null;
 }
 
 /** The session's multiplexer and where new ticket windows open. */

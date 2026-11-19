@@ -15,7 +15,7 @@ import { bandModel, listModel, panelFit, screenNote, sessionModel } from './layo
 import { bandTree, type BandActions } from './band'
 import { panelTree, type PanelActions } from './panel'
 import * as controls from './controls'
-import { herdrFallbackArgv } from './mux'
+import { herdrBinaries } from './mux'
 import * as poll from './poll'
 
 // The three atoms. plugin and key are literals HERE: the scan reads no reference from another file.
@@ -27,8 +27,8 @@ function text(v: unknown): string | undefined {
   return typeof v === 'string' && v !== '' ? v : undefined
 }
 
-// True once herdr answered at its fallback path: later calls go straight there.
-let herdrAtFallback = false
+// The herdr binary that answered first, in `herdrBinaries` order: later calls go straight there.
+let herdrBin: string | null = null
 
 // The interface itself may not be kept, so each effect is one closure spelling it out.
 function bindHost($: EngineInterface): Host {
@@ -46,6 +46,7 @@ function bindHost($: EngineInterface): Host {
       claudeConfigDir: text(await $.env.get('CLAUDE_CONFIG_DIR')),
       stateDir: text(await $.env.get('ORCHESTRATOR_STATE_DIR')),
       tmuxPane: text(await $.env.get('TMUX_PANE')),
+      herdrPane: text(await $.env.get('HERDR_PANE_ID')),
     }),
     list: dir => $.fs.list(dir).then(entries => entries.map(e => ({ name: e.name })), () => []),
     read: path => $.fs.read(path).then(t => (typeof t === 'string' ? t : null), () => null),
@@ -53,13 +54,17 @@ function bindHost($: EngineInterface): Host {
     run: async (argv, timeoutMs) => {
       const exec = (a: readonly string[]) =>
         $.process.run(a, { timeoutMs }).then(r => ({ exitCode: r.exitCode, stdout: r.stdout, stderr: r.stderr }), () => null)
-      const fallback = argv[0] === 'herdr' ? herdrFallbackArgv(argv, text(await $.env.get('HOME'))) : null
-      if (fallback !== null && herdrAtFallback) return exec(fallback)
-      const first = await exec(argv)
-      if (first !== null || fallback === null) return first
-      const second = await exec(fallback)
-      if (second !== null) herdrAtFallback = true
-      return second
+      if (argv[0] !== 'herdr') return exec(argv)
+      const rest = argv.slice(1)
+      if (herdrBin !== null) return exec([herdrBin, ...rest])
+      const bins = herdrBinaries({ binPath: text(await $.env.get('HERDR_BIN_PATH')), home: text(await $.env.get('HOME')) })
+      for (const bin of bins) {
+        const answer = await exec([bin, ...rest])
+        if (answer === null) continue
+        herdrBin = bin
+        return answer
+      }
+      return null
     },
     attempt: (argv, timeoutMs) =>
       $.process.run(argv, { timeoutMs }).then(

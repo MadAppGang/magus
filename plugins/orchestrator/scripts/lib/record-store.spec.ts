@@ -15,7 +15,7 @@ const spaces: Sandbox[] = [];
 function space() { const s = sandbox(); spaces.push(s); return s; }
 afterEach(() => { for (const s of spaces.splice(0)) s.cleanup(); });
 const input = (s: Sandbox, patch: Partial<BindInput> = {}): BindInput => ({
-  sessionId: SELF, claimId: null, cwd: s.root, herdr: null,
+  sessionId: SELF, claimId: null, cwd: s.root, herdr: null, mux: null,
   now: NOW, self: null, allowClear: false, ...patch,
 });
 const ownIdentity = (s: Sandbox) => {

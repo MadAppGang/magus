@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { parseChildPaneArgs, SEND_KEYS, MAX_ENDED, parsePanesFile, serializePanesFile, reconcile, familyOf, parseSlotRegistry, occupantOf, shellInForeground, alternationRegex, parseAgentInfo, type PaneEntry, type PanesFile } from "./child-pane-core";
 
 export const entry = (patch: Partial<PaneEntry> = {}): PaneEntry => ({ pane: "w1:p2", terminal: "term_2", name: "child-one", claim: "l-000000000003", dir: join(import.meta.dir, "testdata"), line: "launch child-one green", openedAt: 100, ...patch });
-const file = (patch: Partial<PanesFile> = {}): PanesFile => ({ schema: 1, manager: "l-000000000002", main: "w1:p1", mainTerminal: "term_1", children: [entry()], ended: [], ...patch });
+const file = (patch: Partial<PanesFile> = {}): PanesFile => ({ schema: 1, mux: "herdr", manager: "l-000000000002", main: "w1:p1", mainTerminal: "term_1", children: [entry()], ended: [], ...patch });
 const capture = (name: string) => readFileSync(join(import.meta.dir, "testdata", name), "utf8");
 const open = ["open", "--name", "child-one", "--colour", "green"];
 function rejected(args: string[]) {
@@ -71,16 +71,16 @@ test("[REQ-414] TEST-2805 pane registry serialises with two spaces and a final n
 test("[REQ-414, REQ-435] TEST-2806 restart-reused ids are gone; changed main never discards independently witnessed children", () => {
   const f = file({ children: [entry(), entry({ pane: "w1:pA", terminal: "old_A", name: "reused" }), entry({ pane: "w1:p9", terminal: "old_9", name: "missing" })] });
   const live = new Map([["w1:p2", "term_2"], ["w1:pA", "replacement_A"]]);
-  const result = reconcile(f, live, f.manager, "new-main", "new-main-terminal", 200);
+  const result = reconcile(f, live, f.manager, "new-main", "new-main-terminal", 200, "herdr");
   expect(result.live).toEqual([entry()]);
   expect(result.gone.map(e => e.name)).toEqual(["reused", "missing"]);
   expect(result.file).toEqual(file({ main: "new-main", mainTerminal: "new-main-terminal", children: [entry()], ended: [
     { pane: "w1:pA", name: "reused", at: 200, how: "gone" }, { pane: "w1:p9", name: "missing", at: 200, how: "gone" },
   ] }));
   expect(f.children).toHaveLength(3);
-  expect(reconcile(f, live, "other-manager", "M", "term_M", 200).file).toEqual({ schema: 1, manager: "other-manager", main: "M", mainTerminal: "term_M", children: [], ended: [] });
+  expect(reconcile(f, live, "other-manager", "M", "term_M", 200, "herdr").file).toEqual({ schema: 1, mux: "herdr", manager: "other-manager", main: "M", mainTerminal: "term_M", children: [], ended: [] });
   const oldEnded = Array.from({ length: 20 }, (_, i) => ({ pane: "old" + i, name: "old-" + i, at: i, how: "closed" as const }));
-  const capped = reconcile(file({ ended: oldEnded }), new Map(), f.manager, f.main, f.mainTerminal, 200).file.ended;
+  const capped = reconcile(file({ ended: oldEnded }), new Map(), f.manager, f.main, f.mainTerminal, 200, "herdr").file.ended;
   expect(MAX_ENDED).toBe(20); expect(capped).toHaveLength(20);
   expect(capped[0]!.pane).toBe("old1"); expect(capped.at(-1)!.how).toBe("gone");
 });

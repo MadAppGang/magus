@@ -1099,14 +1099,14 @@ describe("herdr argv and response contracts", () => {
 });
 
 describe("witnessed delivery arguments and launch-scoped trust", () => {
-  test("[REQ-425] TEST-2722 --expect-terminal is herdr-delivery-only and preserves the witness literally", () => {
-    expect(parseArgs(["--deliver-to", "w1:pA", "--mux", "herdr", "--trust-after", "l-launch", "--expect-terminal", "term_A", "--prompt", "hello"], {})).toEqual({
-      ok: true, args: { mode: "deliver", pane: "w1:pA", mux: "herdr", prompt: "hello", trustAfter: "l-launch", expectTerminal: "term_A" },
+  test("[REQ-425] TEST-2722 --expect-witness is delivery-only for both multiplexers and preserves the witness literally", () => {
+    expect(parseArgs(["--deliver-to", "w1:pA", "--mux", "herdr", "--trust-after", "l-launch", "--expect-witness", "term_A", "--prompt", "hello"], {})).toEqual({
+      ok: true, args: { mode: "deliver", pane: "w1:pA", mux: "herdr", prompt: "hello", trustAfter: "l-launch", expectWitness: "term_A" },
     });
     for (const args of [
-      ["--deliver-to", "w1:pA", "--mux", "tmux", "--expect-terminal", "term_A"],
-      ["--deliver-to", "w1:pA", "--mux", "herdr", "--expect-terminal", ""],
-      startArgv("--expect-terminal", "term_A"),
+      ["--deliver-to", "w1:pA", "--mux", "herdr", "--expect-terminal", "term_A"],
+      ["--deliver-to", "w1:pA", "--mux", "herdr", "--expect-witness", ""],
+      startArgv("--expect-witness", "term_A"),
       startArgv("--trust-after", "l-launch"),
     ]) expectParseError(args);
   });

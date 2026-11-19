@@ -8,7 +8,7 @@
  * the catalog currently lists, it decides what dispatches and what gets reported.
  *
  *   # after calling list_models
- *   bun resolve-models.ts --catalog gpt-5.6-sol,glm-5.2,kimi-k3 --context review
+ *   bun resolve-models.ts --catalog gpt-6.2-sol,glm-5.3,kimi-k3.1-pro --context review
  *   bun resolve-models.ts --catalog "$IDS" --json     # machine-readable receipt
  *
  * Exit codes: 0 resolved (possibly with drops) · 3 nothing survived · 2 bad usage.

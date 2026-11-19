@@ -116,10 +116,11 @@ export type Machine = ReturnType<typeof machine>;
 export function seedFamily(h: Machine, children = 1) {
   const records = [
     record({ key: TRIAGE, sessionId: "triage01", role: "triage", parent: null, name: "triage", pid: 700 }),
-    record(),
+    record({ mux: { kind: "tmux", nesting: null } }),
     ...Array.from({ length: children }, (_, i) => record({
       key: i === 0 ? CHILD : "s-child" + String(i + 1).padStart(3, "0"),
       sessionId: "child" + String(i + 1).padStart(3, "0"),
+      mux: { kind: "tmux", nesting: null },
       role: "child", parent: MANAGER, name: "child-" + String(i + 1).padStart(2, "0"),
       pid: 702 + i, createdAt: NOW - 1000 + i,
     })),

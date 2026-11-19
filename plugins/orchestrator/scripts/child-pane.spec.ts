@@ -1,9 +1,9 @@
 import { afterEach, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, statSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { managerSpace, mutateSim, until, json, type ManagerSpace } from "./lib/child-process-testdata";
-import { ancestor, gitCheckout, runBun, type ProcessResult } from "./lib/process-testdata";
+import { actualStart, ancestor, gitCheckout, runBun, type ProcessResult } from "./lib/process-testdata";
 import { simRunner, simRestart, simAgentScreen, panesOf, rectsOf, type SimPane } from "./lib/testdata/herdr-sim";
 import { identity, SELF, MANAGER, CHILD } from "../tests/testdata";
 import { lockPathFor } from "./lib/window";
@@ -49,6 +49,112 @@ for (const command of ["close", "layout"] as const) test("[REQ-429] TEST-2725 " 
   expect(outcome.error).toContain("herdr pane move " + first.pane + " --tab w1:t1");
   expect(c.registry().children.map(e => e.pane)).toEqual(command === "close" ? [first.pane, second.pane] : [first.pane, second.pane, last.pane]);
 }, 15_000);
+
+async function tmuxSpace() {
+  const c = await space();
+  const e = c.seed({}, false);
+  const childDir = c.s.env.CLAUDE_CONFIG_DIR || join(c.s.env.HOME!, ".claude");
+  const sessions = join(childDir, "sessions");
+  mkdirSync(sessions, { recursive: true });
+  const closeLog = join(childDir, "closed");
+  const binary = join(c.s.bin, "tmux");
+  const manager = "%4", child = "%5", panePid = process.pid;
+  writeFileSync(binary, `#!/bin/sh
+case "$1:$*" in
+  display:*)
+    if [ "$4" = '%5' ] && [ -f "$QA_TMUX_CLOSED" ]; then exit 1; fi
+    format=$5
+    while case "$format" in *'#{'*'}'*) true ;; *) false ;; esac; do
+      printf '%s' "\${format%%'#{'*}"
+      format=\${format#*'#{'}
+      field=\${format%%'}'*}
+      format=\${format#*'}'}
+      case "$field" in
+        pane_id) printf '%s' "$4" ;;
+        pane_current_command) printf '%s' '2.1.327' ;;
+        pane_pid) printf '%s' '${panePid}' ;;
+        window_width) printf '%s' '200' ;;
+        window_height) printf '%s' '55' ;;
+        *) printf '#{%s}' "$field" ;;
+      esac
+    done
+    printf '%s\\n' "$format"
+    ;;
+  list-panes:*pane_index*)
+    printf '%%4\\t0\\t1\\t\\t\\t\\n'
+    [ -f "$QA_TMUX_CLOSED" ] || printf '%%5\\t1\\t0\\t\\t\\t\\n'
+    ;;
+  list-panes:*)
+    printf '%%4\\t%s\\n' '${panePid}'
+    [ -f "$QA_TMUX_CLOSED" ] || printf '%%5\\t%s\\n' '${panePid}'
+    ;;
+  kill-pane:*) printf '%s\\n' "$3" > "$QA_TMUX_CLOSED" ;;
+  *) exit 1 ;;
+esac
+`);
+  chmodSync(binary, 0o755);
+  writeFileSync(c.path, JSON.stringify({
+    ...c.registry(), mux: "tmux", main: manager, mainTerminal: `${manager}:${panePid}`,
+    children: [{ ...e, pane: child, terminal: `${child}:${panePid}` }],
+  }));
+  const env = { HERDR_ENV: "", HERDR_PANE_ID: "", TMUX: "qa-host", TMUX_PANE: manager,
+    ORCHESTRATOR_MULTIPLEXER: "tmux", CLAUDE_CONFIG_DIR: childDir, QA_TMUX_CLOSED: closeLog };
+  return { c, child, sessions, closeLog, run: (argv: string[]) => c.run(argv, "", env) };
+}
+
+test("[REQ-4] OCC-NULL: a starting tmux Claude is unbound and needs force to close", async () => {
+  const t = await tmuxSpace();
+  const listed = await t.run(["list"]);
+  expect(listed.code).toBe(0);
+  expect(json(listed)).toMatchObject({ multiplexer: "tmux", tab: null,
+    children: [{ pane: t.child, agent: "claude", status: "starting", occupant: "unbound" }] });
+  error(await t.run(["close", "--pane", t.child]), 13, "unbound");
+  expect(existsSync(t.closeLog)).toBe(false);
+  expect((await t.run(["close", "--pane", t.child, "--force"])).code).toBe(0);
+  expect(readFileSync(t.closeLog, "utf8").trim()).toBe(t.child);
+}, 15_000);
+
+test("[REQ-4] TRUST-LATE and ID-TWO: detected waits for a live descendant even if a newer foreign session names the same pane", async () => {
+  const t = await tmuxSpace();
+  const peer = Bun.spawn([process.execPath, "--no-env-file", "-e", "setInterval(() => {}, 1000)"],
+    { stdin: "ignore", stdout: "ignore", stderr: "ignore" });
+  try {
+    const session = (sessionId: string, pid: number, status: string, updatedAt: number) => {
+      const procStart = actualStart(pid);
+      expect(procStart).toEqual(expect.any(String));
+      writeFileSync(join(t.sessions, `${pid}.json`), JSON.stringify({
+        sessionId, pid, procStart, status, updatedAt, tmux: t.child,
+      }));
+    };
+    const wait = ["wait", "--pane", t.child, "--until", "detected", "--timeout-ms", "1000"];
+    const now = Date.now();
+    session("foreign01", process.ppid, "busy", now);
+    expect((await t.run(wait)).code).toBe(4);
+    session("local0001", peer.pid, "idle", now - 1000);
+    expect((await t.run(wait)).code).toBe(0);
+    const listed = await t.run(["list"]);
+    expect(listed.code).toBe(0);
+    expect(json(listed).children).toMatchObject([{ pane: t.child, status: "idle", occupant: "unbound" }]);
+  } finally {
+    peer.kill();
+    await peer.exited;
+  }
+}, 15_000);
+
+test("[REQ-5] a busy checkout does not prevent a tmux child from closing", async () => {
+  const t = await tmuxSpace();
+  const lock = lockPathFor(t.c.s.ctx.stateDir, t.c.dir);
+  mkdirSync(lock, { recursive: true });
+  writeFileSync(join(lock, "info.json"), JSON.stringify({ pid: t.c.a.pid, name: "busy", since: Date.now() }));
+  const opening = t.run(argsOpen(t.c.dir, "blocked-open"));
+  try {
+    expect((await t.run(["close", "--pane", t.child, "--force"])).code).toBe(0);
+    expect(readFileSync(t.closeLog, "utf8").trim()).toBe(t.child);
+  } finally {
+    rmSync(lock, { recursive: true, force: true });
+    await opening;
+  }
+}, 30_000);
 
 const layoutShape ={ status: expect.any(String), order: expect.any(Array), slots: expect.any(Array), foreign: expect.any(Array), restored: expect.any(Array), stranded: expect.any(Array), error: null };
 for (const command of ["open", "close"] as const) test("[REQ-429] TEST-2725 " + command + " preserves its successful effect when layout failed but stranded nothing", async () => {
@@ -110,11 +216,10 @@ test("[REQ-417] TEST-2701 competing live incarnation and unknown own process can
     expect(c.s.calls()).toEqual([]); expect(readFileSync(c.path, "utf8")).toBe(bytes);
   } finally { await rival.stop(); }
 }, 15_000);
-test("[REQ-417] TEST-2702 a manager outside herdr or under tmux-in-herdr gets exit 10", async () => {
+test("[REQ-417] TEST-2702 a manager outside both multiplexers or without its tmux pane gets exit 10", async () => {
   const c = await space();
   error(await c.run(["list"], "", { HERDR_ENV: "", HERDR_PANE_ID: "", TMUX: "host" }), 10);
-  mutateSim(c, s => { panesOf(s.tabs[0]!.tree)[0]!.shellPid = 777777; });
-  error(await c.run(["list"], "", { TMUX: "host" }), 10);
+  error(await c.run(["list"], "", { HERDR_ENV: "", HERDR_PANE_ID: "", TMUX: "" }), 10);
   expect(inputCalls(c)).toEqual([]);
 }, 15_000);
 // Five opens start about 170 simulated herdr calls and wait out each shell-ready
@@ -125,7 +230,7 @@ test("[REQ-418, REQ-428] TEST-2703 five opens keep start order, exact open/list 
   for (let i = 1; i <= 5; i++) {
     const r = await c.open("child-" + i); expect(r.code).toBe(0);
     expect(r.json).toEqual({
-      pane: expect.any(String), tab: "w1:t1", main: "w1:p1", name: "child-" + i, colour: "green",
+      pane: expect.any(String), multiplexer: "herdr", tab: "w1:t1", main: "w1:p1", name: "child-" + i, colour: "green",
       dir: c.dir, branch: "main", claim: expect.any(String), typed: true, children: i,
       promptDir: join(c.s.ctx.stateDir, "prompts"), layout: { ...layoutShape, status: "applied", order: ["w1:p1", ...opened, r.json.pane], slots: [], foreign: [], restored: [], stranded: [] },
     });
@@ -145,7 +250,7 @@ test("[REQ-418, REQ-428] TEST-2703 five opens keep start order, exact open/list 
   }
   const before = readFileSync(c.path, "utf8"), r = await c.run(["list"]), list = json(r);
   expect(r.code).toBe(0);
-  expect(list).toEqual({ main: "w1:p1", tab: "w1:t1", limit: 10,
+  expect(list).toEqual({ multiplexer: "herdr", main: "w1:p1", tab: "w1:t1", limit: 10,
     children: registry.children.map(e => ({ pane: e.pane, name: e.name, claim: e.claim, dir: e.dir, openedAt: e.openedAt, inTab: true, agent: "claude", status: "idle", occupant: "unbound" })),
     gone: [], slots: [], foreign: [], relayout: false });
   expect(readFileSync(c.path, "utf8")).toBe(before);

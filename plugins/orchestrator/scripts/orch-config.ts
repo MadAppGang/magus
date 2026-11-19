@@ -19,8 +19,9 @@
 import { mkdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import { type Multiplexer, type SessionMux, type WindowMux, withMultiplexer } from "./lib/mux-choice.ts";
-import { type MuxDeps, type MuxResolution, resolveMux } from "./lib/mux-io.ts";
+import type { Multiplexer, SessionMux } from "../hooks/lib/mux-core.ts";
+import { type WindowMux, withMultiplexer } from "./lib/mux-choice.ts";
+import { type MuxDeps, type MuxResolution, resolveMux } from "./lib/mux/session.ts";
 import { type Incarnation, type StoreContext, claudeConfigDirOf, ownPid, ownedKey, pidAlive, readIdentity, writeAtomic } from "./lib/record-store.ts";
 import { readUserConfig, userConfigPath, writeUserConfig } from "./lib/user-config.ts";
 import { lockIsStale, stateDir } from "./lib/window.ts";

@@ -44,13 +44,13 @@ for (const exists of [true, false]) for (const tmux of [true, false])
     else if (tmux) expect(json(r).session).toMatchObject({ mux: "tmux" });
     else { expect(r.code).toBe(1); expect(json(r).session).toEqual({ error: "not inside tmux or herdr" }); }
   }, 15_000);
-test("[REQ-401, REQ-434] TEST-2503 forced values skip process probes entirely", async () => {
+test("[REQ-401, REQ-434] TEST-2503 valid forces probe nesting when both environments are present", async () => {
   const c = await space(); c.s.env.TMUX = "host";
   for (const forced of ["tmux", "herdr", "bad"]) {
     c.s.env.ORCHESTRATOR_MULTIPLEXER = forced;
     await query(c);
   }
-  expect(c.s.calls()).toEqual([]);
+  expect(c.s.calls()).toEqual(Array.from({ length: 2 }, () => ["pane", "process-info", "--pane", "w1:p1"]));
 }, 15_000);
 test("[REQ-404, REQ-434] TEST-2503 probe timeout stays unknown; fallback availability and execution use the same executable", async () => {
   const c = await space(), fallbackDir = join(c.s.env.HOME!, ".local", "bin");
@@ -67,6 +67,6 @@ test("[REQ-404, REQ-434] TEST-2503 probe timeout stays unknown; fallback availab
     "const {sessionMuxNow}=await import(process.env.QA_MODULE);",
     "console.log(JSON.stringify(sessionMuxNow(JSON.parse(process.env.QA_ENV),{home:process.env.HOME,stateDir:process.env.ORCHESTRATOR_STATE_DIR,run:()=>({ok:false,exitCode:null,stdout:'',stderr:'timeout',timedOut:true,json:null,errorCode:null}),ps:()=>null})));",
   ].join("\n");
-  const r = await collect(spawnEval(c.s, code, { QA_MODULE: script("scripts/lib/mux-io.ts"), QA_ENV: JSON.stringify(c.s.env) }), "");
+  const r = await collect(spawnEval(c.s, code, { QA_MODULE: script("scripts/lib/mux/session.ts"), QA_ENV: JSON.stringify(c.s.env) }), "");
   expect(r.code).toBe(0); expect(JSON.parse(r.stdout)).toMatchObject({ ok: true, mux: "herdr" });
 }, 15_000);

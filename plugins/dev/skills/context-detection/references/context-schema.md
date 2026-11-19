@@ -365,7 +365,7 @@ account settings page."* Repo: React + Go fullstack.
         "usage": "/home/u/.claude/plugins/cache/magus/code-search/7.1.0/skills/search/SKILL.md"
       },
       {
-        "name": "tmux",
+        "name": "mux",
         "owner": "terminal",
         "scope": "plugin",
         "status": "connected",
@@ -401,7 +401,7 @@ account settings page."* Repo: React + Go fullstack.
         "/home/u/.claude/plugins/cache/magus/go/0.1.2/knowledge/roles/developer/best-practices.md"
       ],
       "mandatory": [],
-      "mcp": ["ca", "tmux"]
+      "mcp": ["ca", "mux"]
     },
     "frontend-developer": {
       "read": [

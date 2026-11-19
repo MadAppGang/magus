@@ -50,7 +50,7 @@ for (const location of ["outside", "tmux", "herdr", "forced-herdr"] as const) te
 }, 15_000);
 test("[REQ-425] TEST-2602 direct deliver with a wrong terminal exits 5 without text or keys", async () => {
   const c = await space(), e = c.seed();
-  const r = await runBun(c.s, "scripts/ticket-window.ts", ["--deliver-to", e.pane, "--mux", "herdr", "--expect-terminal", "wrong-terminal", "--prompt", "report"], "", c.s.env);
+  const r = await runBun(c.s, "scripts/ticket-window.ts", ["--deliver-to", e.pane, "--mux", "herdr", "--expect-witness", "wrong-terminal", "--prompt", "report"], "", c.s.env);
   expect(r.code).toBe(5);
   expect(c.s.calls().filter(a => ["send-text", "send-keys"].includes(a[1]!))).toEqual([]);
   expect(readFileSync(join(c.s.ctx.stateDir, "ticket-window.log"), "utf8")).toContain("GONE");

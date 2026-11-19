@@ -14,6 +14,12 @@ export type OrchestratorTicket = { id: string; url: string | null };
 
 export type OrchestratorHerdr = { pane: string; tab: string | null; workspace: string | null };
 
+/**
+ * The multiplexer that owns the session's own pane, and which multiplexer runs
+ * inside which when both are present. null nesting: not nested, or unknown.
+ */
+export type OrchestratorMux = { kind: "tmux" | "herdr"; nesting: "herdr-in-tmux" | "tmux-in-herdr" | null };
+
 /** `<stateDir>/sessions/<key>.json`: written only by the binding code (SessionStart hook, `register`). */
 export type OrchestratorIdentity = {
   schema: 1;
@@ -37,6 +43,8 @@ export type OrchestratorIdentity = {
   /** That process's start time from its session file: C-locale `ps -o lstart=` form, UTC. */
   procStart: string | null;
   herdr: OrchestratorHerdr | null;
+  /** The session's multiplexer at its last bind; null outside both, or when none was recorded. */
+  mux: OrchestratorMux | null;
   createdAt: number;
   /** ms; strictly increasing per file. */
   updatedAt: number;
@@ -180,6 +188,14 @@ function ticketOf(value: unknown): OrchestratorTicket | null {
   return { id: t.id, url: stringOrNull(t.url) };
 }
 
+function muxOf(value: unknown): OrchestratorMux | null {
+  if (typeof value !== "object" || value === null) return null;
+  const m = value as Obj;
+  if (m.kind !== "tmux" && m.kind !== "herdr") return null;
+  const nesting = m.nesting === "herdr-in-tmux" || m.nesting === "tmux-in-herdr" ? m.nesting : null;
+  return { kind: m.kind, nesting };
+}
+
 function herdrOf(value: unknown): OrchestratorHerdr | null {
   if (typeof value !== "object" || value === null) return null;
   const h = value as Obj;
@@ -217,6 +233,7 @@ export function parseIdentity(text: string): OrchestratorIdentity | null {
     pid: pid !== null && Number.isInteger(pid) && pid > 0 ? pid : null,
     procStart: stringOrNull(o.procStart),
     herdr: herdrOf(o.herdr),
+    mux: muxOf(o.mux),
     createdAt: o.createdAt,
     updatedAt: o.updatedAt,
   };
@@ -344,6 +361,7 @@ export type OrchestratorBindFacts = {
   pid: number | null;
   procStart: string | null;
   herdr: OrchestratorHerdr | null;
+  mux: OrchestratorMux | null;
   now: number;
 };
 
@@ -363,6 +381,7 @@ export function recordFromClaim(claim: OrchestratorClaim, bind: OrchestratorBind
     pid: bind.pid,
     procStart: bind.procStart,
     herdr: bind.herdr,
+    mux: bind.mux,
     createdAt: bind.now,
     updatedAt: bind.now,
   };
@@ -390,6 +409,7 @@ export function rebindIdentity(identity: OrchestratorIdentity, bind: Orchestrato
     pid: bind.pid,
     procStart: bind.procStart,
     herdr: bind.herdr,
+    mux: bind.mux,
     updatedAt: nextUpdatedAt(identity.updatedAt, bind.now),
   };
 }

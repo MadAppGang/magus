@@ -26,7 +26,7 @@ import { panelLines } from './forecast'
 import { DARK_PALETTE, TMUX_THEME_FORMAT, paletteFor, themeNameAppearance, tmuxClientAppearance, type Appearance, type Palette } from './palette'
 import { panelTree, type ModeSwitch } from './pane'
 
-// The ten atoms. plugin and key are literals HERE: the scan reads no reference from another file.
+// The atoms. plugin and key are literals HERE: the scan reads no reference from another file.
 const RUNS = atom({ plugin: 'claudish', key: 'runs' } as const, { epoch: 0, starts: {}, list: [] })
 const FEEDS = atom({ plugin: 'claudish', key: 'feeds' } as const, {})
 const STOP_REQUESTS = atom({ plugin: 'claudish', key: 'stopRequests' } as const, {})
@@ -38,6 +38,7 @@ const SHOW_TAB = atom({ plugin: 'claudish', key: 'showTab' } as const, { active:
 const ALLOWANCE = atom({ plugin: 'claudish', key: 'allowance' } as const, { kind: 'probing' })
 const TEXT_VIEW = atom({ plugin: 'claudish', key: 'textView' } as const, { rev: 0, modes: {} })
 const REPLAYS = atom({ plugin: 'claudish', key: 'replays' } as const, {})
+const THEME_NOTE = atom({ plugin: 'claudish', key: 'themeNoteShown' } as const, false) // herdrThemeNote: said once per session
 
 // One closure set per atom, spelled per atom: a generic helper taking the atom as a parameter is refused.
 function bindStore($: EngineInterface): Store {
@@ -172,18 +173,57 @@ async function claudeAppearance($: EngineInterface): Promise<Appearance | null> 
   }
 }
 
+/** The step that answered a theme read: Claude Code's theme, the tmux client, TERM_THEME, or the dark default. */
+type ThemeSource = 'claude' | 'tmux' | 'env' | 'default'
+
+/** A theme read: the palette, and which step decided it. */
+type ThemeRead = { palette: Palette; source: ThemeSource }
+
 /**
  * The badges' palette, by the Magus status line's order (paletteFor): Claude Code's own theme,
- * then tmux's client appearance, then TERM_THEME, then dark. tmux is asked only when Claude Code's
- * theme says nothing. Null where the reads are refused (keep what is drawn).
+ * then tmux's client appearance, then TERM_THEME, then dark, with the step that answered. tmux is
+ * asked only when Claude Code's theme says nothing. Null where the reads are refused (keep what
+ * is drawn).
  */
-async function readTheme($: EngineInterface): Promise<Palette | null> {
+async function readTheme($: EngineInterface): Promise<ThemeRead | null> {
   try {
     const claude = await claudeAppearance($)
-    if (claude !== null) return paletteFor(claude, null)
-    return paletteFor(null, await tmuxAppearance($), await $.env.get('TERM_THEME'))
+    if (claude !== null) return { palette: paletteFor(claude, null), source: 'claude' }
+    const tmux = await tmuxAppearance($)
+    if (tmux !== null) return { palette: paletteFor(null, tmux), source: 'tmux' }
+    const termTheme = await $.env.get('TERM_THEME')
+    const source: ThemeSource = termTheme === 'light' || termTheme === 'dark' ? 'env' : 'default'
+    return { palette: paletteFor(null, null, termTheme), source }
   } catch {
     return null
+  }
+}
+
+/** The one line said when herdr leaves the band no terminal theme to follow. */
+const HERDR_THEME_NOTE = 'Run-status colours: herdr reports no terminal theme, so TERM_THEME decides (else dark).'
+
+/**
+ * Under herdr nothing reports the terminal's theme, so TERM_THEME or the dark default decides the
+ * palette. Says so once per session, as a toast, from a claudish call: only sessions that use
+ * claudish see it, and the band's render never writes or toasts. Fires only when the last theme
+ * read was answered by TERM_THEME or the default (a theme not read yet says nothing; the next
+ * call checks again) and HERDR_PANE_ID is set. The atom is never reset within the session.
+ * Any refused read or write says nothing: the call goes on either way.
+ */
+async function herdrThemeNote($: EngineInterface, gate: ThemeGate): Promise<void> {
+  try {
+    const source = gate.source()
+    if (source !== 'env' && source !== 'default') return
+    const pane = await $.env.get('HERDR_PANE_ID')
+    if (typeof pane !== 'string' || pane === '') return
+    let first = false // assigned on every pass, so the pass whose write landed decides
+    await update($, THEME_NOTE, capped(shown => {
+      first = shown !== true
+      return true
+    }))
+    if (first) await $.ui.toast(HERDR_THEME_NOTE)
+  } catch {
+    // said nothing; the next claudish call checks again
   }
 }
 
@@ -199,8 +239,11 @@ async function readCodex($: EngineInterface): Promise<boolean> {
   }
 }
 
-/** A load's theme read: asked once (session.start and turn ends read it themselves), and the palette it sets. */
-type ThemeGate = { asked: boolean; palette: () => Palette; set: (read: Palette) => void }
+/**
+ * A load's theme read: asked once (session.start and turn ends read it themselves), the palette it
+ * sets, and the step that answered the last read (null until one is read).
+ */
+type ThemeGate = { asked: boolean; palette: () => Palette; source: () => ThemeSource | null; set: (read: ThemeRead) => void }
 
 /**
  * The first hook after a load reads the theme without waiting for it, once, and redraws when it
@@ -220,8 +263,10 @@ function themeOnLoad($: EngineInterface, gate: ThemeGate): void {
 async function repaintTheme($: EngineInterface, gate: ThemeGate): Promise<void> {
   try {
     const read = await readTheme($)
-    if (read === null || read === gate.palette()) return
-    gate.set(read)
+    if (read === null) return
+    const changed = read.palette !== gate.palette()
+    gate.set(read) // the source is kept even when the palette is the same
+    if (!changed) return
     $.ui.invalidate('ui.render')
   } catch {
     // the next turn end reads the theme again
@@ -239,7 +284,16 @@ export const register: Register = (on, options) => {
   // A reload mid-session (a hot reload, a /config change) runs this module again but fires no
   // session.start, so the palette above would stay dark until a turn ends: the first hook with an
   // interface after a load reads it (themeOnLoad).
-  const theme: ThemeGate = { asked: false, palette: () => palette, set: read => (palette = read) }
+  let themeSource: ThemeSource | null = null // the step that answered the last theme read (herdrThemeNote)
+  const theme: ThemeGate = {
+    asked: false,
+    palette: () => palette,
+    source: () => themeSource,
+    set: read => {
+      palette = read.palette
+      themeSource = read.source
+    },
+  }
   // Whether this session runs on claudish's Codex pool (isCodexSession): the allowance row, its poll
   // and the forecast panel exist only then. Null until read: at session.start, or by the first band
   // or panel draw after a reload, which fires no session.start. The environment does not change
@@ -257,7 +311,8 @@ export const register: Register = (on, options) => {
     // band again (typing changes none of its props). Draw them again now that the host is bound, so
     // they read the atoms and a later write (the first allowance report, a run) redraws them.
     $.ui.invalidate('ui.render')
-    palette = (await readTheme($)) ?? palette
+    const read = await readTheme($)
+    if (read !== null) theme.set(read)
     const bound = host
     await wake.resetVolatile(bound) // stop requests and the turn flag: what a reload strands
     void wake.recover(bound).then(() => wake.flushDetached(bound), () => wake.flushDetached(bound)) // inflight → delivered | pending, then deliver what is due
@@ -301,8 +356,10 @@ export const register: Register = (on, options) => {
     .catch(($, e, next) => next(e))
 
   // An observer, not a guard: should it fail, the model's call still runs (or keeps the answer it got).
-  on('tool.call', { tool: CLAUDISH_TOOL }, ($, e, next) => {
+  // The band becomes active here, so this is where the herdr theme note is said, once per session.
+  on('tool.call', { tool: CLAUDISH_TOOL }, async ($, e, next) => {
     themeOnLoad($, theme)
+    await herdrThemeNote($, theme)
     return host ? poll.onClaudishCall(host, e, next) : next(e)
   })
     .catch(($, e, next) => next(e))

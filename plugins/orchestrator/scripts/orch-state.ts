@@ -71,7 +71,7 @@ import {
 import { repoFromRemoteUrl } from "./lib/ticket.ts";
 import { herdrIdsOf } from "./lib/herdr-meta.ts";
 import { type HerdrOutcome, publishRecord } from "./lib/herdr-publish.ts";
-import { sessionMuxNow } from "./lib/mux-io.ts";
+import { recordMuxOf, sessionMuxNow } from "./lib/mux/session.ts";
 import { mainCheckoutFromCommonDir, stateDir } from "./lib/window.ts";
 
 const EXIT_BAD_INPUT = 1;
@@ -263,6 +263,7 @@ function register(argv: readonly string[]): void {
       claimId: process.env.ORCHESTRATOR_CLAIM?.trim() || null,
       cwd,
       herdr: herdrIdsOf(process.env, session),
+      mux: recordMuxOf(session),
       now,
       self: ownPid(ctx.claudeConfigDir),
       allowClear: true,

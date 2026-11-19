@@ -63,7 +63,7 @@
 // creation all touch the same main checkout. A lock directory under the state
 // dir (ORCHESTRATOR_STATE_DIR, else ~/.claude/orchestrator) is taken before the
 // window opens and released by the second stage once Claude Code is up, or on
-// TIMEOUT, GONE or UNTRUSTED. The second stage records one outcome per start in
+// TIMEOUT, GONE, UNTRUSTED or FAILED. The second stage records one outcome per start in
 // ticket-window.log in the same directory:
 //
 //   SENT                          the prompt landed: Claude Code took it
@@ -72,31 +72,36 @@
 //   SENT (unconfirmed)            it is on screen, but Claude Code was not seen starting on it
 //   NOT_SENT                      the retyped copy did not land either; never typed a third time
 //   READY                         Claude Code is up; there was no prompt to type
-//   TIMEOUT, GONE, UNTRUSTED      Claude Code never came up in the pane
+//   TIMEOUT, GONE, UNTRUSTED      Claude Code never came up in the pane, or GONE: the pane closed
+//   FAILED                        the multiplexer gave no usable answer, or a send failed on a pane
+//                                 still there; nothing more is typed
 //
 // The line is typed into an interactive shell, as a person would, so a launch
 // command defined as a shell function in the user's rc file works too.
 //
 // Internal: --deliver-to <pane> --mux tmux|herdr --prompt <text> [--lock <dir>]
-// [--trust-after <text>] [--expect-terminal <id>] runs the second stage. A
+// [--trust-after <text>] [--expect-witness <w>] runs the second stage. A
 // refusal to start counts only after the last occurrence of --trust-after on
-// screen. With --expect-terminal, herdr must still report that terminal for the
-// pane before every input; otherwise nothing more is sent. Its exit codes:
-// 0 sent or ready, 4 TIMEOUT, 5 GONE, 7 UNTRUSTED, 8 NOT_SENT.
+// screen. With --expect-witness, the pane must still show that witness (herdr's
+// terminal id, or tmux `<pane_id>:<pane_pid>`) before every input, and an agent
+// must still run in it before the prompt and its Enter; otherwise nothing more
+// is sent. Its exit codes: 0 sent or ready, 1 FAILED, 4 TIMEOUT, 5 GONE,
+// 7 UNTRUSTED, 8 NOT_SENT.
 
 import { randomUUID } from "node:crypto";
 import { appendFileSync, existsSync, mkdirSync, readFileSync, realpathSync, rmSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
-import { type HerdrResult, type HerdrRunner, HERDR_TIMEOUT_MS, herdrRunner, resolveHerdrBin } from "./lib/herdr-cli.ts";
+import type { Multiplexer } from "../hooks/lib/mux-core.ts";
+import { HERDR_TIMEOUT_MS } from "./lib/herdr-cli.ts";
 import { chooseStartMux } from "./lib/mux-choice.ts";
-import { resolveMux } from "./lib/mux-io.ts";
+import { type PaneIO, type Result, TMUX_TIMEOUT_MS, herdr, herdrJson, paneIO, promptHead } from "./lib/mux/io.ts";
+import { resolveMux } from "./lib/mux/session.ts";
 import { type StoreContext, awaitLockHandOver, claudeConfigDirOf, handLockTo, ownedKey, pidAlive, readIdentity, writeAtomic, writeClaim } from "./lib/record-store.ts";
 import { type OrchestratorClaim, isSessionId, launchKey, normaliseTicketId } from "./lib/state-core.ts";
 import { childTicket, repoFromRemoteUrl } from "./lib/ticket.ts";
 import {
   type DeliverArgs,
-  type Multiplexer,
   type PrintLineArgs,
   type StartArgs,
   buildChildLine,
@@ -105,13 +110,11 @@ import {
   buildLaunchLine,
   herdrFocusedWorkspace,
   herdrPaneOfTab,
-  isClaudeForeground,
   lockIsStale,
   lockPathFor,
   mainCheckoutFromCommonDir,
   parseArgs,
   parseHerdrPane,
-  parseHerdrPaneState,
   parseHerdrTabCreate,
   promptStillInInput,
   screenShowsTrustError,
@@ -126,6 +129,8 @@ const EXIT_GONE = 5;
 const EXIT_LOCK_BUSY = 6;
 const EXIT_UNTRUSTED = 7;
 const EXIT_NOT_SENT = 8;
+/** The second stage's FAILED: the multiplexer gave no usable answer, or a send failed on a pane still there. */
+const EXIT_FAILED = 1;
 
 /** The claim id a `--dry-run` line shows; no claim file carries it. */
 const DRY_RUN_CLAIM = "l-dry-run";
@@ -138,12 +143,10 @@ const LOCK_HAND_OVER_WAIT_MS = 2_000;
 const DELIVER_DEADLINE_MS = 15 * 60_000;
 /** How long the new shell may take to draw its prompt. */
 const SHELL_READY_DEADLINE_MS = 15_000;
-/** How long one `herdr agent wait` poll may block. */
-const HERDR_AGENT_POLL_MS = 500;
-/** How long stage 2 waits for Claude Code to show it took a submitted prompt. */
-const LANDED_WAIT_MS = 15_000;
-/** How much longer than its own `--timeout` a blocking herdr call may run. */
-const HERDR_WAIT_GRACE_MS = 2_000;
+/** How long one readiness check waits for the agent to be at rest. */
+const READY_POLL_MS = 500;
+/** How many lines of screen and scrollback stage 2 reads. */
+const SCREEN_LINES = 200;
 const NO_HERDR_SERVER =
   "herdr is your stored choice for new ticket windows, but no herdr server answers. Start herdr, or run orch-config.ts multiplexer --set tmux.";
 
@@ -164,41 +167,17 @@ function fail(msg: string, code = EXIT_BAD_INPUT): never {
   process.exit(code);
 }
 
-function run(cmd: string[], cwd?: string): { ok: boolean; out: string } {
+/** One command. With `timeoutMs`, a command that runs longer is stopped and reads as failed. */
+function run(cmd: string[], cwd?: string, timeoutMs?: number): { ok: boolean; out: string } {
   try {
-    const p = Bun.spawnSync(cmd, { cwd, stdout: "pipe", stderr: "pipe" });
+    const p = Bun.spawnSync(cmd, { cwd, stdout: "pipe", stderr: "pipe", ...(timeoutMs === undefined ? {} : { timeout: timeoutMs }) });
+    if (p.exitedDueToTimeout === true) return { ok: false, out: `${cmd[0]} did not answer within ${timeoutMs} ms` };
     const out = (p.stdout.toString() + p.stderr.toString()).trim();
     return { ok: p.exitCode === 0, out };
   } catch (err) {
     // A missing binary (tmux, herdr or git not installed) throws instead of exiting non-zero.
     return { ok: false, out: err instanceof Error ? err.message : String(err) };
   }
-}
-
-let herdrExec: HerdrRunner | undefined;
-
-/** One herdr call, through the resolved binary, with a timeout. */
-function herdr(args: readonly string[], timeoutMs?: number): HerdrResult {
-  herdrExec ??= herdrRunner(resolveHerdrBin(process.env, process.env.HOME || homedir()) ?? "herdr");
-  return herdrExec(args, timeoutMs);
-}
-
-/** A herdr call's whole output, for reading a screen. */
-function herdrAll(args: readonly string[]): { ok: boolean; out: string } {
-  const r = herdr(args);
-  return { ok: r.ok, out: (r.stdout + r.stderr).trim() };
-}
-
-/** A herdr call's stdout, so a JSON answer is not mixed with warnings on stderr; on failure its stderr. */
-function herdrJson(args: readonly string[]): { ok: boolean; out: string } {
-  const r = herdr(args);
-  if (r.timedOut) return { ok: false, out: `herdr did not answer within ${HERDR_TIMEOUT_MS} ms` };
-  return { ok: r.ok, out: (r.ok ? r.stdout : r.stderr).trim() };
-}
-
-/** Whether the pane's agent reaches one of `until` within `ms`. */
-function herdrAgentReaches(pane: string, until: readonly string[], ms: number): boolean {
-  return herdr(["agent", "wait", pane, ...until.flatMap((state) => ["--until", state]), "--timeout", String(ms)], ms + HERDR_WAIT_GRACE_MS).ok;
 }
 
 function resolveStateDir(): string {
@@ -209,139 +188,10 @@ function resolveStateDir(): string {
   }
 }
 
-// --- the multiplexers ---------------------------------------------------------
-
-/** What both stages need from the multiplexer a pane lives in. */
-interface MuxIO {
-  /** Whether the pane still exists. */
-  exists(pane: string): boolean;
-  /** The visible screen, for telling when a fresh shell has drawn its prompt. */
-  visible(pane: string): string;
-  /** The recent screen and scrollback with wrapped lines joined. */
-  screen(pane: string): string;
-  /** Whether Claude Code is the pane's foreground program and the multiplexer sees it at rest. */
-  claudeUp(pane: string): boolean;
-  /** Whether the multiplexer reports that the pane's agent has finished a turn. */
-  finishedTurn(pane: string): boolean;
-  /** The pane's working directory, or null when it cannot be read. */
-  cwd(pane: string): string | null;
-  /** Types one line into the pane's interactive shell and presses Enter. */
-  runLine(pane: string, line: string): { ok: boolean; out: string };
-  /** Types text literally, without Enter. */
-  sendText(pane: string, text: string): void;
-  sendEnter(pane: string): void;
-  /**
-   * Whether Claude Code took a submitted prompt, waiting up to LANDED_WAIT_MS.
-   * `before` is the screen as it was just before the prompt was typed;
-   * `wasDone` is `finishedTurn` as it was then.
-   */
-  landed(pane: string, prompt: string, before: string, wasDone: boolean): boolean;
-}
-
-/** The part of a prompt looked for on screen: its first 40 characters, up to the first line break. */
-function promptHead(prompt: string): string {
-  return prompt.slice(0, 40).split("\n")[0] ?? "";
-}
-
-/** The screen without its input box: everything but the last `❯` line. */
-function outsideInput(screen: string): string {
-  const lines = screen.split("\n");
-  for (let i = lines.length - 1; i >= 0; i--) {
-    if (lines[i]?.trimStart().startsWith("❯")) return [...lines.slice(0, i), ...lines.slice(i + 1)].join("\n");
-  }
-  return screen;
-}
-
-// tmux cannot tell what Claude Code is doing, so the screen decides. The prompt
-// landed when its first 40 characters show outside the input box (the
-// transcript echoes a submitted prompt), or when the screen differs from the
-// one before typing and the prompt is not in the input box (Claude Code cleared
-// the box and is working). A dropped prompt leaves the screen as it was.
-function tmuxLanded(pane: string, prompt: string, before: string): boolean {
-  const head = promptHead(prompt);
-  const by = Date.now() + LANDED_WAIT_MS;
-  for (;;) {
-    const screen = tmuxIO.screen(pane);
-    if (head !== "" && outsideInput(screen).includes(head)) return true;
-    if (screen !== before && !promptStillInInput(screen, prompt)) return true;
-    if (Date.now() > by) return false;
-    Bun.sleepSync(500);
-  }
-}
-
-const tmuxIO: MuxIO = {
-  exists: (pane) => run(["tmux", "display", "-p", "-t", pane, "#{pane_id}"]).ok,
-  visible: (pane) => run(["tmux", "capture-pane", "-p", "-t", pane]).out,
-  screen: (pane) => run(["tmux", "capture-pane", "-p", "-J", "-t", pane, "-S", "-200"]).out,
-  claudeUp: (pane) => {
-    const fg = run(["tmux", "display", "-p", "-t", pane, "#{pane_current_command}"]);
-    return fg.ok && isClaudeForeground(fg.out);
-  },
-  finishedTurn: () => false,
-  cwd: (pane) => {
-    const p = run(["tmux", "display", "-p", "-t", pane, "#{pane_current_path}"]);
-    return p.ok && p.out !== "" ? p.out : null;
-  },
-  runLine: (pane, line) => {
-    // -l types the text literally; Enter goes separately, as a keypress.
-    const typed = run(["tmux", "send-keys", "-t", pane, "-l", line]);
-    if (!typed.ok) return typed;
-    return run(["tmux", "send-keys", "-t", pane, "Enter"]);
-  },
-  sendText: (pane, text) => {
-    run(["tmux", "send-keys", "-t", pane, "-l", text]);
-  },
-  sendEnter: (pane) => {
-    run(["tmux", "send-keys", "-t", pane, "Enter"]);
-  },
-  landed: (pane, prompt, before) => tmuxLanded(pane, prompt, before),
-};
-
-const herdrIO: MuxIO = {
-  exists: (pane) => herdr(["pane", "get", pane]).ok,
-  visible: (pane) => herdrAll(["pane", "read", pane, "--source", "visible"]).out,
-  screen: (pane) => herdrAll(["pane", "read", pane, "--source", "recent-unwrapped", "--lines", "200"]).out,
-  // herdr recognises Claude Code in a pane and reports when it is at rest:
-  // idle, or done when it finished a turn while unfocused.
-  claudeUp: (pane) => herdrAgentReaches(pane, ["idle", "done"], HERDR_AGENT_POLL_MS),
-  finishedTurn: (pane) => {
-    const answer = herdr(["pane", "get", pane]);
-    return answer.ok && parseHerdrPaneState(answer.stdout)?.status === "done";
-  },
-  cwd: (pane) => {
-    const p = herdrJson(["pane", "get", pane]);
-    return p.ok ? parseHerdrPane(p.out)?.cwd || null : null;
-  },
-  runLine: (pane, line) => herdrAll(buildHerdrRun(pane, line).slice(1)),
-  sendText: (pane, text) => {
-    herdr(["pane", "send-text", pane, text]);
-  },
-  sendEnter: (pane) => {
-    herdr(["pane", "send-keys", pane, "enter"]);
-  },
-  // herdr tracks the agent's state: a prompt Claude Code took turns it to
-  // working, or to done when the turn is already over. A pane that was already
-  // done would satisfy `done` at once, so only `working` proves anything there.
-  landed: (pane, _prompt, _before, wasDone) => herdrAgentReaches(pane, wasDone ? ["working"] : ["working", "done"], LANDED_WAIT_MS),
-};
-
-/** Why the pane no longer holds `terminal` (or, with `needAgent`, has no agent to type to); null while it does. */
-function witnessLost(pane: string, terminal: string, needAgent: boolean): string | null {
-  const answer = herdr(["pane", "get", pane], HERDR_TIMEOUT_MS);
-  if (answer.errorCode === "pane_not_found") return "the pane closed";
-  const state = answer.ok ? parseHerdrPaneState(answer.stdout) : null;
-  if (state === null) return "herdr gave no readable answer for the pane";
-  if (state.terminal !== terminal) return `the pane now holds another terminal (${state.terminal ?? "none"}, expected ${terminal})`;
-  return needAgent && state.agent === null ? "no agent runs in the pane any more" : null;
-}
-
-function ioFor(mux: Multiplexer): MuxIO {
-  switch (mux) {
-    case "tmux":
-      return tmuxIO;
-    case "herdr":
-      return herdrIO;
-  }
+/** The pane's recent screen with wrapped lines joined; "" when it cannot be read. */
+function recentScreen(io: PaneIO, pane: string): string {
+  const r = io.read(pane, { lines: SCREEN_LINES, source: "recent" });
+  return r.ok ? r.text.trim() : "";
 }
 
 // --- entry --------------------------------------------------------------------
@@ -373,12 +223,15 @@ switch (parsed.args.mode) {
 
 // Waits for the Claude Code that the typed line starts in the pane, then types
 // the prompt and submits it. Text and Enter in one send reads as an
-// unsubmitted paste, so Enter goes alone after 2 s. A pane is ready once
-// Claude Code is its foreground program and its screen has been unchanged for
-// 2 s. A `claude -w` that refuses an untrusted checkout exits at once; that is
-// logged as UNTRUSTED and the lock is released straight away.
-function deliver({ pane, prompt, lock, mux, trustAfter, expectTerminal }: DeliverArgs): never {
-  const io = ioFor(mux);
+// unsubmitted paste, so Enter goes alone after 2 s. A pane is ready once its
+// screen has been unchanged for 2 s and the multiplexer sees Claude Code at
+// rest in it: herdr's detector says idle or done; under tmux, a session file
+// tied to the pane says idle, so a Claude Code still booting or at the trust
+// dialog is never typed into. A `claude -w` that refuses an untrusted checkout
+// exits at once; that is logged as UNTRUSTED and the lock is released straight
+// away.
+function deliver({ pane, prompt, lock, mux, trustAfter, expectWitness }: DeliverArgs): never {
+  const io = paneIO(mux);
   const logFile = join(resolveStateDir(), "ticket-window.log");
   const log = (msg: string): void => {
     try {
@@ -401,12 +254,41 @@ function deliver({ pane, prompt, lock, mux, trustAfter, expectTerminal }: Delive
     freeLock();
     process.exit(EXIT_GONE);
   };
-  // herdr addresses input by pane id alone and a restart reuses ids, so the
-  // terminal is read again right before each input.
+  // A multiplexer that gave no usable answer is not a closed pane: the pane may
+  // still be there, so this is logged as a failure and the prompt is kept.
+  const failed = (why: string): never => {
+    log(`${pane} FAILED: ${why}; nothing more typed: ${prompt}`);
+    freeLock();
+    process.exit(EXIT_FAILED);
+  };
+  // Both multiplexers address input by pane id alone and a server restart
+  // reuses ids, so the witness is read again right before each input.
   const requireWitness = (needAgent: boolean): void => {
-    if (expectTerminal === undefined) return;
-    const lost = witnessLost(pane, expectTerminal, needAgent);
-    if (lost !== null) gone(lost);
+    if (expectWitness === undefined) return;
+    const check = io.checkInput(pane, expectWitness, { needAgent });
+    if (check.ok) return;
+    if (check.reason === "failed") failed(`${mux} gave no usable answer for the pane: ${check.detail}`);
+    gone(check.detail);
+  };
+  /** Without a witness to check, a pane counts as closed only when the pane list no longer has it. */
+  const requirePane = (): void => {
+    if (io.witness(pane) !== null) return;
+    const live = io.livePanes();
+    if (live.ok && !live.panes.has(pane)) gone("the pane closed before Claude Code was ready");
+    failed(live.ok ? `${mux} named ${pane} in its pane list but gave no witness for it` : live.error);
+  };
+  /** The recent screen, read or stopped on: a gone pane is GONE, a failed read is FAILED. */
+  const screenNow = (): string => {
+    const r = io.read(pane, { lines: SCREEN_LINES, source: "recent" });
+    if (r.ok) return r.text.trim();
+    if (r.gone) gone(r.error);
+    return failed(r.error);
+  };
+  /** A send that failed stops the stage, so nothing reports SENT for text that never went. */
+  const sent = (r: Result): void => {
+    if (r.ok) return;
+    if (r.gone) gone(r.error);
+    failed(r.error);
   };
 
   const deadline = Date.now() + DELIVER_DEADLINE_MS;
@@ -419,8 +301,8 @@ function deliver({ pane, prompt, lock, mux, trustAfter, expectTerminal }: Delive
       process.exit(EXIT_TIMEOUT);
     }
     requireWitness(false);
-    if (expectTerminal === undefined && !io.exists(pane)) gone("the pane closed before Claude Code was ready");
-    const screen = io.screen(pane);
+    if (expectWitness === undefined) requirePane();
+    const screen = recentScreen(io, pane);
     if (screenShowsTrustError(screen, trustAfter)) {
       freeLock();
       const dir = io.cwd(pane) ?? "the checkout";
@@ -433,7 +315,7 @@ function deliver({ pane, prompt, lock, mux, trustAfter, expectTerminal }: Delive
     if (screen !== last) {
       last = screen;
       stableSince = Date.now();
-    } else if (Date.now() - stableSince >= 2000 && io.claudeUp(pane)) {
+    } else if (Date.now() - stableSince >= 2000 && io.agentWait(pane, ["idle", "done"], READY_POLL_MS) === "reached") {
       break;
     }
     Bun.sleepSync(500);
@@ -451,34 +333,36 @@ function deliver({ pane, prompt, lock, mux, trustAfter, expectTerminal }: Delive
   // for its acknowledgement first (capped, in case none comes), then for the
   // screen to settle again.
   const colourBy = Date.now() + 30_000;
-  while (Date.now() < colourBy && !io.screen(pane).includes("Session color set")) Bun.sleepSync(500);
-  let settled = io.screen(pane);
+  while (Date.now() < colourBy && !recentScreen(io, pane).includes("Session color set")) Bun.sleepSync(500);
+  let settled = recentScreen(io, pane);
   let settledSince = Date.now();
   while (Date.now() - settledSince < 2000 && Date.now() < colourBy + 10_000) {
     Bun.sleepSync(500);
-    const s = io.screen(pane);
+    const s = recentScreen(io, pane);
     if (s !== settled) {
       settled = s;
       settledSince = Date.now();
     }
   }
 
+  // A failed send is never retried: whether any of it reached the pane is
+  // unknown, so the stage stops as GONE or FAILED and the prompt is kept.
   const typeOnce = (): void => {
     requireWitness(true);
-    io.sendText(pane, prompt);
+    sent(io.sendText(pane, prompt));
     Bun.sleepSync(2000);
     requireWitness(true);
-    io.sendEnter(pane);
+    sent(io.sendKeys(pane, ["enter"]));
   };
   const wasDone = io.finishedTurn(pane);
   typeOnce();
 
   // A prompt still in the input box gets one more Enter, never another copy.
   Bun.sleepSync(3000);
-  const secondEnter = promptStillInInput(io.screen(pane), prompt);
+  const secondEnter = promptStillInInput(screenNow(), prompt);
   if (secondEnter) {
     requireWitness(true);
-    io.sendEnter(pane);
+    sent(io.sendKeys(pane, ["enter"]));
   }
 
   if (io.landed(pane, prompt, settled, wasDone)) {
@@ -490,16 +374,18 @@ function deliver({ pane, prompt, lock, mux, trustAfter, expectTerminal }: Delive
   // the workflow opened; typing again could run it twice, so it is left alone.
   // Only a copy absent from the screen was dropped, and only that is retyped, once.
   const head = promptHead(prompt);
-  const before = io.screen(pane);
+  const before = screenNow();
   if (head === "" || before.includes(head)) {
     log(`${pane} SENT (unconfirmed): the prompt is on screen but Claude Code was not seen starting on it: ${prompt}`);
     process.exit(0);
   }
   typeOnce();
-  log(`${pane} SENT (retyped once: the first copy was dropped): ${prompt}`);
-  if (io.landed(pane, prompt, before, wasDone)) process.exit(0);
+  if (io.landed(pane, prompt, before, wasDone)) {
+    log(`${pane} SENT (retyped once: the first copy was dropped): ${prompt}`);
+    process.exit(0);
+  }
 
-  const reason = promptStillInInput(io.screen(pane), prompt)
+  const reason = promptStillInInput(screenNow(), prompt)
     ? "the retyped copy is still in the input box"
     : "Claude Code did not take the retyped copy either";
   log(`${pane} NOT_SENT: ${reason}; not typed again: ${prompt}`);
@@ -687,7 +573,7 @@ function windowMuxFor(args: StartArgs): { mux: Multiplexer; fromTmux: boolean } 
 function resolveSession(sessionArg: string | undefined): string {
   if (sessionArg !== undefined) return sessionArg;
   const target = process.env.TMUX_PANE ? ["-t", process.env.TMUX_PANE] : [];
-  const current = run(["tmux", "display-message", "-p", ...target, "#{session_name}"]);
+  const current = run(["tmux", "display-message", "-p", ...target, "#{session_name}"], undefined, TMUX_TIMEOUT_MS);
   if (!current.ok || current.out === "") fail(`could not read the current tmux session: ${current.out}`);
   return current.out;
 }
@@ -743,7 +629,7 @@ function openHerdrTab(argv: string[], fromTmux: boolean): { tabId: string; pane:
 
 function start(args: StartArgs): never {
   const { mux, fromTmux } = windowMuxFor(args);
-  const io = ioFor(mux);
+  const io = paneIO(mux);
   const session = mux === "tmux" ? resolveSession(args.session) : null;
   const dir = resolveCheckout(args.dir);
   const branch = checkCheckout(dir, args.name);
@@ -758,7 +644,7 @@ function start(args: StartArgs): never {
   const lockPath = lockPathFor(state, dir);
   const logFile = join(state, "ticket-window.log");
 
-  const hasSession = session === null ? true : run(["tmux", "has-session", "-t", `=${session}`]).ok;
+  const hasSession = session === null ? true : run(["tmux", "has-session", "-t", `=${session}`], undefined, TMUX_TIMEOUT_MS).ok;
   const openArgv =
     session === null
       ? buildHerdrTabCreate({ dir, name: args.name, workspace: fromTmux ? herdrWorkspaceFromTmux() : herdrWorkspace() })
@@ -816,13 +702,9 @@ function start(args: StartArgs): never {
   }
   const where = mux === "tmux" ? `${session}, pane ${pane}` : `herdr tab ${tabId}, pane ${pane}`;
 
-  // Stage 2 never runs under herdr without knowing which terminal this pane holds.
-  let terminal: string | null = null;
-  if (mux === "herdr") {
-    const answer = herdr(["pane", "get", pane]);
-    terminal = answer.ok ? (parseHerdrPaneState(answer.stdout)?.terminal ?? null) : null;
-    if (terminal === null) fail(`window opened (${where}) but herdr did not name its terminal; nothing was typed`);
-  }
+  // Stage 2 never runs without knowing which witness this pane shows.
+  const witness = io.witness(pane);
+  if (witness === null) fail(`window opened (${where}) but ${mux} did not name the pane's witness; nothing was typed`);
 
   // Wait for the shell to be ready before typing. A login shell queries the
   // terminal (OSC 11 / DA) while it starts, and those reads eat typeahead: the
@@ -832,7 +714,8 @@ function start(args: StartArgs): never {
   let stableSince = 0;
   const deadline = Date.now() + SHELL_READY_DEADLINE_MS;
   for (;;) {
-    const screen = io.visible(pane);
+    const visible = io.read(pane, { lines: 0, source: "visible" });
+    const screen = visible.ok ? visible.text.trim() : "";
     const now = Date.now();
     if (screen !== last) {
       last = screen;
@@ -845,12 +728,13 @@ function start(args: StartArgs): never {
   }
 
   const typed = io.runLine(pane, line);
-  if (!typed.ok) fail(`window opened (${where}) but typing the command failed: ${typed.out}`);
+  if (!typed.ok) fail(`window opened (${where}) but typing the command failed: ${typed.error}`);
 
   // Stage 2, detached: type the prompt once Claude Code is up.
   const child = Bun.spawn(
     [
       process.execPath,
+      "--env-file=/dev/null",
       import.meta.path,
       "--deliver-to",
       pane,
@@ -860,7 +744,8 @@ function start(args: StartArgs): never {
       args.prompt,
       "--lock",
       lockPath,
-      ...(terminal !== null ? ["--expect-terminal", terminal] : []),
+      "--expect-witness",
+      witness,
     ],
     { stdio: ["ignore", "ignore", "ignore"], detached: true },
   );

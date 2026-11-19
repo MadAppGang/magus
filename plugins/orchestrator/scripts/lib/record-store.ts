@@ -27,6 +27,7 @@ import {
   type OrchestratorClaim,
   type OrchestratorHerdr,
   type OrchestratorIdentity,
+  type OrchestratorMux,
   type OrchestratorOp,
   type OrchestratorProgress,
   type OrchestratorRecord,
@@ -422,6 +423,7 @@ export type BindInput = {
   claimId: string | null;
   cwd: string;
   herdr: OrchestratorHerdr | null;
+  mux: OrchestratorMux | null;
   now: number;
   /** The caller's Claude Code process (`ownPid`), or null when the walk found none. */
   self: Incarnation | null;
@@ -451,6 +453,7 @@ function bindFacts(input: BindInput): OrchestratorBindFacts {
     pid: input.self?.pid ?? null,
     procStart: input.self?.procStart ?? null,
     herdr: input.herdr,
+    mux: input.mux,
     now: input.now,
   };
 }
@@ -494,6 +497,7 @@ function newIdentity(key: string, input: BindInput, reg: NonNullable<BindInput["
     pid: input.self?.pid ?? null,
     procStart: input.self?.procStart ?? null,
     herdr: input.herdr,
+    mux: input.mux,
     createdAt: input.now,
     updatedAt: input.now,
   };

@@ -2,12 +2,23 @@
 # Claude Code Status Line — colorful worktree-aware status with plan limits, reset countdowns & process RAM usage
 # Receives JSON session data via stdin
 # Part of statusline plugin (MadAppGang/magus)
+#
+# `statusline.sh --sources` renders nothing. It prints which source answered the
+# theme and the worktree chip colour, one line each, plus one line under herdr when
+# herdr owns the pane. It is decided here, before stdin is read, so it never waits on
+# a terminal or an open pipe. /setup:statusline-customize runs it.
 
-input=$(cat)
+SOURCES_ONLY=0
+if [ "${1:-}" = "--sources" ]; then
+  SOURCES_ONLY=1
+  input=''
+else
+  input=$(cat)
+fi
 
 # ── Debug: capture raw JSON for test fixtures ─────────────
 # Set STATUSLINE_DEBUG=1 to save each render's input JSON
-if [ "${STATUSLINE_DEBUG:-0}" = "1" ]; then
+if [ "$SOURCES_ONLY" = "0" ] && [ "${STATUSLINE_DEBUG:-0}" = "1" ]; then
   DEBUG_DIR="$HOME/.claude/.statusline-debug"
   mkdir -p "$DEBUG_DIR"
   printf '%s\n' "$input" > "${DEBUG_DIR}/$(date +%s).json"
@@ -138,6 +149,11 @@ fi
 # environment is read as-is: stale in the same way, but still the best signal left
 # before the default.
 #
+# herdr reports no client theme and keeps no session copy of COLORFGBG, so in a
+# herdr pane outside tmux step 4 does not run and step 7 reads $COLORFGBG as it
+# does outside tmux. Under herdr inside tmux the outer tmux client is the terminal
+# herdr draws on, so steps 4 and 7 still read it. `--sources` names the step.
+#
 # The tmux query forks, so its verdict (light, dark, or none) is cached for 30s.
 # Environment reads are free and are never cached — a cached env verdict would let
 # one pane's TERM_THEME mask another's. The cache is one user-wide file, not one
@@ -249,15 +265,22 @@ claude_theme_appearance() {
   esac
 }
 
+# Prints light|dark. It also sets APPEARANCE_SOURCE to the step that answered:
+# config, STATUSLINE_APPEARANCE, claude, tmux-client, TERM_THEME, tmux-COLORFGBG,
+# COLORFGBG or default. A render calls it in a subshell, where the variable is lost;
+# `--sources` calls it in this shell to read it.
 resolve_appearance() {
+  APPEARANCE_SOURCE=config
   case "$APPEARANCE" in
     light|dark) printf '%s' "$APPEARANCE"; return ;;
   esac
 
+  APPEARANCE_SOURCE=STATUSLINE_APPEARANCE
   case "${STATUSLINE_APPEARANCE:-}" in
     light|dark) printf '%s' "$STATUSLINE_APPEARANCE"; return ;;
   esac
 
+  APPEARANCE_SOURCE=claude
   local claude
   claude=$(claude_theme_appearance)
   case "$claude" in
@@ -265,6 +288,7 @@ resolve_appearance() {
   esac
 
   if [ -n "${TMUX:-}" ]; then
+    APPEARANCE_SOURCE=tmux-client
     local live
     live=$(tmux_client_theme)
     case "$live" in
@@ -272,20 +296,24 @@ resolve_appearance() {
     esac
   fi
 
+  APPEARANCE_SOURCE=TERM_THEME
   case "${TERM_THEME:-}" in
     light|dark) printf '%s' "$TERM_THEME"; return ;;
   esac
 
   local result
   if [ -n "${TMUX:-}" ]; then
+    APPEARANCE_SOURCE=tmux-COLORFGBG
     result=$(tmux_colorfgbg_verdict)
   else
+    APPEARANCE_SOURCE=COLORFGBG
     result=$(parse_colorfgbg "${COLORFGBG:-}")
   fi
   case "$result" in
     light|dark) printf '%s' "$result"; return ;;
   esac
 
+  APPEARANCE_SOURCE=default
   printf 'dark'
 }
 # <<< resolve_appearance
@@ -402,6 +430,49 @@ pick_wt_bg() {
   bg "${WT_PALETTE[$(( h % ${#WT_PALETTE[@]} ))]}"
 }
 
+# >>> tmux_owns_pane  (keep these markers: a test can extract the function)
+# Succeeds when the tmux pane in $TMUX_PANE is what hosts this process. With no
+# herdr pane in the environment that is today's test: TMUX and TMUX_PANE are set.
+# With both set, the NEARER multiplexer wins: walk up from $$ (at most 32 steps)
+# and stop at the first process that is either the tmux pane's shell
+# (#{pane_pid}: tmux owns the pane) or one whose command is herdr (a herdr server
+# or client: herdr owns it). Under herdr inside tmux the herdr server descends from
+# the outer tmux pane, so that pane's shell is an ancestor too, only farther away.
+# A tmux server's parent is pid 1, so under tmux inside herdr the walk meets the
+# pane's shell before any herdr process. A walk that meets neither, or any read
+# that fails, is not ownership: the colour falls back rather than show another
+# window's.
+tmux_owns_pane() {
+  [ -n "${TMUX:-}" ] && [ -n "${TMUX_PANE:-}" ] || return 1
+  [ -n "${HERDR_PANE_ID:-}" ] || return 0
+  command -v tmux >/dev/null 2>&1 || return 1
+  local pane_pid table owner
+  pane_pid=$(tmux display -p -t "$TMUX_PANE" '#{pane_pid}' 2>/dev/null)
+  case "$pane_pid" in ''|*[!0-9]*) return 1 ;; esac
+  table=$(ps -axo pid=,ppid=,comm= 2>/dev/null) || return 1
+  [ -n "$table" ] || return 1
+  owner=$(printf '%s\n' "$table" | awk -v start="$$" -v pane="$pane_pid" '
+    {
+      pid = $1; ppid = $2; cmd = $3
+      for (i = 4; i <= NF; i++) cmd = cmd " " $i
+      sub(/.*\//, "", cmd)
+      parent[pid] = ppid; name[pid] = cmd
+    }
+    END {
+      cur = start
+      for (step = 0; step < 32; step++) {
+        if (cur == pane) { print "tmux"; exit }
+        if (!(cur in parent)) break
+        if (name[cur] == "herdr") { print "herdr"; exit }
+        if (cur == parent[cur] || parent[cur] == "" || parent[cur] == 0) break
+        cur = parent[cur]
+      }
+      print "none"
+    }')
+  [ "$owner" = "tmux" ]
+}
+# <<< tmux_owns_pane
+
 # ── `wt:` chip colour — the SESSION's colour, not a hash of its name ──
 # The chip names the same session the tmux tab names, so it should carry the same
 # COLOUR. A hash of the worktree name cannot: it has no way to learn that this
@@ -482,20 +553,27 @@ pick_wt_bg() {
 # two escapes and the ink depends on which branch won — a token fill carries dark ink,
 # the hashed fallback keeps $BADGE_FG. Both are read at render time, after apply_theme
 # has run for the resolved appearance.
+#
+# Step 1 runs only when tmux owns THIS pane (tmux_owns_pane). Under herdr inside
+# tmux, TMUX and TMUX_PANE are inherited from the outer tmux, and its window belongs
+# to herdr, not to this session, so its @cc_colour is not this session's colour.
+#
+# Sets WT_CHIP_SOURCE to the step that answered: tmux, CLAUDE_WT_COLOUR or hash.
 wt_chip_style() {
   local name="$1" tok='' pair=''
+  WT_CHIP_SOURCE=hash
 
-  if [ -n "${TMUX:-}" ] && [ -n "${TMUX_PANE:-}" ] && command -v tmux >/dev/null 2>&1; then
+  if tmux_owns_pane && command -v tmux >/dev/null 2>&1; then
     tok=$(tmux show -wqv -t "$TMUX_PANE" @cc_colour 2>/dev/null)
     case "$tok" in
-      red|blue|green|yellow|purple|orange|pink|cyan) ;;
+      red|blue|green|yellow|purple|orange|pink|cyan) WT_CHIP_SOURCE=tmux ;;
       *) tok='' ;;   # covers `default`, unset/empty, and anything this build predates
     esac
   fi
 
   if [ -z "$tok" ]; then
     case "${CLAUDE_WT_COLOUR:-}" in
-      red|blue|green|yellow|purple|orange|pink|cyan) tok="$CLAUDE_WT_COLOUR" ;;
+      red|blue|green|yellow|purple|orange|pink|cyan) tok="$CLAUDE_WT_COLOUR"; WT_CHIP_SOURCE=CLAUDE_WT_COLOUR ;;
     esac
   fi
 
@@ -507,6 +585,7 @@ wt_chip_style() {
     done
   fi
 
+  WT_CHIP_SOURCE=hash
   WT_CHIP_BG=$(pick_wt_bg "$name")
   WT_CHIP_FG="$BADGE_FG"
 }
@@ -815,6 +894,42 @@ tree_rss_kb() {
     }
   '
 }
+
+# ── --sources: which source answered, then stop ──────────
+# Under herdr nothing reports the terminal's theme or the window's /color, so the
+# fallbacks below answer. This says so ONCE, when asked, never on a render.
+if [ "$SOURCES_ONLY" = "1" ]; then
+  resolve_appearance >/dev/null
+  case "$APPEARANCE_SOURCE" in
+    config)                theme_from="the appearance config key" ;;
+    STATUSLINE_APPEARANCE) theme_from="STATUSLINE_APPEARANCE" ;;
+    claude)                theme_from="Claude Code's theme setting" ;;
+    tmux-client)           theme_from="the tmux client showing this pane" ;;
+    TERM_THEME)            theme_from="TERM_THEME" ;;
+    tmux-COLORFGBG)        theme_from="tmux's session COLORFGBG" ;;
+    COLORFGBG)             theme_from="COLORFGBG" ;;
+    *)                     theme_from="the dark default" ;;
+  esac
+  printf 'theme: %s (%s)\n' "$theme_from" "$APPEARANCE_RESOLVED"
+
+  wt_chip_style ""
+  case "$WT_CHIP_SOURCE" in
+    tmux)             chip_from="this tmux window's @cc_colour" ;;
+    CLAUDE_WT_COLOUR) chip_from="CLAUDE_WT_COLOUR ($CLAUDE_WT_COLOUR)" ;;
+    *)                chip_from="a hash of the worktree name" ;;
+  esac
+  printf 'chip: %s\n' "$chip_from"
+
+  if [ -n "${HERDR_PANE_ID:-}" ] && ! tmux_owns_pane; then
+    case "$APPEARANCE_SOURCE" in
+      TERM_THEME|tmux-COLORFGBG|COLORFGBG|default)
+        printf '%s\n' "Under herdr the status line cannot read a terminal theme or follow /color; the theme comes from TERM_THEME or COLORFGBG (else dark) and the worktree chip from CLAUDE_WT_COLOUR." ;;
+      *)
+        printf '%s\n' "Under herdr the worktree chip cannot follow /color; it comes from CLAUDE_WT_COLOUR." ;;
+    esac
+  fi
+  exit 0
+fi
 
 # ── Extract session data (single jq call) ─────────────────
 eval "$(printf '%s' "$input" | jq -r '

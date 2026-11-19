@@ -75,7 +75,7 @@
       "name": "claudish",
       "source": "./plugins/claudish",
       "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting, manages async sessions, and shows the session's runs live above the prompt, with stop and live-screen tabs. Required by code-search, dev, multimodel and designer.",
-      "version": "2.17.1",
+      "version": "2.17.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -95,6 +95,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "2.17.2",
+          "date": "2026-11-19",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "The run-status band says once when herdr leaves its colours to a fallback"
+        },
         {
           "version": "2.17.1",
           "date": "2026-11-12",
@@ -126,14 +134,6 @@
             "Added"
           ],
           "summary": "The status band shows a run's task type and its agent as badges"
-        },
-        {
-          "version": "2.15.1",
-          "date": "2026-11-07",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "The claudish-usage skill's Team Mode Integration names the judge type of /team"
         }
       ]
     },
@@ -269,7 +269,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "9.7.0",
+      "version": "9.7.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -309,6 +309,14 @@
       "strict": true,
       "releases": [
         {
+          "version": "9.7.1",
+          "date": "2026-11-19",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "The terminal plugin's MCP server is named mux, not tmux"
+        },
+        {
           "version": "9.7.0",
           "date": "2026-11-12",
           "kinds": [
@@ -339,11 +347,6 @@
             "Changed"
           ],
           "summary": "/dev:qa and /dev:dev Phase 6 try GPT, then Gemini, then another non-Claude family for the test\u2026"
-        },
-        {
-          "version": "9.5.1",
-          "date": "2026-10-23",
-          "summary": "The CLI review route, used when claudish is absent, reads each reviewer's screen from a\u2026"
         }
       ]
     },
@@ -530,7 +533,7 @@
       "name": "setup",
       "source": "./plugins/setup",
       "description": "Project setup jobs in one plugin. Investigates a repository and provisions it \u2014 plugins, tools, framework best-practice references, and a seeded knowledge base \u2014 then installs the adaptive statusline and indexes every skill reachable from the project into browsable markdown.",
-      "version": "1.11.0",
+      "version": "1.11.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -550,6 +553,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "1.11.1",
+          "date": "2026-11-19",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "The statusline's worktree chip follows the multiplexer that owns the pane"
+        },
         {
           "version": "1.11.0",
           "date": "2026-11-14",
@@ -581,15 +592,6 @@
             "Changed"
           ],
           "summary": "/setup:project describes multimodel as task-typed team runs"
-        },
-        {
-          "version": "1.8.0",
-          "date": "2026-10-29",
-          "kinds": [
-            "Changed",
-            "Added"
-          ],
-          "summary": "The status line's context bar measures against Claude Code's auto-compact window, so it shows\u2026"
         }
       ]
     },
@@ -637,7 +639,7 @@
       "name": "aside",
       "source": "./plugins/aside",
       "description": "Hands browser tasks to Aside, the user's own AI browser with its own logged-in agent, through the aside CLI, in a split terminal pane when the terminal plugin is present. An alternative to browser-use for work in the user's accounts. Needs the aside CLI.",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -654,6 +656,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "1.0.1",
+          "date": "2026-11-19",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "The split-pane run works inside tmux or herdr"
+        },
         {
           "version": "1.0.0",
           "date": "2026-11-01",
@@ -794,7 +804,7 @@
       "name": "terminal",
       "source": "./plugins/terminal",
       "description": "Slot-addressed terminal control over tmux or herdr. Runs interactive commands, dev servers, test watchers, REPLs and TUI apps in numbered helper panes \u2014 beside the user or isolated from view \u2014 that the server places and owns, so an agent never holds a pane id or targets the user's own session.",
-      "version": "5.6.1",
+      "version": "5.6.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -812,6 +822,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "5.6.2",
+          "date": "2026-11-19",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "The pane-safety hook guards herdr too"
+        },
         {
           "version": "5.6.1",
           "date": "2026-11-07",
@@ -841,14 +859,6 @@
             "Added"
           ],
           "summary": "The tui-navigator agent has a color: field again: cyan"
-        },
-        {
-          "version": "5.3.1",
-          "date": "2026-10-07",
-          "kinds": [
-            "Fixed"
-          ],
-          "summary": "A Bun outside ~/.bun/bin is no longer reported as missing"
         }
       ]
     },
@@ -917,7 +927,7 @@
       "name": "orchestrator",
       "source": "./plugins/orchestrator",
       "description": "Runs ticket work as three levels of Claude Code sessions: triage owns tickets and the plan, a manager per ticket works in its own tmux window or herdr tab and worktree, children in panes beside it. A status band lists them; a guard keeps ticket changes with triage. Needs bun, git, tmux or herdr.",
-      "version": "0.5.0",
+      "version": "0.6.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -929,11 +939,21 @@
         "tickets",
         "triage",
         "tmux",
+        "herdr",
         "worktree",
         "parallel-sessions"
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.6.0",
+          "date": "2026-11-19",
+          "kinds": [
+            "Changed",
+            "Fixed"
+          ],
+          "summary": "Children open the same way under tmux and herdr"
+        },
         {
           "version": "0.5.0",
           "date": "2026-11-19",
@@ -966,15 +986,6 @@
             "Fixed"
           ],
           "summary": "The session-record tests pass again after their testdata dates aged past the 7-day prune\u2026"
-        },
-        {
-          "version": "0.4.0",
-          "date": "2026-11-10",
-          "kinds": [
-            "Added",
-            "Changed"
-          ],
-          "summary": "Under herdr, a manager's children open as panes in its own tab, laid out for you"
         }
       ]
     },

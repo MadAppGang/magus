@@ -1,7 +1,9 @@
 // Pure core of child-pane.ts: the argument parser, the registry of a manager's
-// child panes, and the rules for who is in a tab and who runs in a pane. No IO:
-// nothing here reads the clock, the environment, the filesystem or herdr.
+// child panes, and the rules for who is in a window or tab and who runs in a
+// pane. No IO: nothing here reads the clock, the environment, the filesystem or
+// a multiplexer.
 
+import type { Multiplexer } from "../../hooks/lib/mux-core.ts";
 import { type LivePanes, isRecord, parseJson } from "./pane-layout.ts";
 import { type Colour, parseArgs } from "./window.ts";
 
@@ -215,9 +217,9 @@ export function parseChildPaneArgs(argv: readonly string[]): ChildPaneParse {
 // --- the registry -------------------------------------------------------------------------
 
 /**
- * One child pane this manager opened. `terminal` is the witness: herdr's
- * terminal id of the pane at split time. `line` is the launch line, kept so it
- * can be typed again.
+ * One child pane this manager opened. `terminal` is the witness taken at split
+ * time: herdr's terminal id, or under tmux `<pane_id>:<pane_pid>`. `line` is the
+ * launch line, kept so it can be typed again.
  */
 export interface PaneEntry {
   pane: string;
@@ -240,7 +242,13 @@ export interface EndedEntry {
 export interface PanesFile {
   schema: 1;
   manager: string;
+  /**
+   * The multiplexer the children were opened in. A file without it was written
+   * when children opened under herdr only, so it reads as herdr.
+   */
+  mux: Multiplexer;
   main: string;
+  /** The manager pane's witness. */
   mainTerminal: string;
   children: PaneEntry[];
   /** Newest last, at most 20. */
@@ -270,27 +278,30 @@ function isEndedEntry(value: unknown): value is EndedEntry {
   return typeof pane === "string" && typeof name === "string" && typeof at === "number" && Number.isFinite(at) && (how === "closed" || how === "gone");
 }
 
-/** Null for no text, malformed text, or any schema but 1. Never throws. */
+/** Null for no text, malformed text, any schema but 1, or a `mux` that names neither multiplexer. Never throws. */
 export function parsePanesFile(text: string | null): PanesFile | null {
   if (text === null) return null;
   const data = parseJson(text);
   if (!isRecord(data) || data.schema !== 1) return null;
-  const { manager, main, mainTerminal, children, ended } = data;
+  const { manager, mux = "herdr", main, mainTerminal, children, ended } = data;
+  if (mux !== "tmux" && mux !== "herdr") return null;
   if (typeof manager !== "string" || typeof main !== "string" || typeof mainTerminal !== "string") return null;
   if (!Array.isArray(children) || !children.every(isPaneEntry)) return null;
   if (!Array.isArray(ended) || !ended.every(isEndedEntry)) return null;
-  return { schema: 1, manager, main, mainTerminal, children, ended };
+  return { schema: 1, manager, mux, main, mainTerminal, children, ended };
 }
 
+/** Throws when `mux` is missing, so a write can never drop it. */
 export function serializePanesFile(file: PanesFile): string {
+  if (file.mux !== "tmux" && file.mux !== "herdr") throw new Error(`a child registry needs mux tmux or herdr, not ${JSON.stringify(file.mux)}`);
   return `${JSON.stringify(file, null, 2)}\n`;
 }
 
 /**
- * Judges each entry by its witness: it is live only while herdr lists its pane
- * id with the same terminal id, because pane ids repeat after a herdr restart.
- * Dead entries move to `ended` as gone. A file of another manager counts as no
- * file.
+ * Judges each entry by its witness: it is live only while the multiplexer lists
+ * its pane id with the same witness, because pane ids repeat after a herdr or
+ * tmux server restart. Dead entries move to `ended` as gone. A file of another
+ * manager counts as no file. The file returned carries `mux`.
  */
 export function reconcile(
   file: PanesFile | null,
@@ -299,13 +310,14 @@ export function reconcile(
   main: string,
   mainTerminal: string,
   now: number,
+  mux: Multiplexer,
 ): { file: PanesFile; live: PaneEntry[]; gone: PaneEntry[] } {
   const known = file !== null && file.manager === manager ? file : null;
   const entries = known?.children ?? [];
   const alive = entries.filter((entry) => live.get(entry.pane) === entry.terminal);
   const gone = entries.filter((entry) => live.get(entry.pane) !== entry.terminal);
   const ended = [...(known?.ended ?? []), ...gone.map((entry): EndedEntry => ({ pane: entry.pane, name: entry.name, at: now, how: "gone" }))].slice(-MAX_ENDED);
-  return { file: { schema: 1, manager, main, mainTerminal, children: alive, ended }, live: alive, gone };
+  return { file: { schema: 1, manager, mux, main, mainTerminal, children: alive, ended }, live: alive, gone };
 }
 
 // --- who is in the tab --------------------------------------------------------------------

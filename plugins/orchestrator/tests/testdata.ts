@@ -20,7 +20,7 @@ export function identity(patch: Partial<OrchestratorIdentity> = {}): Orchestrato
   return {
     schema: 1, key: MANAGER, sessionId: SELF, previousIds: [], role: "manager",
     name: "api-manager", ticket: { ...TICKET }, parent: TRIAGE,
-    product: PRODUCT, cwd: PRODUCT, pid: 701, procStart: START, herdr: null,
+    product: PRODUCT, cwd: PRODUCT, pid: 701, procStart: START, herdr: null, mux: null,
     createdAt: NOW - 60_000, updatedAt: NOW - 1000, ...patch,
   };
 }
@@ -51,7 +51,7 @@ export function row(patch: Partial<OrchestratorRow> = {}): OrchestratorRow {
     status: "idle", since: NOW - 180_000, needsYou: false, waits: null,
     progress: null, tasks: [], deps: [], holds: [], isSelf: false, adopted: false,
     target: { mux: "tmux", pane: "%702", window: "@12", session: "product" },
-    labelTicket: null, waitedOnBy: [],
+    labelTicket: null, mux: { kind: "tmux", nesting: null }, waitedOnBy: [],
     ...patch,
   };
 }

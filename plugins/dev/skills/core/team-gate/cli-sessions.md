@@ -108,7 +108,9 @@ silent substitute.
 ### 4.2 Slots
 
 Call `list-slots` first. Take unused numbers from 2 upward, one per session, every one
-`isolated: true` — reviewers are background work, and an isolated slot works outside tmux.
+`isolated: true` — reviewers are background work, and an isolated slot runs on the terminal
+plugin's own private tmux server, so it works whether this session is in tmux, in herdr or
+in neither.
 Panels a site starts together — `/dev:fix` Phase B's vote panel and its internal call —
 take their slots from ONE `list-slots` read, split between them: two reads in parallel see
 the same free numbers. Each panel's `cli-slots.json` lists only its own slots.

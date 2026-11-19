@@ -270,7 +270,7 @@ tools: Read, Write, Glob, Grep, Bash
         claude.ai Google Drive: https://drivemcp.googleapis.com/mcp/v1 - ✔ Connected
         plugin:mnemex:mnemex: mnemex --mcp - ✔ Connected
         plugin:code-search:ca: bun /…/code-search/7.1.0/mcp/server.ts - ✔ Connected
-        plugin:terminal:tmux: tmux-mcp -shell-type zsh -scope agentic - ✔ Connected
+        plugin:terminal:mux: tmux-mcp -shell-type zsh - ✔ Connected
         linear-server: https://mcp.linear.app/mcp (HTTP) - ✔ Connected
         ```
 
@@ -353,7 +353,7 @@ tools: Read, Write, Glob, Grep, Bash
         |---|---|---|
         | `ca` | code-search | `<root>/skills/search/SKILL.md` |
         | `claudish` | claudish | `<root>/skills/claudish-usage/SKILL.md` |
-        | `tmux` | terminal | `<root>/skills/terminal-interaction/SKILL.md` |
+        | `mux` | terminal | `<root>/skills/terminal-interaction/SKILL.md` |
         | `browser-use` | browser-use | `<root>/skills/core-api/SKILL.md` |
         | anything else | — | `null` |
 
@@ -686,7 +686,7 @@ tools: Read, Write, Glob, Grep, Bash
     "servers": [
       { "name": "ca", "owner": "code-search", "scope": "plugin", "status": "connected",
         "usage": "/home/u/.claude/plugins/cache/magus/code-search/7.1.0/skills/search/SKILL.md" },
-      { "name": "tmux", "owner": "terminal", "scope": "plugin", "status": "connected",
+      { "name": "mux", "owner": "terminal", "scope": "plugin", "status": "connected",
         "usage": "/home/u/.claude/plugins/cache/magus/terminal/4.2.0/skills/terminal-interaction/SKILL.md" },
       { "name": "mnemex", "owner": "mnemex", "scope": "plugin", "status": "connected",
         "usage": null }
@@ -710,7 +710,7 @@ tools: Read, Write, Glob, Grep, Bash
         "/home/u/.claude/plugins/cache/magus/go/0.1.2/knowledge/roles/developer/best-practices.md"
       ],
       "mandatory": [],
-      "mcp": ["ca", "tmux"]
+      "mcp": ["ca", "mux"]
     },
     "frontend-developer": {
       "read": [

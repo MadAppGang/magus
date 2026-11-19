@@ -4,9 +4,7 @@
 // function is a plain mapping from its arguments to its result.
 
 import { join } from "node:path";
-import type { Multiplexer } from "./mux-choice.ts";
-
-export type { Multiplexer } from "./mux-choice.ts";
+import type { Multiplexer } from "../../hooks/lib/mux-core.ts";
 
 /** The nine tokens Claude Code's `/color` accepts. */
 const COLOURS = ["red", "blue", "green", "yellow", "purple", "orange", "pink", "cyan", "default"] as const;
@@ -47,10 +45,10 @@ const VALUE_FLAGS = new Set([
   "ticket",
   "ticket-url",
   "trust-after",
-  "expect-terminal",
+  "expect-witness",
 ]);
 const BOOLEAN_FLAGS = new Set(["no-wait", "dry-run", "print-line"]);
-const DELIVER_FLAGS = new Set(["deliver-to", "prompt", "lock", "mux", "trust-after", "expect-terminal"]);
+const DELIVER_FLAGS = new Set(["deliver-to", "prompt", "lock", "mux", "trust-after", "expect-witness"]);
 /** Flags that only make sense when a window or tab is opened, so never with `--print-line`. */
 const NOT_WITH_PRINT_LINE = ["prompt", "session", "no-wait", "dry-run"] as const;
 
@@ -102,8 +100,8 @@ export interface DeliverArgs {
   lock?: string;
   /** A refusal to start counts only when it follows the last occurrence of this text on screen. */
   trustAfter?: string;
-  /** The terminal the pane must still hold before any input: herdr only. */
-  expectTerminal?: string;
+  /** The witness the pane must still show before any input: herdr's terminal id, or tmux `<pane_id>:<pane_pid>`. */
+  expectWitness?: string;
 }
 
 export type ParseResult = { ok: true; args: StartArgs | PrintLineArgs | DeliverArgs } | { ok: false; error: string };
@@ -132,10 +130,10 @@ export type ParseResult = { ok: true; args: StartArgs | PrintLineArgs | DeliverA
  * both when starting a window and with `--print-line`.
  *
  * With `--deliver-to <pane>` the result is `DeliverArgs`; only `--prompt`,
- * `--lock`, `--mux`, `--trust-after` and `--expect-terminal` may accompany it,
+ * `--lock`, `--mux`, `--trust-after` and `--expect-witness` may accompany it,
  * and `--mux` is required with a value of exactly `tmux` or `herdr`.
- * `--expect-terminal` needs a non-empty value and `--mux herdr`. Any of
- * `--lock`, `--mux`, `--trust-after` or `--expect-terminal` without
+ * `--expect-witness` needs a non-empty value, with either `--mux`. Any of
+ * `--lock`, `--mux`, `--trust-after` or `--expect-witness` without
  * `--deliver-to` is an error.
  *
  * With `--print-line` the result is `PrintLineArgs`; `--prompt`, `--session`,
@@ -173,9 +171,8 @@ export function parseArgs(argv: readonly string[], env: Readonly<Record<string, 
     const mux = values.get("mux");
     if (mux === undefined) return { ok: false, error: "--deliver-to needs --mux tmux or --mux herdr" };
     if (!isMultiplexer(mux)) return { ok: false, error: `invalid --mux ${quote(mux)}; one of: tmux herdr` };
-    const expectTerminal = values.get("expect-terminal");
-    if (expectTerminal === "") return { ok: false, error: "--expect-terminal needs a terminal id" };
-    if (expectTerminal !== undefined && mux !== "herdr") return { ok: false, error: "--expect-terminal is only valid with --mux herdr" };
+    const expectWitness = values.get("expect-witness");
+    if (expectWitness === "") return { ok: false, error: "--expect-witness needs a witness" };
     const lock = values.get("lock");
     const trustAfter = values.get("trust-after");
     return {
@@ -187,11 +184,11 @@ export function parseArgs(argv: readonly string[], env: Readonly<Record<string, 
         mux,
         ...(lock ? { lock } : {}),
         ...(trustAfter ? { trustAfter } : {}),
-        ...(expectTerminal !== undefined ? { expectTerminal } : {}),
+        ...(expectWitness !== undefined ? { expectWitness } : {}),
       },
     };
   }
-  for (const key of ["lock", "mux", "trust-after", "expect-terminal"]) {
+  for (const key of ["lock", "mux", "trust-after", "expect-witness"]) {
     if (values.has(key)) return { ok: false, error: `--${key} is internal and only valid with --deliver-to` };
   }
 

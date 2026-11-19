@@ -24,7 +24,7 @@ import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { herdrIdsOf } from "../scripts/lib/herdr-meta.ts";
 import { clearRecord, publishRecord } from "../scripts/lib/herdr-publish.ts";
-import { sessionMuxNow } from "../scripts/lib/mux-io.ts";
+import { recordMuxOf, sessionMuxNow } from "../scripts/lib/mux/session.ts";
 import {
   type StoreContext,
   aliasPath,
@@ -64,6 +64,7 @@ function sessionStart(ctx: StoreContext, sessionId: string, payload: HookPayload
     claimId,
     cwd: typeof payload.cwd === "string" && payload.cwd !== "" ? payload.cwd : safeCwd(env, home),
     herdr: herdrIdsOf(env, session),
+    mux: recordMuxOf(session),
     now,
     self: ownPid(ctx.claudeConfigDir),
     allowClear: source === "clear",

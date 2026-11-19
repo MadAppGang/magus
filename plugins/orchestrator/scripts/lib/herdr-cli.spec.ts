@@ -1,7 +1,8 @@
 import { afterEach, expect, test } from "bun:test";
 import { chmodSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { applyLayout, herdrRunner, readLivePanes, resolveHerdrBin, HERDR_TIMEOUT_MS, type HerdrRunner, type HerdrResult } from "./herdr-cli";
+import { applyLayout, herdrRunner, readLivePanes, HERDR_TIMEOUT_MS, type HerdrRunner, type HerdrResult } from "./herdr-cli";
+import { resolveHerdrBin } from "../../hooks/lib/mux-core";
 import { planLayout, planArgs, parsePaneLayout, checkApplied, type LayoutPlan } from "./pane-layout";
 import { simTab, simRunner, panesOf, rectsOf } from "./testdata/herdr-sim";
 import { sandbox, type Sandbox } from "./process-testdata";

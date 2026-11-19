@@ -15,6 +15,7 @@
   "include": [
     "scripts/**/*.ts",
     "hooks/guard.ts",
+    "hooks/lib/mux-core.ts",
     "hooks/session-record.ts",
     "hooks/status/domain.ts",
     "hooks/status/model.ts",

@@ -7,7 +7,7 @@
 // source and must strictly increase, or the report is ignored; `--clear-title`
 // alone keeps the labels; an empty label value is refused.
 
-import type { SessionMux } from "./mux-choice.ts";
+import type { SessionMux } from "../../hooks/lib/mux-core.ts";
 import { type OrchestratorDep, type OrchestratorHerdr, type OrchestratorRecord, progressOf } from "./state-core.ts";
 
 /** The `--source` every orchestrator report carries. */

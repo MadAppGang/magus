@@ -125,10 +125,14 @@ Then come:
 - the stale-meter;
 - what the model is doing now.
 
-The colours are madbench's, in a light and a dark set. Inside tmux the set follows the theme
-of the tmux window showing the session (the same answer Claude Code's `/theme auto` gets);
-otherwise `TERM_THEME=light|dark`; otherwise dark. Claude Code's shared `theme` setting is not
-read, so changing `/theme` in one session never repaints another.
+The colours are madbench's, in a light and a dark set, first answer wins: Claude Code's own
+`theme` setting; for `auto`, inside tmux the theme of the tmux client showing the session (the
+same answer Claude Code's `/theme auto` gets); then `TERM_THEME=light|dark`; then dark.
+
+herdr reports no terminal theme, so in a herdr pane `TERM_THEME` or the dark default decides
+when Claude Code's theme is `auto`. The band says so once per session, as a toast at the first
+claudish call: `Run-status colours: herdr reports no terminal theme, so TERM_THEME decides (else dark).`
+It never shows on a redraw, outside herdr, or when Claude Code's theme or a tmux client answered.
 
 The Stop and Show buttons sit at the right edge of the line. The stale-meter fills one cell at
 10, 30, 60, 90 and 120 seconds without activity: green, then amber from one minute, red from

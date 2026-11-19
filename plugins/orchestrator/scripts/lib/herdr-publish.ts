@@ -4,7 +4,7 @@
 // call runs once with a 2 s timeout, and its failure is reported, never thrown.
 
 import { homedir } from "node:os";
-import { resolveHerdrBin } from "./herdr-cli.ts";
+import { resolveHerdrBin } from "../../hooks/lib/mux-core.ts";
 import { herdrClearArgv, herdrMetaArgv } from "./herdr-meta.ts";
 import type { OrchestratorRecord } from "./state-core.ts";
 

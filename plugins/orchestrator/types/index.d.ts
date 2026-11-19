@@ -22,6 +22,9 @@ export type OrchestratorDep = {
 
 export type OrchestratorHold = { what: string; since: number }
 
+/** Which multiplexer owns a session's pane, and which runs inside which when both are present. */
+export type OrchestratorMux = { kind: 'tmux' | 'herdr'; nesting: 'herdr-in-tmux' | 'tmux-in-herdr' | null }
+
 /** `<stateDir>/sessions/<key>.json` merged with `<stateDir>/progress/<key>.json`: the read view. */
 export type OrchestratorRecord = {
   schema: 1
@@ -38,6 +41,8 @@ export type OrchestratorRecord = {
   pid: number | null
   procStart: string | null
   herdr: { pane: string; tab: string | null; workspace: string | null } | null
+  /** the multiplexer owning the session's own pane at its last bind; null outside both, or not recorded */
+  mux: OrchestratorMux | null
   createdAt: number
   updatedAt: number
   rev: number
@@ -109,6 +114,8 @@ export type OrchestratorRow = {
   /** listed by triage as an orphan of its product */
   adopted: boolean
   target: OrchestratorTarget | null
+  /** the record's multiplexer, as its session hook bound it; null outside both or not recorded */
+  mux: OrchestratorMux | null
   /** the sessions of the product with an open session dependency on this one */
   waitedOnBy: OrchestratorWaiter[]
 }

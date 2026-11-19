@@ -33,7 +33,7 @@ export async function managerSpace(role: OrchestratorRole = "manager") {
     Object.assign(panesOf(state.tabs[0]!.tree).find(p => p.id === body.pane_id)!, { agentStatus: "idle", agentSession: session, screens: [simAgentScreen()], ...patch });
     s.saveSim(state);
     const entry: PaneEntry = { pane: body.pane_id, terminal: body.terminal_id, name: "child-" + n, claim: "l-" + String(n).padStart(12, "0"), dir, openedAt: Date.now(), line: "launch " + n };
-    const file: PanesFile = existsSync(path) ? registry() : { schema: 1, manager: MANAGER, main: "w1:p1", mainTerminal: "term_1", children: [], ended: [] };
+    const file: PanesFile = existsSync(path) ? registry() : { schema: 1, manager: MANAGER, mux: "herdr", main: "w1:p1", mainTerminal: "term_1", children: [], ended: [] };
     file.children.push(entry); save(file);
     s.claim(claim({ key: entry.claim, role: "child", name: entry.name, product: dir, parent: MANAGER }));
     if (bound) s.identity(identity({ key: entry.claim, sessionId: patch.agentSession ?? session, previousIds: [], role: "child", parent: MANAGER, product: dir, cwd: dir, pid: null, procStart: null }));

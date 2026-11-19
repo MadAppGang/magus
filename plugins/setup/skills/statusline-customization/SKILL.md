@@ -96,6 +96,9 @@ cache is one file per user rather than per tmux session, so two sessions attache
 light and a dark client can mask each other for up to 30 seconds; that is pre-existing
 behaviour and accepted.
 
+**Under herdr** nothing reports a theme or window colour: read `references/herdr.md` when
+the session runs in herdr, for `statusline.sh --sources`, or before changing `tmux_owns_pane`.
+
 ### Why colours are all 256-cube indices
 
 Every colour in the script is written as `38;5;N` / `48;5;N` with N in 16-255, and
@@ -132,7 +135,8 @@ bars stay distinguishable when both are on the same row.
 
 ### Worktree chip colours
 
-The `wt:` chip is tinted from its own name, drawn from an 18-colour palette per
+First answer wins: this session's tmux window's `@cc_colour` (when tmux owns the pane),
+`$CLAUDE_WT_COLOUR`, then a hash: the `wt:` chip tinted from its own name, drawn from an 18-colour palette per
 appearance (`WT_PALETTE` in `apply_theme`). The same worktree gets the same colour in
 every pane and across restarts, so the chip is recognisable without reading it. The
 hash is pure bash, so it adds no fork to a per-turn render.

@@ -14,7 +14,7 @@ describe("state files [R1.4, R3.4; §4.1]", () => {
     const minimal = { schema: 1, key: MANAGER, sessionId: SELF, role: "manager", product: PRODUCT, cwd: PRODUCT, createdAt: 1, updatedAt: 2 };
     expect(parseIdentity(JSON.stringify(minimal))).toEqual(identity({
       ...minimal, schema: 1, role: "manager", previousIds: [], name: null,
-      ticket: null, parent: null, pid: null, procStart: null, herdr: null,
+      ticket: null, parent: null, pid: null, procStart: null, herdr: null, mux: null,
     }));
     const parsed = parseIdentity(JSON.stringify({ ...identity(), ignored: "extra" }));
     expect(parsed).toEqual(identity());
@@ -68,9 +68,9 @@ describe("state files [R1.4, R3.4; §4.1]", () => {
     expect(parseClaim(JSON.stringify(c))).toEqual(c);
     expect(parseClaim(JSON.stringify({ ...c, role: "triage" }))).toBeNull();
     expect(parseClaim(JSON.stringify({ ...c, key: TRIAGE }))).toBeNull();
-    const facts = { sessionId: SELF, cwd: PRODUCT + "/worktree", pid: 802, procStart: START, herdr: null, now: NOW };
+    const facts = { sessionId: SELF, cwd: PRODUCT + "/worktree", pid: 802, procStart: START, herdr: null, mux: null, now: NOW };
     const first = recordFromClaim(c, facts);
-    expect(first).toMatchObject({ schema: 1, key: c.key, role: c.role, name: c.name, ticket: c.ticket, parent: c.parent, product: c.product, createdAt: expect.any(Number), sessionId: SELF, previousIds: [], cwd: facts.cwd, pid: facts.pid, procStart: START, herdr: null, updatedAt: NOW });
+    expect(first).toMatchObject({ schema: 1, key: c.key, role: c.role, name: c.name, ticket: c.ticket, parent: c.parent, product: c.product, createdAt: expect.any(Number), sessionId: SELF, previousIds: [], cwd: facts.cwd, pid: facts.pid, procStart: START, herdr: null, mux: null, updatedAt: NOW });
     expect(first).not.toHaveProperty("tasks");
     expect(first).not.toHaveProperty("now");
     const next = rebindIdentity(first, { ...facts, sessionId: "clear0002", now: NOW - 100 });

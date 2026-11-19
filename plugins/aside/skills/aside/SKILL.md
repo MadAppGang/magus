@@ -28,7 +28,7 @@ If the task needs no signed-in state, use browser-use.
 
 ## See it run
 
-Run `aside exec` in a split pane beside the user so they can watch all of its output. This works when the terminal plugin is installed and the session is inside tmux: read `terminal:terminal-interaction` for the exact pane tools. When no pane is possible, run the command in the background with Bash and report when it finishes. That is fine; the result is the same, only the view differs.
+Run `aside exec` in a split pane beside the user so they can watch all of its output. This works when the terminal plugin is installed and the session is inside tmux or herdr: read `terminal:terminal-interaction` for the exact pane tools. When no pane is possible, run the command in the background with Bash and report when it finishes. That is fine; the result is the same, only the view differs.
 
 ## Which Aside
 

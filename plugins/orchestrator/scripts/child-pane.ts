@@ -1,7 +1,8 @@
 #!/usr/bin/env bun
-// Runs a ticket manager's child sessions as herdr panes in the manager's own
-// tab, laid out as main-columns: the manager full height on the left, the
-// children in columns of two.
+// Runs a ticket manager's child sessions as panes beside the manager, in the
+// multiplexer the manager runs in: a tmux pane of its window, or a herdr pane of
+// its tab. Laid out as main-columns in both: the manager full height on the
+// left, the children in columns of two.
 //
 // Usage: bun child-pane.ts <command> …
 //
@@ -20,62 +21,53 @@
 // `open`, `close` and `layout` are the only commands that write the registry
 // (<state dir>/panes/<manager key>.json), and they do every read and write
 // under a per-manager lock. `open` and `retype` also take the launcher's lock
-// on the checkout, handed to a detached process until Claude Code is up. Only
-// the live owner of a manager record may run this, inside herdr.
+// on the checkout, first and outside the manager lock, handed to a detached
+// process until Claude Code is up. Only the live owner of a manager record may
+// run this, inside tmux or herdr.
 //
-// An entry counts only while herdr lists its pane with the terminal id it had
-// when it was opened, and that terminal id is read again right before every
-// input, because herdr addresses input by pane id alone and a restart reuses
-// ids.
+// An entry counts only while the multiplexer lists its pane with the witness
+// it had when it was opened (herdr's terminal id; tmux `<pane_id>:<pane_pid>`),
+// and that witness is read again right before every input, because both
+// address input by pane id alone and a server restart reuses ids.
+//
+// Under tmux, the agent in a pane is Claude Code in the foreground with a
+// session file tied to the pane by process; until that file exists, the agent
+// reads as `starting`, which no wait target but the pane itself reaches.
 //
 // Output: one JSON document on stdout (plain text for a successful `read`); a
 // failure is { "error": "<sentence>", … }.
 //
 // Exit codes:
 //   0   done (for open and close, also when the layout was refused or failed with nothing stranded)
-//   1   bad input, a herdr error, the registry could not be read or written, a shell never ready, a claim expired
+//   1   bad input, a multiplexer error, the registry could not be read or written, a shell never ready,
+//       a claim expired, a registry of the other multiplexer, `wait --until done` under tmux
 //   2   open: the checkout is off its default branch
 //   3   open: the worktree exists, or a live child already has that name
 //   4   wait, prompt: timeout
-//   5   the pane is gone, or its terminal changed; no further input was sent
+//   5   the pane is gone, or its witness changed; no further input was sent
 //   6   a lock stayed busy for 120 s (status "checkout-busy" for the checkout's); nothing was created
 //   7   wait --until up, prompt: the checkout is untrusted
 //   8   prompt: not sent
 //   9   not a manager, or not the record's live owner
-//   10  this session does not run in herdr
+//   10  this session runs in neither tmux nor herdr, its own pane is unknown, or a
+//       forced ORCHESTRATOR_MULTIPLEXER names the outer multiplexer
 //   11  not a child pane of this manager
 //   12  open: 10 children are open and --past-limit was not given
 //   13  the pane's state does not allow it; "status" says which
 //   14  the layout left a pane outside the tab; layout.error names the command that puts it back
 //   15  layout: refused for panes the orchestrator did not open
 
-import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, realpathSync, rmSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import {
-  MAX_ENDED,
-  type ChildPaneCommand,
-  type Occupant,
-  type PaneEntry,
-  type PanesFile,
-  alternationRegex,
-  familyOf,
-  occupantOf,
-  parseAgentInfo,
-  parseChildPaneArgs,
-  parsePanesFile,
-  parseSlotRegistry,
-  reconcile,
-  serializePanesFile,
-  shellInForeground,
-} from "./lib/child-pane-core.ts";
-import { type HerdrRunner, type LayoutOutcome, HERDR_TIMEOUT_MS, applyLayout, failureDetail, herdrRunner, readLivePanes, readTabLayout, resolveHerdrBin } from "./lib/herdr-cli.ts";
-import { parseProcessInfo } from "./lib/mux-choice.ts";
-import { sessionMuxNow } from "./lib/mux-io.ts";
+import { type Multiplexer, NOT_IN_A_MULTIPLEXER, resolveHerdrBin } from "../hooks/lib/mux-core.ts";
+import { MAX_ENDED, type ChildPaneCommand, type Occupant, type PaneEntry, type PanesFile, familyOf, occupantOf, parseChildPaneArgs, parsePanesFile, reconcile, serializePanesFile } from "./lib/child-pane-core.ts";
+import { herdrRunner } from "./lib/herdr-cli.ts";
+import { type AgentSeen, type Family, type LayoutOutcome, type PaneIO, paneIO } from "./lib/mux/io.ts";
+import { sessionMuxNow } from "./lib/mux/session.ts";
 import type { LivePanes } from "./lib/pane-layout.ts";
 import { type StoreContext, aliasKey, claimPath, claudeConfigDirOf, handLockTo, identityPath, ownPid, pidAlive, readIdentity, writableKey, writeAtomic } from "./lib/record-store.ts";
-import { buildHerdrRun, lockIsStale, lockPathFor, mainCheckoutFromCommonDir, parseHerdrPane, parseHerdrPaneState, promptStillInInput, screenShowsTrustError, stateDir } from "./lib/window.ts";
+import { lockIsStale, lockPathFor, mainCheckoutFromCommonDir, promptStillInInput, screenShowsTrustError, stateDir } from "./lib/window.ts";
 
 const EXIT_ERROR = 1;
 const EXIT_NAME_TAKEN = 3;
@@ -84,7 +76,7 @@ const EXIT_GONE = 5;
 const EXIT_LOCK_BUSY = 6;
 const EXIT_UNTRUSTED = 7;
 const EXIT_NOT_MANAGER = 9;
-const EXIT_NOT_HERDR = 10;
+const EXIT_NO_PANE = 10;
 const EXIT_NOT_CHILD = 11;
 const EXIT_OVER_LIMIT = 12;
 const EXIT_STATE = 13;
@@ -103,9 +95,8 @@ const BIND_WAIT_MS = 60_000;
 const WORKING_WAIT_MS = 60_000;
 const DELIVER_TIMEOUT_MS = 240_000;
 const SEND_PAUSE_MS = 2_000;
-const WAIT_GRACE_MS = 2_000;
 const FAILURES_TO_GIVE_UP = 3;
-const SCREEN_LINES = "200";
+const SCREEN_LINES = 200;
 
 const LAUNCHER = join(import.meta.dir, "ticket-window.ts");
 
@@ -187,18 +178,25 @@ function takeLock(lock: string, name: string, waitMs: number): boolean {
   }
 }
 
-// --- who is asking ------------------------------------------------------------------------
+// --- who is asking, and where -------------------------------------------------------------
 
-interface Session {
+interface Manager {
   ctx: StoreContext;
   home: string;
   key: string;
-  run: HerdrRunner;
+}
+
+interface Session extends Manager {
+  mux: Multiplexer;
+  io: PaneIO;
+  /** This session's own pane. */
+  main: string;
 }
 
 const NOT_MANAGER = "only a ticket's manager opens child panes; this session is";
+const NO_MUX_LEAD = "children open beside this session only inside a multiplexer (tmux or herdr)";
 
-function authorise(): Session {
+function authorise(): Manager {
   const home = process.env.HOME || homedir();
   const ctx: StoreContext = { stateDir: stateDir(process.env, home), claudeConfigDir: claudeConfigDirOf(process.env, home) };
   const owned = writableKey(ctx, process.env.CLAUDE_CODE_SESSION_ID?.trim() ?? "", ownPid(ctx.claudeConfigDir));
@@ -209,17 +207,32 @@ function authorise(): Session {
   }
   const role = readIdentity(ctx, owned.key)?.role ?? "not orchestrated";
   if (role !== "manager") throw new CliExit(EXIT_NOT_MANAGER, `${NOT_MANAGER} ${role}`);
-  return { ctx, home, key: owned.key, run: herdrRunner(resolveHerdrBin(process.env, home) ?? "herdr") };
+  return { ctx, home, key: owned.key };
 }
 
-function requireHerdrSession(s: Session): void {
-  const session = sessionMuxNow(process.env, { run: s.run, home: s.home, stateDir: s.ctx.stateDir });
-  const lead = "children open as herdr panes only when this session runs in herdr";
-  if (!session.ok) throw new CliExit(EXIT_NOT_HERDR, `${lead}; ${session.error}`);
-  if (session.mux !== "herdr") {
-    const detail = session.nesting === null ? session.source : `${session.source}, ${session.nesting}`;
-    throw new CliExit(EXIT_NOT_HERDR, `${lead}; this session uses ${session.mux} (${detail})`);
+/**
+ * The session's multiplexer and its own pane. A force that names the outer of
+ * two nested multiplexers is refused here, before any pane call: the pane it
+ * would name hosts the inner multiplexer, not this session.
+ */
+function locate(m: Manager): Session {
+  const herdr = herdrRunner(resolveHerdrBin(process.env, m.home) ?? "herdr");
+  const session = sessionMuxNow(process.env, { run: herdr, home: m.home, stateDir: m.ctx.stateDir });
+  if (!session.ok) {
+    throw new CliExit(EXIT_NO_PANE, `${NO_MUX_LEAD}; ${session.error === NOT_IN_A_MULTIPLEXER ? "this session is in neither" : session.error}`);
   }
+  const outer = session.source === "forced" && ((session.mux === "tmux" && session.nesting === "herdr-in-tmux") || (session.mux === "herdr" && session.nesting === "tmux-in-herdr"));
+  if (outer) {
+    const other = session.mux === "tmux" ? "herdr" : "tmux";
+    throw new CliExit(EXIT_NO_PANE, `ORCHESTRATOR_MULTIPLEXER=${session.mux} names the outer multiplexer here; its pane holds ${other}, not this session`);
+  }
+  const io = paneIO(session.mux, { herdr, home: m.home });
+  const main = io.ownPane(process.env);
+  if (main === null) {
+    const variable = session.mux === "tmux" ? "TMUX_PANE" : "HERDR_PANE_ID";
+    throw new CliExit(EXIT_NO_PANE, `this session's ${session.mux} pane is unknown (${variable} is unset or names no pane); children cannot open beside it`);
+  }
+  return { ...m, mux: session.mux, io, main };
 }
 
 function takeManagerLock(s: Session): void {
@@ -230,7 +243,6 @@ function takeManagerLock(s: Session): void {
 // --- the registry and the panes -----------------------------------------------------------
 
 interface PaneState {
-  main: string;
   live: LivePanes;
   file: PanesFile;
   children: PaneEntry[];
@@ -242,11 +254,6 @@ function panesPath(s: Session): string {
 }
 
 function readPaneState(s: Session): PaneState {
-  const listed = readLivePanes(s.run);
-  if (!listed.ok) throw new CliExit(EXIT_ERROR, `herdr pane list failed: ${listed.error.replace(/^herdr pane list: /, "")}; nothing was changed`);
-  const main = process.env.HERDR_PANE_ID ?? "";
-  const mainTerminal = listed.live.get(main);
-  if (mainTerminal === undefined) throw new CliExit(EXIT_ERROR, `this session's herdr pane ${main} is not live`);
   const path = panesPath(s);
   let text: string | null;
   try {
@@ -256,8 +263,19 @@ function readPaneState(s: Session): PaneState {
   }
   const parsed = parsePanesFile(text);
   if (text !== null && parsed === null) warn(`registry ${path} did not parse; starting a fresh one`);
-  const { file, live, gone } = reconcile(parsed, listed.live, s.key, main, mainTerminal, Date.now());
-  return { main, live: listed.live, file, children: live, gone };
+  // Judged on the file as read, so children are never reconciled against the
+  // other multiplexer's panes. With no children left there is nothing to lose,
+  // and the file takes this session's multiplexer.
+  if (parsed !== null && parsed.manager === s.key && parsed.mux !== s.mux && parsed.children.length > 0) {
+    throw new CliExit(EXIT_ERROR, `the registry lists children opened under ${parsed.mux}, and this session now runs in ${s.mux}; close them from there`);
+  }
+
+  const listed = s.io.livePanes();
+  if (!listed.ok) throw new CliExit(EXIT_ERROR, `${listed.error}; nothing was changed`);
+  const mainWitness = listed.panes.get(s.main);
+  if (mainWitness === undefined) throw new CliExit(EXIT_ERROR, `this session's ${s.mux} pane ${s.main} is not live`);
+  const { file, live, gone } = reconcile(parsed, listed.panes, s.key, s.main, mainWitness, Date.now(), s.mux);
+  return { live: listed.panes, file, children: live, gone };
 }
 
 function writeRegistry(s: Session, file: PanesFile): void {
@@ -290,68 +308,47 @@ function readRecordFile(path: string): string | null {
   }
 }
 
-/** The terminal-plugin slots this manager opened. Read only: tmux-mcp replaces these files by rename. */
-function readSlots(s: Session, state: PaneState): Set<string> {
-  const socket = process.env.HERDR_SOCKET_PATH;
-  if (!socket) return new Set();
-  const root = join(process.env.XDG_STATE_HOME || join(s.home, ".local", "state"), "tmux-mcp", "herdr");
-  const hash = createHash("sha256").update(socket).digest("hex");
-  const registry = join(root, `${hash}.json`);
-  const slots = parseSlotRegistry(readRecordFile(registry), readRecordFile(join(root, `${hash}.layout.json`)), state.live, state.main);
-  if (slots === "unreadable") {
-    warn(`terminal slot records at ${registry} could not be read; slots count as foreign`);
-    return new Set();
-  }
-  return slots ?? new Set();
+/** The window or tab holding the manager, with a note on slots that could not be read. */
+function familyNow(s: Session, live: LivePanes): Extract<Family, { ok: true }> {
+  const fam = s.io.family(s.main, live);
+  if (!fam.ok) throw new CliExit(EXIT_ERROR, fam.error);
+  if (fam.slotsNote !== null) warn(fam.slotsNote);
+  return fam;
 }
 
-function layOut(s: Session, main: string, members: readonly string[], slots: readonly string[]): LayoutOutcome {
-  const outcome = applyLayout(s.run, { layout: "main-columns", main, members, slots });
+function layOut(s: Session, members: readonly string[], slots: readonly string[]): LayoutOutcome {
+  const outcome = s.io.layout({ layout: "main-columns", main: s.main, members, slots });
   if (outcome.status === "refused") {
+    const where = s.mux === "tmux" ? "window" : "tab";
     warn(
-      `layout left as it is: this tab holds panes the orchestrator did not open (${outcome.foreign.join(" ")}). ` +
-        "Each child opened meanwhile takes half of the last family pane. Move them to another tab or close them, then run child-pane.ts layout.",
+      `layout left as it is: this ${where} holds panes the orchestrator did not open (${outcome.foreign.join(" ")}). ` +
+        `Each child opened meanwhile takes half of the last family pane. Move them to another ${where} or close them, then run child-pane.ts layout.`,
     );
   }
   return outcome;
 }
 
-function relayout(s: Session, main: string, children: readonly PaneEntry[], slots: ReadonlySet<string>): LayoutOutcome {
-  const tab = readTabLayout(s.run, main);
-  if (!tab.ok) return { status: "failed", order: [], slots: [], foreign: [], restored: [], stranded: [], error: tab.error };
-  const family = familyOf(
-    tab.view.panes.map((pane) => pane.id),
-    main,
-    children,
-    slots,
-  );
-  return layOut(s, main, family.members, family.slots);
+function relayout(s: Session, live: LivePanes, children: readonly PaneEntry[]): LayoutOutcome {
+  const fam = s.io.family(s.main, live);
+  if (!fam.ok) return { status: "failed", order: [], slots: [], foreign: [], restored: [], stranded: [], error: fam.error };
+  if (fam.slotsNote !== null) warn(fam.slotsNote);
+  const family = familyOf(fam.order, s.main, children, fam.slots);
+  return layOut(s, family.members, family.slots);
 }
 
 // --- what is in a pane --------------------------------------------------------------------
 
-type AgentSeen = { kind: "agent"; agent: string; session: string | null; status: string | null } | { kind: "none" } | { kind: "pane-gone" } | { kind: "failed"; why: string };
-
-function askAgent(run: HerdrRunner, pane: string): AgentSeen {
-  const answer = run(["agent", "get", pane]);
-  if (answer.errorCode === "pane_not_found") return { kind: "pane-gone" };
-  if (answer.errorCode === "agent_not_found") return { kind: "none" };
-  const info = answer.ok ? parseAgentInfo(answer.json) : null;
-  if (info !== null) return { kind: "agent", ...info };
-  return { kind: "failed", why: answer.ok ? "herdr agent get: unreadable answer" : `herdr agent get: ${failureDetail(answer)}` };
-}
-
 /** The pane's agent, or none. The pane being gone and an unusable answer both stop the command. */
 function agentOrNone(s: Session, pane: string): Extract<AgentSeen, { kind: "agent" | "none" }> {
-  const seen = askAgent(s.run, pane);
-  if (seen.kind === "pane-gone") throw new CliExit(EXIT_GONE, `${pane} is gone`, { pane });
+  const seen = s.io.agent(pane);
+  if (seen.kind === "gone") throw new CliExit(EXIT_GONE, `${pane} is gone`, { pane });
   if (seen.kind === "failed") throw new CliExit(EXIT_ERROR, seen.why, { pane });
   return seen;
 }
 
 function occupantIn(s: Session, entry: PaneEntry, seen: AgentSeen): Occupant {
   if (seen.kind !== "agent") return "none";
-  // An agent herdr sees but cannot name has not bound this claim as far as anyone can tell.
+  // An agent the multiplexer sees but cannot name has not bound this claim as far as anyone can tell.
   if (seen.session === null) return "unbound";
   const alias = aliasKey(s.ctx, seen.session);
   return occupantOf(seen.session, readIdentity(s.ctx, entry.claim), alias !== null && alias !== entry.claim);
@@ -365,57 +362,51 @@ function otherAgent(pane: string): CliExit {
   return stateRefusal(pane, "other-agent", `${pane} now runs another agent, not this child`);
 }
 
-function shellForeground(run: HerdrRunner, pane: string): boolean {
-  const answer = run(["pane", "process-info", "--pane", pane]);
-  const procs = parseProcessInfo(answer.stdout.trim() !== "" ? answer.stdout : answer.stderr, answer.exitCode);
-  return procs !== null && typeof procs === "object" && shellInForeground(procs);
-}
-
 /** Whether the shell is in the foreground, allowing for a prompt hook that a layout's resize set off a moment ago. */
-function shellSettles(run: HerdrRunner, pane: string): boolean {
+function shellSettles(s: Session, pane: string): boolean {
   const deadline = Date.now() + SHELL_SETTLE_MS;
-  while (!shellForeground(run, pane)) {
+  while (s.io.shellForeground(pane) !== true) {
     if (Date.now() >= deadline) return false;
     Bun.sleepSync(SHELL_POLL_MS);
   }
   return true;
 }
 
-function witnessHolds(run: HerdrRunner, entry: PaneEntry): boolean {
-  const answer = run(["pane", "get", entry.pane], HERDR_TIMEOUT_MS);
-  return answer.ok && parseHerdrPaneState(answer.stdout)?.terminal === entry.terminal;
-}
-
 function witnessLost(pane: string): CliExit {
-  return new CliExit(EXIT_GONE, `${pane} closed or now holds another terminal; nothing more was sent`, { pane });
+  return new CliExit(EXIT_GONE, `${pane} closed or now holds another process; nothing more was sent`, { pane });
 }
 
-function requireWitness(s: Session, entry: PaneEntry): void {
-  if (!witnessHolds(s.run, entry)) throw witnessLost(entry.pane);
+/** Before an input or a close: the pane is still the one opened and, with `needAgent`, an agent still runs in it. */
+function requireWitness(s: Session, entry: PaneEntry, needAgent: boolean): void {
+  const check = s.io.checkInput(entry.pane, entry.terminal, { needAgent });
+  if (check.ok) return;
+  if (check.reason === "no-agent") throw stateRefusal(entry.pane, "not-up", `no agent runs in ${entry.pane} any more; nothing more was sent`);
+  // No usable answer is not a closed pane: the child may still be there.
+  if (check.reason === "failed") throw new CliExit(EXIT_ERROR, `${check.detail}; nothing more was sent`, { pane: entry.pane });
+  throw witnessLost(entry.pane);
 }
 
-/** Before a wait reports success. Nothing is typed next, so a herdr that gave no answer is a failure here, not a lost pane. */
+/** Before a wait reports success. Nothing is typed next, so a multiplexer that gave no answer is a failure here, not a lost pane. */
 function confirmWitness(s: Session, entry: PaneEntry): void {
-  const { pane } = entry;
-  const answer = s.run(["pane", "get", pane], HERDR_TIMEOUT_MS);
-  if (answer.errorCode === "pane_not_found") throw witnessLost(pane);
-  if (!answer.ok) throw new CliExit(EXIT_ERROR, `herdr pane get: ${failureDetail(answer)}`, { pane });
-  if (parseHerdrPaneState(answer.stdout)?.terminal !== entry.terminal) throw witnessLost(pane);
+  const check = s.io.checkInput(entry.pane, entry.terminal, { needAgent: false });
+  if (check.ok) return;
+  if (check.reason === "failed") throw new CliExit(EXIT_ERROR, check.detail, { pane: entry.pane });
+  throw witnessLost(entry.pane);
 }
 
 /** A fresh shell is ready once it runs nothing else and has drawn its prompt: a non-empty screen unchanged for a moment. */
-function waitForShell(run: HerdrRunner, pane: string): boolean {
+function waitForShell(s: Session, pane: string): boolean {
   const deadline = Date.now() + SHELL_READY_MS;
   let last = "";
   let stableSince = 0;
   for (;;) {
-    const answer = run(["pane", "read", pane, "--source", "visible"]);
-    const screen = answer.ok ? answer.stdout.trim() : "";
+    const read = s.io.read(pane, { lines: 0, source: "visible" });
+    const screen = read.ok ? read.text.trim() : "";
     const now = Date.now();
     if (screen !== last) {
       last = screen;
       stableSince = now;
-    } else if (screen !== "" && now - stableSince >= SHELL_STABLE_MS && shellForeground(run, pane)) {
+    } else if (screen !== "" && now - stableSince >= SHELL_STABLE_MS && s.io.shellForeground(pane) === true) {
       return true;
     }
     if (now > deadline) return false;
@@ -423,28 +414,29 @@ function waitForShell(run: HerdrRunner, pane: string): boolean {
   }
 }
 
+/** The launcher's stage 2 argv for `entry`, typing `prompt` (none: only wait until Claude Code is up). */
+function deliverArgv(s: Session, entry: PaneEntry, prompt: string, lock?: string): string[] {
+  return [
+    process.execPath,
+    "--env-file=/dev/null",
+    LAUNCHER,
+    "--deliver-to",
+    entry.pane,
+    "--mux",
+    s.mux,
+    "--prompt",
+    prompt,
+    ...(lock === undefined ? [] : ["--lock", lock]),
+    "--trust-after",
+    entry.claim,
+    "--expect-witness",
+    entry.terminal,
+  ];
+}
+
 /** Hands the checkout lock to a detached process that holds it until Claude Code is up in the pane. */
-function handOverCheckoutLock(lock: string, entry: PaneEntry): void {
-  const holder = Bun.spawn(
-    [
-      process.execPath,
-      "--env-file=/dev/null",
-      LAUNCHER,
-      "--deliver-to",
-      entry.pane,
-      "--mux",
-      "herdr",
-      "--prompt",
-      "",
-      "--lock",
-      lock,
-      "--trust-after",
-      entry.claim,
-      "--expect-terminal",
-      entry.terminal,
-    ],
-    { stdio: ["ignore", "ignore", "ignore"], detached: true },
-  );
+function handOverCheckoutLock(s: Session, lock: string, entry: PaneEntry): void {
+  const holder = Bun.spawn(deliverArgv(s, entry, "", lock), { stdio: ["ignore", "ignore", "ignore"], detached: true });
   holder.unref();
   handLockTo(lock, holder.pid, entry.name);
   heldLocks.delete(lock);
@@ -452,8 +444,8 @@ function handOverCheckoutLock(lock: string, entry: PaneEntry): void {
 
 /** Types the entry's stored launch line. */
 function runStoredLine(s: Session, entry: PaneEntry): { ok: boolean; why: string } {
-  const answer = s.run(buildHerdrRun(entry.pane, entry.line).slice(1));
-  return { ok: answer.ok, why: answer.ok ? "" : `herdr pane run: ${failureDetail(answer)}` };
+  const typed = s.io.runLine(entry.pane, entry.line);
+  return typed.ok ? { ok: true, why: "" } : { ok: false, why: typed.error };
 }
 
 // --- open ---------------------------------------------------------------------------------
@@ -528,44 +520,41 @@ function open(s: Session, cmd: Extract<ChildPaneCommand, { cmd: "open" }>): Outc
   if (twin !== undefined) throw new CliExit(EXIT_NAME_TAKEN, `a child named ${cmd.name} is already open in ${twin.pane}`, { pane: twin.pane });
 
   const printed = printLine(cmd);
-  const tab = readTabLayout(s.run, state.main);
-  if (!tab.ok) throw new CliExit(EXIT_ERROR, tab.error);
-  const family = familyOf(
-    tab.view.panes.map((pane) => pane.id),
-    state.main,
-    state.children,
-    readSlots(s, state),
-  );
+  const fam = familyNow(s, state.live);
+  const family = familyOf(fam.order, s.main, state.children, fam.slots);
 
-  // Split from the last family pane, so the order of starts stays the tree order.
-  const split = s.run(["pane", "split", family.lastFamilyPane, "--direction", "right", "--ratio", "0.5", "--cwd", printed.dir, "--no-focus"]);
-  if (!split.ok) throw new CliExit(EXIT_ERROR, `herdr pane split: ${failureDetail(split)}`);
-  const pane = parseHerdrPane(split.stdout)?.paneId ?? null;
-  const terminal = parseHerdrPaneState(split.stdout)?.terminal ?? null;
-  if (pane === null) throw new CliExit(EXIT_ERROR, `herdr pane split named no pane: ${split.stdout.trim()}`);
-  if (terminal === null) {
-    s.run(["pane", "close", pane]);
-    throw new CliExit(EXIT_ERROR, `herdr pane split named no terminal, so ${pane} was closed unused`);
-  }
+  // Split from the last family pane, so the order of starts stays the pane order.
+  const split = s.io.splitBeside(family.lastFamilyPane, { dir: printed.dir });
+  if (!split.ok) throw new CliExit(EXIT_ERROR, split.error);
+  const { pane, witness } = split;
 
-  const entry: PaneEntry = { pane, terminal, name: cmd.name, claim: printed.claim, dir: printed.dir, line: printed.line, openedAt: Date.now() };
+  const entry: PaneEntry = { pane, terminal: witness, name: cmd.name, claim: printed.claim, dir: printed.dir, line: printed.line, openedAt: Date.now() };
   const children = [...state.children, entry];
   try {
     writeRegistry(s, { ...state.file, children });
   } catch (err) {
-    s.run(["pane", "close", pane]);
+    s.io.close(pane);
     throw err;
   }
-  const layout = layOut(s, state.main, [...family.members, pane], family.slots);
+  const layout = layOut(s, [...family.members, pane], family.slots);
 
   let code = 0;
   let error: string | null = null;
-  if (!waitForShell(s.run, pane)) {
-    code = witnessHolds(s.run, entry) ? EXIT_ERROR : EXIT_GONE;
-    error = code === EXIT_GONE ? `${pane} closed or now holds another terminal; nothing was typed` : `${pane}'s shell never became ready; nothing was typed`;
-  } else if (!witnessHolds(s.run, entry)) {
-    code = EXIT_GONE;
-    error = `${pane} closed or now holds another terminal; nothing was typed`;
+  // A closed or replaced pane is GONE; a multiplexer that gave no usable answer is an error, since the pane may still be there.
+  const lost = (): { code: number; error: string } | null => {
+    const check = s.io.checkInput(pane, witness, { needAgent: false });
+    if (check.ok) return null;
+    if (check.reason === "failed") return { code: EXIT_ERROR, error: `${check.detail}; nothing was typed` };
+    return { code: EXIT_GONE, error: `${pane} closed or now holds another process; nothing was typed` };
+  };
+  const shellReady = waitForShell(s, pane);
+  const lostNow = lost();
+  if (lostNow !== null) {
+    code = lostNow.code;
+    error = lostNow.error;
+  } else if (!shellReady) {
+    code = EXIT_ERROR;
+    error = `${pane}'s shell never became ready; nothing was typed`;
   } else {
     const typed = runStoredLine(s, entry);
     if (!typed.ok) {
@@ -574,7 +563,7 @@ function open(s: Session, cmd: Extract<ChildPaneCommand, { cmd: "open" }>): Outc
     }
   }
   const typed = code === 0;
-  if (typed) handOverCheckoutLock(checkoutLock, entry);
+  if (typed) handOverCheckoutLock(s, checkoutLock, entry);
 
   const promptDir = join(s.ctx.stateDir, "prompts");
   mkdirSync(promptDir, { recursive: true });
@@ -583,9 +572,10 @@ function open(s: Session, cmd: Extract<ChildPaneCommand, { cmd: "open" }>): Outc
     code,
     view: {
       ...(error !== null ? { error } : {}),
+      multiplexer: s.mux,
       pane,
-      tab: tab.view.tabId,
-      main: state.main,
+      tab: fam.tab,
+      main: s.main,
       name: cmd.name,
       colour: cmd.colour,
       dir: printed.dir,
@@ -611,14 +601,15 @@ function waitForAgent(s: Session, entry: PaneEntry, until: "up" | "detected", ti
   const deadline = started + timeoutMs;
   let failures = 0;
   for (;;) {
-    const seen = askAgent(s.run, pane);
-    // herdr names the agent seconds before the child's SessionStart hook binds the claim,
-    // so `up` also needs the occupant to be this child; `detected` needs only the agent.
-    if (seen.kind === "agent" && (until === "detected" || occupantIn(s, entry, seen) === "child")) {
+    const seen = s.io.agent(pane);
+    // The agent is named seconds before the child's SessionStart hook binds the claim,
+    // so `up` also needs the occupant to be this child. `detected` needs only the agent,
+    // and never one still starting: under tmux that is a Claude Code with no session yet.
+    if (seen.kind === "agent" && seen.status !== "starting" && (until === "detected" || occupantIn(s, entry, seen) === "child")) {
       confirmWitness(s, entry);
       return { code: 0, view: { pane, until, reached: true, status: seen.status, waitedMs: Date.now() - started } };
     }
-    if (seen.kind === "pane-gone") throw new CliExit(EXIT_GONE, `${pane} is gone`, { pane });
+    if (seen.kind === "gone") throw new CliExit(EXIT_GONE, `${pane} is gone`, { pane });
     if (seen.kind === "agent") {
       // A record bound to another session, or a session the store knows under another key,
       // never becomes this child; only an unbound agent is still starting.
@@ -630,8 +621,8 @@ function waitForAgent(s: Session, entry: PaneEntry, until: "up" | "detected", ti
     } else {
       failures = 0;
       // The claim id is in the typed line, so a refusal above the latest launch does not count.
-      const screen = until === "up" ? s.run(["pane", "read", pane, "--source", "recent-unwrapped", "--lines", SCREEN_LINES]) : null;
-      if (screen?.ok === true && screenShowsTrustError(screen.stdout, entry.claim)) {
+      const screen = until === "up" ? s.io.read(pane, { lines: SCREEN_LINES, source: "recent" }) : null;
+      if (screen?.ok === true && screenShowsTrustError(screen.text, entry.claim)) {
         throw new CliExit(EXIT_UNTRUSTED, "Workspace trust not yet accepted", { pane });
       }
     }
@@ -645,22 +636,21 @@ function wait(s: Session, cmd: Extract<ChildPaneCommand, { cmd: "wait" }>): Outc
   const { pane } = entry;
   const { timeoutMs, patterns, until } = cmd;
   if (until === "up" || until === "detected") return waitForAgent(s, entry, until, timeoutMs);
+  if (until === "done" && s.mux === "tmux") {
+    throw new CliExit(EXIT_ERROR, "done is herdr's state for a turn finished while unfocused; under tmux wait --until idle", { pane });
+  }
 
   const started = Date.now();
   const label: Record<string, unknown> = patterns !== undefined ? { pattern: patterns } : { until };
-  const args =
-    patterns !== undefined
-      ? ["pane", "wait-output", pane, "--regex", alternationRegex(patterns), "--source", "recent-unwrapped", "--lines", SCREEN_LINES, "--timeout", String(timeoutMs)]
-      : ["agent", "wait", pane, "--until", String(until), "--timeout", String(timeoutMs)];
-  const answer = s.run(args, timeoutMs + WAIT_GRACE_MS);
-  if (answer.ok) {
+  const reached = patterns !== undefined ? s.io.waitOutput(pane, patterns, timeoutMs) : s.io.agentWait(pane, [until ?? "idle"], timeoutMs);
+  if (reached === "matched" || reached === "reached") {
     confirmWitness(s, entry);
     return { code: 0, view: { pane, ...label, reached: true, status: until ?? null, waitedMs: Date.now() - started } };
   }
-  if (answer.errorCode === "pane_not_found") throw new CliExit(EXIT_GONE, `${pane} is gone`, { pane });
-  if (patterns === undefined && answer.errorCode === "agent_not_found") throw stateRefusal(pane, "not-up", `no agent runs in ${pane}`);
-  if (answer.timedOut || answer.errorCode === "timeout") return timedOut(pane, label, started);
-  throw new CliExit(EXIT_ERROR, `herdr ${args[0]} ${args[1]}: ${failureDetail(answer)}`, { pane });
+  if (reached === "gone") throw new CliExit(EXIT_GONE, `${pane} is gone`, { pane });
+  if (reached === "no-agent") throw stateRefusal(pane, "not-up", `no agent runs in ${pane}`);
+  if (reached === "timeout") return timedOut(pane, label, started);
+  throw new CliExit(EXIT_ERROR, `${s.mux} gave no usable answer while waiting on ${pane}`, { pane });
 }
 
 // --- prompt -------------------------------------------------------------------------------
@@ -736,10 +726,11 @@ function awaitRest(s: Session, entry: PaneEntry): void {
   }
   if (seen.status === "idle" || seen.status === "done") return;
   // A child starting up is working on its own /color line.
-  const answer = s.run(["agent", "wait", pane, "--until", "idle", "--until", "done", "--timeout", String(WORKING_WAIT_MS)], WORKING_WAIT_MS + WAIT_GRACE_MS);
-  if (answer.ok) return;
-  if (answer.errorCode === "pane_not_found") throw new CliExit(EXIT_GONE, `${pane} is gone`, { pane });
-  if (answer.errorCode === "agent_not_found") throw stateRefusal(pane, "not-up", `no agent runs in ${pane}`);
+  const rested = s.io.agentWait(pane, ["idle", "done"], WORKING_WAIT_MS);
+  if (rested === "reached") return;
+  if (rested === "gone") throw new CliExit(EXIT_GONE, `${pane} is gone`, { pane });
+  if (rested === "no-agent") throw stateRefusal(pane, "not-up", `no agent runs in ${pane}`);
+  if (rested === "failed") throw new CliExit(EXIT_ERROR, `${s.mux} gave no usable answer while waiting on ${pane}`, { pane });
   throw new CliExit(EXIT_TIMEOUT, `${pane} is still working`, { pane, status: "working" });
 }
 
@@ -752,18 +743,15 @@ function prompt(s: Session, cmd: Extract<ChildPaneCommand, { cmd: "prompt" }>): 
   awaitRest(s, entry);
 
   const log = join(s.ctx.stateDir, "ticket-window.log");
-  const p = Bun.spawnSync(
-    [process.execPath, "--env-file=/dev/null", LAUNCHER, "--deliver-to", pane, "--mux", "herdr", "--prompt", text, "--trust-after", entry.claim, "--expect-terminal", entry.terminal],
-    { stdin: "ignore", stdout: "pipe", stderr: "pipe", timeout: DELIVER_TIMEOUT_MS },
-  );
+  const p = Bun.spawnSync(deliverArgv(s, entry, text), { stdin: "ignore", stdout: "pipe", stderr: "pipe", timeout: DELIVER_TIMEOUT_MS });
   const code = p.exitedDueToTimeout === true ? EXIT_TIMEOUT : (p.exitCode ?? EXIT_ERROR);
   const outcome = DELIVERY_OUTCOMES[code];
   if (outcome === undefined) throw new CliExit(EXIT_ERROR, `delivery failed: ${p.stderr.toString().trim() || `exit ${code}`}`, { pane });
 
   let inInput: boolean | null = null;
   if (outcome === "not-sent") {
-    const screen = s.run(["pane", "read", pane, "--source", "recent-unwrapped", "--lines", SCREEN_LINES]);
-    inInput = screen.ok ? promptStillInInput(screen.stdout, text) : null;
+    const screen = s.io.read(pane, { lines: SCREEN_LINES, source: "recent" });
+    inInput = screen.ok ? promptStillInInput(screen.text, text) : null;
   }
   // Neither outcome is ever typed again; any other keeps the file for a retry.
   if (owned !== null && (outcome === "sent" || outcome === "not-sent")) rmSync(owned, { force: true });
@@ -786,19 +774,23 @@ function send(s: Session, cmd: Extract<ChildPaneCommand, { cmd: "send" }>): Outc
   if (occupantIn(s, entry, seen) === "other-agent") throw otherAgent(pane);
   // With no agent the text would reach a shell and run as a command.
   if (text !== undefined && seen.kind === "none") throw stateRefusal(pane, "not-up", `no agent runs in ${pane}; nothing was typed`);
+  // Keys alone may go to a pane with no agent: the menu Claude Code leaves on /quit is one.
+  const needAgent = seen.kind === "agent";
 
-  const deliver = (args: string[]): void => {
-    requireWitness(s, entry);
-    const answer = s.run(args);
-    if (answer.errorCode === "pane_not_found") throw witnessLost(pane);
-    if (!answer.ok) throw new CliExit(EXIT_ERROR, `herdr ${args[1]}: ${failureDetail(answer)}`, { pane });
+  const deliver = (what: string, send: () => { ok: true } | { ok: false; gone: boolean; error: string }): void => {
+    requireWitness(s, entry, needAgent);
+    const sent = send();
+    if (sent.ok) return;
+    if (sent.gone) throw witnessLost(pane);
+    throw new CliExit(EXIT_ERROR, `${what}: ${sent.error}`, { pane });
   };
-  if (text !== undefined) deliver(["pane", "send-text", pane, text]);
-  if (cmd.key !== undefined) {
+  if (text !== undefined) deliver("text", () => s.io.sendText(pane, text));
+  const key = cmd.key;
+  if (key !== undefined) {
     if (text !== undefined) Bun.sleepSync(SEND_PAUSE_MS);
-    deliver(["pane", "send-keys", pane, cmd.key]);
+    deliver("key", () => s.io.sendKeys(pane, [key]));
   }
-  return { code: 0, view: { pane, typed: text?.length ?? 0, key: cmd.key ?? null } };
+  return { code: 0, view: { pane, typed: text?.length ?? 0, key: key ?? null } };
 }
 
 function refuseIfBound(s: Session, entry: PaneEntry): void {
@@ -811,12 +803,12 @@ function trust(s: Session, cmd: Extract<ChildPaneCommand, { cmd: "trust" }>): Ou
   const { entry } = readChild(s, cmd.pane);
   const { pane } = entry;
   refuseIfBound(s, entry);
-  if (agentOrNone(s, pane).kind !== "none" || !shellSettles(s.run, pane)) {
+  if (agentOrNone(s, pane).kind !== "none" || !shellSettles(s, pane)) {
     throw stateRefusal(pane, "busy", `${pane} is not at a bare shell prompt`);
   }
-  requireWitness(s, entry);
-  const answer = s.run(buildHerdrRun(pane, "claude").slice(1));
-  if (!answer.ok) throw new CliExit(EXIT_ERROR, `herdr pane run: ${failureDetail(answer)}`, { pane, typed: false });
+  requireWitness(s, entry, false);
+  const typed = s.io.runLine(pane, "claude");
+  if (!typed.ok) throw new CliExit(EXIT_ERROR, typed.error, { pane, typed: false });
   return { code: 0, view: { pane, typed: true } };
 }
 
@@ -833,42 +825,40 @@ function retype(s: Session, cmd: Extract<ChildPaneCommand, { cmd: "retype" }>): 
   if (occupantIn(s, entry, agentOrNone(s, pane)) === "other-agent") throw otherAgent(pane);
   // A /quit just sent takes a moment to hand the pane back to the shell.
   const shellBy = Date.now() + SHELL_READY_MS;
-  while (!shellForeground(s.run, pane)) {
+  while (s.io.shellForeground(pane) !== true) {
     if (Date.now() >= shellBy) throw stateRefusal(pane, "busy", `${pane} did not return to its shell`);
     Bun.sleepSync(SHELL_POLL_MS);
   }
-  requireWitness(s, entry);
+  requireWitness(s, entry, false);
   const typed = runStoredLine(s, entry);
   if (!typed.ok) throw new CliExit(EXIT_ERROR, typed.why, { pane, typed: false });
-  handOverCheckoutLock(checkoutLock, entry);
+  handOverCheckoutLock(s, checkoutLock, entry);
   return { code: 0, view: { pane, typed: true } };
 }
 
 function read(s: Session, cmd: Extract<ChildPaneCommand, { cmd: "read" }>): Outcome {
   const { pane } = readChild(s, cmd.pane).entry;
-  const lines = String(cmd.lines);
-  let answer = s.run(["agent", "read", pane, "--source", "recent-unwrapped", "--lines", lines]);
-  if (answer.errorCode === "agent_not_found") answer = s.run(["pane", "read", pane, "--source", "recent-unwrapped", "--lines", lines]);
-  if (answer.errorCode === "pane_not_found") throw new CliExit(EXIT_GONE, `${pane} is gone`, { pane });
-  if (!answer.ok) throw new CliExit(EXIT_ERROR, `could not read ${pane}: ${failureDetail(answer)}`, { pane });
-  return { code: 0, view: {}, text: answer.stdout };
+  const answer = s.io.read(pane, { lines: cmd.lines, source: "recent" });
+  if (!answer.ok) {
+    if (answer.gone) throw new CliExit(EXIT_GONE, `${pane} is gone`, { pane });
+    throw new CliExit(EXIT_ERROR, answer.error, { pane });
+  }
+  return { code: 0, view: {}, text: answer.text };
 }
 
 function list(s: Session): Outcome {
   const state = readPaneState(s);
-  const tab = readTabLayout(s.run, state.main);
-  if (!tab.ok) throw new CliExit(EXIT_ERROR, tab.error);
-  const order = tab.view.panes.map((pane) => pane.id);
-  const family = familyOf(order, state.main, state.children, readSlots(s, state));
+  const fam = familyNow(s, state.live);
+  const family = familyOf(fam.order, s.main, state.children, fam.slots);
   const children = state.children.map((entry) => {
-    const seen = askAgent(s.run, entry.pane);
+    const seen = s.io.agent(entry.pane);
     return {
       pane: entry.pane,
       name: entry.name,
       claim: entry.claim,
       dir: entry.dir,
       openedAt: entry.openedAt,
-      inTab: order.includes(entry.pane),
+      inTab: fam.order.includes(entry.pane),
       agent: seen.kind === "agent" ? seen.agent : null,
       status: seen.kind === "agent" ? seen.status : null,
       occupant: occupantIn(s, entry, seen),
@@ -877,8 +867,9 @@ function list(s: Session): Outcome {
   return {
     code: 0,
     view: {
-      main: state.main,
-      tab: tab.view.tabId,
+      multiplexer: s.mux,
+      main: s.main,
+      tab: fam.tab,
       limit: CHILD_LIMIT,
       children,
       gone: state.gone.map((entry) => entry.pane),
@@ -901,17 +892,19 @@ function close(s: Session, cmd: Extract<ChildPaneCommand, { cmd: "close" }>): Ou
   if (!cmd.force) {
     if (occupant === "unbound") throw stateRefusal(pane, "unbound", `the agent in ${pane} has not bound this child's claim; --force closes it`);
     if (seen.kind === "agent" && seen.status === "working") throw stateRefusal(pane, "working", `${pane} is working; --force closes it`);
-    if (seen.kind === "none" && !shellSettles(s.run, pane)) throw stateRefusal(pane, "busy", `${pane} is running something; --force closes it`);
+    if (seen.kind === "none" && !shellSettles(s, pane)) throw stateRefusal(pane, "busy", `${pane} is running something; --force closes it`);
   }
-  requireWitness(s, entry);
-  const answer = s.run(["pane", "close", pane]);
-  if (answer.errorCode === "pane_not_found") throw witnessLost(pane);
-  if (!answer.ok) throw new CliExit(EXIT_ERROR, `herdr pane close: ${failureDetail(answer)}`, { pane });
+  requireWitness(s, entry, false);
+  const closed = s.io.close(pane);
+  if (!closed.ok) {
+    if (closed.gone) throw witnessLost(pane);
+    throw new CliExit(EXIT_ERROR, closed.error, { pane });
+  }
 
   const children = state.children.filter((child) => child.pane !== pane);
   const ended = [...state.file.ended, { pane, name: entry.name, at: Date.now(), how: "closed" as const }].slice(-MAX_ENDED);
   writeRegistry(s, { ...state.file, children, ended });
-  const layout = relayout(s, state.main, children, readSlots(s, state));
+  const layout = relayout(s, state.live, children);
   return { code: layout.stranded.length > 0 ? EXIT_STRANDED : 0, view: { closed: pane, children: children.length, layout } };
 }
 
@@ -925,7 +918,7 @@ function layout(s: Session): Outcome {
   takeManagerLock(s);
   const state = readPaneState(s);
   writeRegistry(s, state.file);
-  const outcome = relayout(s, state.main, state.children, readSlots(s, state));
+  const outcome = relayout(s, state.live, state.children);
   return { code: layoutCode(outcome), view: { ...outcome, children: state.children.length } };
 }
 
@@ -934,8 +927,7 @@ function layout(s: Session): Outcome {
 function run(argv: readonly string[]): Outcome {
   const parsed = parseChildPaneArgs(argv);
   if (!parsed.ok) throw new CliExit(EXIT_ERROR, parsed.error);
-  const s = authorise();
-  requireHerdrSession(s);
+  const s = locate(authorise());
   const { command } = parsed;
   switch (command.cmd) {
     case "open":

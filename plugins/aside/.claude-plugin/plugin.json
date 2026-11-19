@@ -1,6 +1,6 @@
 {
   "name": "aside",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Hands browser tasks to Aside, the user's own AI browser with its own logged-in agent, through the aside CLI, in a split terminal pane when the terminal plugin is present. An alternative to browser-use for work in the user's accounts. Needs the aside CLI.",
   "author": {
     "name": "Jack Rudenko",

@@ -1,29 +1,11 @@
-// Pure rules for choosing a multiplexer. Imports nothing, reads nothing: every
-// fact is passed in. Two questions are answered, and they are kept apart:
-//
-//   detectSessionMux  where THIS session lives. It addresses the session and its
-//                     children, and the stored choice never enters it.
-//   chooseWindowMux   where a NEW TICKET WINDOW opens. The stored choice enters
-//                     here, and only when the answer would otherwise be ambiguous.
+// Pure rules for choosing where a new ticket window opens, and the per-user
+// config file's format. Imports nothing but the shared multiplexer facts, reads
+// nothing: every fact is passed in. Where THIS session lives is
+// detectSessionMux's question (hooks/lib/mux-core.ts), and the stored choice
+// never enters it; chooseWindowMux answers where a NEW TICKET WINDOW opens, and
+// the stored choice enters only when the answer would otherwise be ambiguous.
 
-export type Multiplexer = "tmux" | "herdr";
-
-/** What `herdr pane process-info --pane $HERDR_PANE_ID` showed, reduced to pids. */
-export interface HerdrPaneProcs {
-  shellPid: number;
-  foregroundPids: number[];
-}
-
-/**
- * The probe's result: the pane's processes; "absent" when a running herdr
- * answered `pane_not_found`; "no-server" when herdr answered
- * `server_not_running`; null for every other failure (timeout, spawn failure,
- * permission, any other error code, unparseable) and when the probe was not run.
- */
-export type HerdrProbe = HerdrPaneProcs | "absent" | "no-server" | null;
-
-/** How many parent links `ancestry` follows at most. */
-const ANCESTRY_MAX_STEPS = 32;
+import { type Multiplexer, NOT_IN_A_MULTIPLEXER, type SessionMux } from "../../hooks/lib/mux-core.ts";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -35,114 +17,6 @@ function parseJson(text: string): unknown {
   } catch {
     return null;
   }
-}
-
-/**
- * Parses a process-info answer, from stdout or, for an error, stderr (`.result.process_info.shell_pid`,
- * `.foreground_processes[].pid`). `.error.code` "pane_not_found" → "absent",
- * "server_not_running" → "no-server"; any other error, a failed exit or
- * unparseable text → null. Never throws.
- */
-export function parseProcessInfo(answer: string, exitCode: number | null): HerdrProbe {
-  const data = parseJson(answer);
-  if (!isRecord(data)) return null;
-  if (isRecord(data.error)) {
-    if (data.error.code === "pane_not_found") return "absent";
-    if (data.error.code === "server_not_running") return "no-server";
-    return null;
-  }
-  if (exitCode !== 0 || !isRecord(data.result)) return null;
-  const info = data.result.process_info;
-  if (!isRecord(info) || !Number.isInteger(info.shell_pid)) return null;
-  const foreground = Array.isArray(info.foreground_processes) ? info.foreground_processes : [];
-  const foregroundPids = foreground.flatMap((p) => (isRecord(p) && Number.isInteger(p.pid) ? [p.pid as number] : []));
-  return { shellPid: info.shell_pid as number, foregroundPids };
-}
-
-/** `ps -axo pid=,ppid=` → pid → ppid. Malformed lines are skipped. */
-export function parsePsTable(stdout: string): Map<number, number> {
-  const table = new Map<number, number>();
-  for (const line of stdout.split("\n")) {
-    const match = /^\s*(\d+)\s+(\d+)\s*$/.exec(line);
-    if (match) table.set(Number(match[1]), Number(match[2]));
-  }
-  return table;
-}
-
-/** The pids from `pid` up to 1, at most 32 parent links, `pid` first. A cycle ends the walk. */
-export function ancestry(table: ReadonlyMap<number, number>, pid: number): number[] {
-  const chain = [pid];
-  const seen = new Set([pid]);
-  let current = pid;
-  for (let step = 0; step < ANCESTRY_MAX_STEPS && current !== 1; step++) {
-    const parent = table.get(current);
-    if (parent === undefined || parent <= 0 || seen.has(parent)) break;
-    chain.push(parent);
-    seen.add(parent);
-    current = parent;
-  }
-  return chain;
-}
-
-/**
- * Whether herdr hosts this process: the claimed pane's shell, or a foreground
- * process of that pane, is in this process's ancestry. "absent" → false.
- * "no-server" → false when the socket file is gone, else unknown. A probe that
- * says nothing, or a process table that could not be read (`ancestors` null),
- * → unknown (null). `socketGone` is true only when HERDR_SOCKET_PATH is
- * non-empty and no file exists at it.
- */
-export function herdrHostsSelf(probe: HerdrProbe, ancestors: readonly number[] | null, socketGone: boolean): boolean | null {
-  if (probe === null) return null;
-  if (probe === "absent") return false;
-  if (probe === "no-server") return socketGone ? false : null;
-  if (ancestors === null) return null;
-  return ancestors.includes(probe.shellPid) || probe.foregroundPids.some((pid) => ancestors.includes(pid));
-}
-
-export interface SessionMuxFacts {
-  /** Read: ORCHESTRATOR_MULTIPLEXER, HERDR_ENV, HERDR_PANE_ID, TMUX. */
-  env: Readonly<Record<string, string | undefined>>;
-  /** `herdrHostsSelf`'s answer; null = unknown, and then the environment is trusted. */
-  hostsSelf: boolean | null;
-}
-
-export type Nesting = "herdr-in-tmux" | "tmux-in-herdr" | null;
-
-export type SessionMux =
-  | { ok: true; mux: Multiplexer; source: "forced" | "detected"; nesting: Nesting }
-  | { ok: false; error: string };
-
-const NOT_IN_A_MULTIPLEXER = "not inside tmux or herdr";
-
-/**
- * Where this session lives. A non-empty ORCHESTRATOR_MULTIPLEXER decides alone.
- * Otherwise herdr's variables win unless herdr was shown not to host this
- * process, because herdr inherits TMUX when it runs inside tmux; then TMUX
- * means tmux. Never throws.
- */
-export function detectSessionMux(facts: SessionMuxFacts): SessionMux {
-  const { env, hostsSelf } = facts;
-  const forced = env.ORCHESTRATOR_MULTIPLEXER;
-  const tmuxIn = Boolean(env.TMUX);
-  if (forced) {
-    if (forced === "tmux") {
-      return tmuxIn
-        ? { ok: true, mux: "tmux", source: "forced", nesting: null }
-        : { ok: false, error: "ORCHESTRATOR_MULTIPLEXER=tmux, but not inside tmux (TMUX is unset)" };
-    }
-    if (forced === "herdr") {
-      return env.HERDR_PANE_ID
-        ? { ok: true, mux: "herdr", source: "forced", nesting: null }
-        : { ok: false, error: "ORCHESTRATOR_MULTIPLEXER=herdr, but not inside herdr (HERDR_PANE_ID is unset)" };
-    }
-    return { ok: false, error: `invalid ORCHESTRATOR_MULTIPLEXER ${JSON.stringify(forced)}; one of: tmux herdr` };
-  }
-  const herdrEnv = env.HERDR_ENV === "1" && Boolean(env.HERDR_PANE_ID);
-  if (herdrEnv && hostsSelf !== false) return { ok: true, mux: "herdr", source: "detected", nesting: tmuxIn ? "herdr-in-tmux" : null };
-  // herdrEnv here means herdr's variables were inherited by the tmux this session runs in.
-  if (tmuxIn) return { ok: true, mux: "tmux", source: "detected", nesting: herdrEnv ? "tmux-in-herdr" : null };
-  return { ok: false, error: NOT_IN_A_MULTIPLEXER };
 }
 
 export type AskReason = "herdr-in-tmux" | "herdr-installed";
@@ -168,7 +42,7 @@ export type WindowMux =
     }
   | { ok: false; error: string };
 
-const STORED_HERDR_NOTE = "New ticket windows open as herdr tabs (your stored choice). This session's own children stay in tmux slots.";
+const STORED_HERDR_NOTE = "New ticket windows open as herdr tabs (your stored choice). This session's own children stay in this tmux window.";
 
 /** Where a new ticket window opens. Never throws. */
 export function chooseWindowMux(facts: WindowMuxFacts): WindowMux {

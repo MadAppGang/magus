@@ -228,7 +228,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion, Skill
     | Go | `go@magus` | go-tui skill for Charm-stack terminal UIs |
     | React or any web UI | `designer@magus` | pixel-diff design validation |
     | browser automation or E2E | `browser-use@magus` | MCP tools that drive a real headless browser |
-    | long-running processes, TDD, dev servers | `terminal@magus` | tmux-backed interactive terminal |
+    | long-running processes, TDD, dev servers | `terminal@magus` | interactive terminal in tmux or herdr panes |
     | multi-model review wanted | `multimodel@magus` + `claudish@magus` | task-typed team runs (votes, research, plans, implementations) and delegation |
 
     **Weigh the listing budget before recommending.** Every plugin whose skills

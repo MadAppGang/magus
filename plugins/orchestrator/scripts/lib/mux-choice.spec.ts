@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { detectSessionMux, chooseWindowMux, chooseStartMux, parseProcessInfo, parsePsTable, ancestry, herdrHostsSelf, type SessionMux, type WindowMux, type Multiplexer } from "./mux-choice";
+import { chooseWindowMux, chooseStartMux, type WindowMux } from "./mux-choice";
+import { detectSessionMux, parseProcessInfo, parsePsTable, ancestry, herdrHostsSelf, type SessionMux, type Multiplexer } from "../../hooks/lib/mux-core";
 
 type Env = Record<string, string | undefined>;
 const herdr = { HERDR_ENV: "1", HERDR_PANE_ID: "w1:p1" };
@@ -10,10 +11,10 @@ const hd: SessionMux = { ok: true, mux: "herdr", source: "detected", nesting: nu
 const nested: SessionMux = { ...hd, nesting: "herdr-in-tmux" };
 const no: SessionMux = { ok: false, error: "not inside tmux or herdr" };
 const win = (mux: Multiplexer, source: "forced" | "stored" | "detected" | "provisional", ask: "herdr-in-tmux" | "herdr-installed" | null = null, note: string | null = null): WindowMux => ({ ok: true, mux, source, ask, note });
-export const storedHerdrNote = "New ticket windows open as herdr tabs (your stored choice). This session's own children stay in tmux slots.";
+export const storedHerdrNote = "New ticket windows open as herdr tabs (your stored choice). This session's own children stay in this tmux window.";
 describe("session mux is independent of stored window preference", () => {
   const cases: [string, Env, boolean | null, SessionMux][] = [
-    ["S1 forced tmux in nested environment", { ...herdr, TMUX: "host", ORCHESTRATOR_MULTIPLEXER: "tmux" }, true, { ok: true, mux: "tmux", source: "forced", nesting: null }],
+    ["S1 forced tmux in nested environment", { ...herdr, TMUX: "host", ORCHESTRATOR_MULTIPLEXER: "tmux" }, true, { ok: true, mux: "tmux", source: "forced", nesting: "herdr-in-tmux" }],
     ["S1 forced tmux requires TMUX", { ...herdr, ORCHESTRATOR_MULTIPLEXER: "tmux" }, true, { ok: false, error: "ORCHESTRATOR_MULTIPLEXER=tmux, but not inside tmux (TMUX is unset)" }],
     ["S1 empty TMUX is unset", { ...herdr, TMUX: "", ORCHESTRATOR_MULTIPLEXER: "tmux" }, null, { ok: false, error: "ORCHESTRATOR_MULTIPLEXER=tmux, but not inside tmux (TMUX is unset)" }],
     ["S2 forced herdr needs only pane id", { HERDR_PANE_ID: "w1:p1", HERDR_ENV: "0", ORCHESTRATOR_MULTIPLEXER: "herdr" }, false, { ok: true, mux: "herdr", source: "forced", nesting: null }],
@@ -84,8 +85,8 @@ describe("window and named-session choices", () => {
 describe("process evidence", () => {
   test("[REQ-404] TEST-2107 parses captured foregrounds, stderr error bodies and failures", () => {
     const raw = JSON.parse(readFileSync(join(import.meta.dir, "testdata", "herdr-pane-process-info.json"), "utf8"));
-    expect(parseProcessInfo(JSON.stringify(raw.idle_shell), 0)).toEqual({ shellPid: 81297, foregroundPids: [81297] });
-    expect(parseProcessInfo(JSON.stringify(raw.running_command), 0)).toEqual({ shellPid: 81297, foregroundPids: [88592] });
+    expect(parseProcessInfo(JSON.stringify(raw.idle_shell), 0)).toEqual({ shellPid: 81297, foregroundPids: [81297], leader: { pid: 81297, argv0: "zsh", name: "zsh" } });
+    expect(parseProcessInfo(JSON.stringify(raw.running_command), 0)).toMatchObject({ shellPid: 81297, foregroundPids: [88592] });
     for (const [code, expected] of [["pane_not_found", "absent"], ["server_not_running", "no-server"], ["permission_denied", null], ["timeout", null]] as const)
       expect(parseProcessInfo(JSON.stringify({ error: { code } }), 1)).toBe(expected);
     for (const text of ["", "{", "null", "{}", '{"result":{"process_info":{}}}']) expect(parseProcessInfo(text, 0)).toBeNull();
@@ -104,7 +105,7 @@ describe("process evidence", () => {
     expect(chain.length).toBeGreaterThanOrEqual(32);
     expect(new Set(chain).size).toBe(chain.length);
   });
-  const probe = { shellPid: 10, foregroundPids: [20, 21] };
+  const probe = { shellPid: 10, foregroundPids: [20, 21], leader: null };
   const cases = [
     [probe, [30, 10, 1], false, true], [probe, [30, 21, 1], false, true],
     [probe, [30, 1], false, false], [probe, null, false, null],
@@ -115,3 +116,13 @@ describe("process evidence", () => {
     expect(herdrHostsSelf(evidence, ancestors, socketGone)).toBe(expected);
   });
 });
+
+for (const mux of ["tmux", "herdr"] as const) {
+  for (const [hostsSelf, nesting] of [[true, "herdr-in-tmux"], [false, "tmux-in-herdr"], [null, null]] as const) {
+    test(`[REQ-3] forcing ${mux} preserves nesting ${nesting} for host evidence ${hostsSelf}`, () => {
+      expect(detectSessionMux({
+        env: { TMUX: "host", HERDR_ENV: "1", HERDR_PANE_ID: "w1:p1", ORCHESTRATOR_MULTIPLEXER: mux }, hostsSelf,
+      })).toEqual({ ok: true, mux, source: "forced", nesting });
+    });
+  }
+}

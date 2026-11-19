@@ -356,6 +356,8 @@ declare module 'claude-code' {
       textView: ClaudishTextView
       /** the read-only replays open for the Show panel */
       replays: ClaudishReplays
+      /** the herdr theme note has been toasted this session; absent reads as false, never reset */
+      themeNoteShown: boolean
     }
   }
 }

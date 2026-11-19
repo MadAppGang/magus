@@ -435,6 +435,7 @@ export function mergeRows(input: MergeInput): OrchestratorRow[] {
       isSelf: r.key === selfKey,
       adopted: entry.adopted,
       target,
+      mux: r.mux,
       waitedOnBy: waiters.get(r.key) ?? [],
     }
     return [row]

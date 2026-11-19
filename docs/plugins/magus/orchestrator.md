@@ -7,7 +7,7 @@ Runs ticket work as three levels of Claude Code sessions: triage owns tickets an
 
 | | |
 |---|---|
-| Version | `0.5.0` |
+| Version | `0.6.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 1 |
 | Subagents | 0 |

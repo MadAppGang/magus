@@ -71,6 +71,12 @@ Read `${CLAUDE_PLUGIN_ROOT}/skills/statusline-customization/SKILL.md` before the
 
     Show `Context measure: model window (context_autocompact: off)` when the key is
     `false`.
+
+    Then run `bash "${CLAUDE_PLUGIN_ROOT}/scripts/statusline.sh" --sources` and show its
+    output verbatim under the table, headed `Colours come from:`. It reads no input and
+    renders nothing; it names which source answered the theme and the worktree chip.
+    Under herdr it adds one line saying what the status line cannot follow there. Show
+    that line as printed and add nothing to it: this step is the one place it appears.
   </step>
 
   <step number="3" name="Ask what to change">

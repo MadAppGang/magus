@@ -168,7 +168,7 @@ function waitWord(state: ClaudishSlotState): string {
   return state === 'AWAITING_PERMISSION' ? 'permission' : 'input'
 }
 
-/** The toast for one new unit: `03 grok-4.6 done ✓`, `#a1b2c3 haiku-4.5 waiting for input ◇`. */
+/** The toast for one new unit: `03 glm-5.3 done ✓`, `#a1b2c3 claude-haiku-5-5 waiting for input ◇`. */
 export function toastText(runs: readonly ClaudishRun[], unit: WakeUnit): { text: string; timeoutMs: number } {
   const k = parseWakeKey(unit.key)
   const run = runs.find(r => r.id === k.runId)
@@ -179,7 +179,7 @@ export function toastText(runs: readonly ClaudishRun[], unit: WakeUnit): { text:
   return { text: `${name} ${look.word} ${look.glyph}`, timeoutMs: look.group === 'failed' ? 6_000 : 4_000 }
 }
 
-/** Short names of claimed keys for a toast or the status line: `03 grok-4.6`, `#a1b2c3 haiku-4.5`. */
+/** Short names of claimed keys for a toast or the status line: `03 glm-5.3`, `#a1b2c3 claude-haiku-5-5`. */
 function keyLabels(runs: readonly ClaudishRun[], keys: readonly string[]): string {
   const names: string[] = []
   for (const key of keys) {

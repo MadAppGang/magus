@@ -1,9 +1,7 @@
-// Runs the herdr CLI: finds the binary and calls it with a timeout on every
+// Runs the herdr CLI: calls the binary it is given with a timeout on every
 // call, so a herdr that hangs cannot hang the caller. A failed call is an
 // answer, never an exception. Also applies a layout plan to a live tab.
 
-import { accessSync, constants, statSync } from "node:fs";
-import { join } from "node:path";
 import {
   checkApplied,
   type LayoutName,
@@ -35,28 +33,6 @@ export type HerdrRunner = (args: readonly string[], timeoutMs?: number) => Herdr
 
 export const HERDR_TIMEOUT_MS = 5_000;
 
-function isExecutableFile(path: string): boolean {
-  try {
-    accessSync(path, constants.X_OK);
-    return statSync(path).isFile();
-  } catch {
-    return false;
-  }
-}
-
-/**
- * herdr on `env.PATH`, else an executable at `<home>/.local/bin/herdr`, else
- * null. Availability and execution both use this result, so a binary that was
- * offered can also be run.
- */
-export function resolveHerdrBin(env: Readonly<Record<string, string | undefined>>, home: string): string | null {
-  const onPath = Bun.which("herdr", { PATH: env.PATH ?? "" });
-  if (onPath !== null) return onPath;
-  if (!home.startsWith("/")) return null;
-  const fallback = join(home, ".local", "bin", "herdr");
-  return isExecutableFile(fallback) ? fallback : null;
-}
-
 function parseAnswer(text: string): unknown {
   try {
     return JSON.parse(text);
@@ -70,11 +46,19 @@ function errorCodeOf(answer: unknown): string | null {
   return typeof code === "string" ? code : null;
 }
 
-/** A runner for `bin`. Never throws. */
-export function herdrRunner(bin = "herdr"): HerdrRunner {
+/** Spawn options for running a child with exactly `env`, its unset entries left out; none when `env` is not given. */
+export function spawnEnv(env: Readonly<Record<string, string | undefined>> | undefined): { env?: Record<string, string> } {
+  if (env === undefined) return {};
+  const set: Record<string, string> = {};
+  for (const [key, value] of Object.entries(env)) if (value !== undefined) set[key] = value;
+  return { env: set };
+}
+
+/** A runner for `bin`, run with `env` when one is given, else with this process's environment. Never throws. */
+export function herdrRunner(bin = "herdr", env?: Readonly<Record<string, string | undefined>>): HerdrRunner {
   return (args, timeoutMs = HERDR_TIMEOUT_MS) => {
     try {
-      const p = Bun.spawnSync([bin, ...args], { stdin: "ignore", stdout: "pipe", stderr: "pipe", timeout: timeoutMs });
+      const p = Bun.spawnSync([bin, ...args], { stdin: "ignore", stdout: "pipe", stderr: "pipe", timeout: timeoutMs, ...spawnEnv(env) });
       const stdout = p.stdout.toString();
       const stderr = p.stderr.toString();
       const json = parseAnswer(stdout) ?? parseAnswer(stderr);

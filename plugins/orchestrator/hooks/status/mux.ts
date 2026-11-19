@@ -9,27 +9,34 @@ import type { SessionFile } from './model'
 /** The multiplexer this session runs in, as its own record says. */
 export type OwnMux = 'tmux' | 'herdr' | 'none'
 
-/** The environment field the multiplexer rule reads. */
-export type MuxEnv = { tmuxPane?: string }
+/** The environment fields the multiplexer rule reads: each multiplexer's own pane variable. */
+export type MuxEnv = { tmuxPane?: string; herdrPane?: string }
+
+const set = (v: string | undefined): boolean => typeof v === 'string' && v !== ''
 
 /**
- * Read from this session's own row, which holds what the session hook decided when it bound:
- * herdr when the row targets herdr, else tmux when `TMUX_PANE` is set, else none. With no row
- * yet the answer is none, and there are no rows to act on either.
+ * The multiplexer this session's own record names (`mux.kind`, written by the session hook when
+ * it bound), and only while that multiplexer's pane variable is still set in this process:
+ * `HERDR_PANE_ID` for herdr, `TMUX_PANE` for tmux. A record with no `mux`, or no row yet, is
+ * none: tmux is never inferred from `TMUX_PANE` alone, since herdr inside tmux sets it too.
  */
-export function ownMuxOf(self: Pick<OrchestratorRow, 'target'> | null, env: MuxEnv): OwnMux {
-  if (self === null) return 'none'
-  if (self.target?.mux === 'herdr') return 'herdr'
-  return typeof env.tmuxPane === 'string' && env.tmuxPane !== '' ? 'tmux' : 'none'
+export function ownMuxOf(self: Pick<OrchestratorRow, 'mux'> | null, env: MuxEnv): OwnMux {
+  const kind = self?.mux?.kind
+  if (kind === 'herdr') return set(env.herdrPane) ? 'herdr' : 'none'
+  if (kind === 'tmux') return set(env.tmuxPane) ? 'tmux' : 'none'
+  return 'none'
 }
 
 /**
- * The same herdr call through `<home>/.local/bin/herdr`, for a host whose PATH lacks herdr; null
- * when `argv` does not call herdr or `home` is not absolute.
+ * Where herdr is looked for, in order: `HERDR_BIN_PATH` when it is absolute, then `herdr` on
+ * PATH, then `<home>/.local/bin/herdr` when home is absolute. The mod's one herdr lookup.
  */
-export function herdrFallbackArgv(argv: readonly string[], home: string | undefined): string[] | null {
-  if (argv[0] !== 'herdr' || !home?.startsWith('/')) return null
-  return [`${home}/.local/bin/herdr`, ...argv.slice(1)]
+export function herdrBinaries(env: { binPath?: string; home?: string }): string[] {
+  const found: string[] = []
+  if (env.binPath?.startsWith('/')) found.push(env.binPath)
+  found.push('herdr')
+  if (env.home?.startsWith('/')) found.push(`${env.home}/.local/bin/herdr`)
+  return found
 }
 
 /**

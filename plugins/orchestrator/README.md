@@ -7,7 +7,7 @@ window or herdr tab and git worktree:
 |---|---|---|
 | **Triage** | One per product, at the main checkout | The only session that starts ticket sessions, files tickets or changes their scope. Places what managers find, keeps the plan, the status and the product's workbook, and checks overlaps between running work. Writes no code. |
 | **Manager** | One per ticket, in its own window or tab and worktree | Reads the ticket, starts the matching dev workflow (`/dev:fix` for a bug, `/dev:dev` for a feature or improvement), owns the work through release, and runs child sessions for parts in other repos. |
-| **Child** | As many as a ticket needs, beside its manager: a visible terminal slot under tmux, a pane of the manager's tab under herdr | Does one named part, usually in another repo, and reports only to its manager. |
+| **Child** | As many as a ticket needs, beside its manager: a pane of the manager's tmux window or herdr tab | Does one named part, usually in another repo, and reports only to its manager. |
 
 Messages go child → manager → triage and back the same way. The shared rules all three
 levels follow are in `references/three-levels.md`.
@@ -21,11 +21,8 @@ children, while your attention stays in one place.
 ## Requirements
 
 - `bun`, `git` and the `claude` CLI on `PATH`.
-- Claude Code running inside **tmux** or **herdr**. herdr is looked for on `PATH`, then at
-  `~/.local/bin/herdr`.
-- The `terminal` plugin, whose `mux` server opens, drives, reads and closes the child slots
-  under tmux. It must carry a tmux-mcp whose `capture-pane` returns the screen text:
-  terminal 5.6.1 or later, which carries tmux-mcp 2.2.0.
+- Claude Code running inside **tmux** or **herdr**. herdr is looked for at `HERDR_BIN_PATH`,
+  then on `PATH`, then at `~/.local/bin/herdr`.
 - The `dev` plugin, for the workflows a manager starts.
 - `gh`, signed in, for GitHub Issues; a Linear MCP server for Linear.
 - A bash or zsh shell in new panes. The launcher types a POSIX shell line into the new
@@ -47,7 +44,7 @@ is skipped.
    `/orchestrator:manager <id> <url> — <title>` into the new Claude Code session there, and
    sets the ticket in progress.
 3. When a ticket needs work in another repo, its manager opens a child beside itself, in a
-   visible slot of its tmux window or a pane of its herdr tab, with `/orchestrator:child`. You
+   pane of its tmux window or herdr tab, with `/orchestrator:child`. You
    do not start children yourself.
 
 Starts are one at a time per checkout: the window runs `git pull --ff-only`, the optional
@@ -120,7 +117,7 @@ ambiguous cases. It does not move children:
 | herdr inside tmux | set | what is stored |
 | herdr inside tmux | none | herdr tabs, and triage asks once |
 | herdr | ignored | herdr tabs |
-| tmux, herdr installed | `herdr` | herdr tabs; this session's own children stay in tmux slots |
+| tmux, herdr installed | `herdr` | herdr tabs; this session's own children stay in this tmux window |
 | tmux, herdr installed | `tmux` | tmux windows |
 | tmux, herdr installed | none | tmux windows, and triage asks once |
 | tmux, herdr not installed | ignored | tmux windows; nothing is asked |
@@ -143,11 +140,11 @@ both ask). `--set` and `--claim-question` are refused to a manager or child. Exi
 `1` bad input, no multiplexer to report, a refused role, a malformed `config.json` or a failed
 write.
 
-## Children under herdr
+## Children
 
-A manager that runs in herdr opens each child as a pane of its own tab, through
-`scripts/child-pane.ts`. Only the live owner of a manager record may run it; a child is refused
-by the guard as well.
+A manager opens each child as a pane beside itself, in the multiplexer it runs in: a pane of
+its tmux window, or of its herdr tab. One script does it under both, `scripts/child-pane.ts`.
+Only the live owner of a manager record may run it; a child is refused by the guard as well.
 
 ```
 bun scripts/child-pane.ts <command> …
@@ -155,42 +152,49 @@ bun scripts/child-pane.ts <command> …
 
 | Command | Does |
 |---|---|
-| `open --name <slug> --colour <c> [--dir <main checkout>] [--ticket '<id>'] [--ticket-url <url>] [--model M] [--effort E] [--launch <cmd>] [--past-limit] [--no-wait]` | Checks the checkout, opens a pane, lays out the tab and types the child's launch line. Takes the checkout's start lock, held until Claude Code is up |
-| `wait --pane <p> [--until up\|detected\|idle\|working\|blocked\|done \| --pattern <text> …] [--timeout-ms N]` | Waits for an agent state or for text on the screen. At most 110 s per call |
+| `open --name <slug> --colour <c> [--dir <main checkout>] [--ticket '<id>'] [--ticket-url <url>] [--model M] [--effort E] [--launch <cmd>] [--past-limit] [--no-wait]` | Checks the checkout, opens a pane, lays out the window or tab and types the child's launch line. Takes the checkout's start lock, held until Claude Code is up |
+| `wait --pane <p> [--until up\|detected\|idle\|working\|blocked\|done \| --pattern <text> …] [--timeout-ms N]` | Waits for an agent state or for text on the screen. At most 110 s per call. `done` is herdr's only |
 | `prompt --pane <p> --prompt-file <path\|->` | Delivers a one-line prompt under the same rules as a ticket start. The file must sit outside every checkout |
 | `send --pane <p> [--text <t> \| --text-file <path\|->] [--key <name>]` | Types into a running agent, or sends one key |
 | `trust --pane <p>` | Types a plain `claude`, to accept the trust dialog |
 | `retype --pane <p>` | Types the child's launch line again |
 | `read --pane <p> [--lines N]` | Prints the screen as text |
 | `list` | The children and their agent states; `relayout` is true when a pane closed behind its back |
-| `close --pane <p> [--force]` | Closes the pane and re-lays the tab. A pane running another agent is never closed |
+| `close --pane <p> [--force]` | Closes the pane and re-lays the window or tab. A pane running another agent is never closed |
 | `layout` | Re-applies the layout now |
 
 Each prints one JSON document on stdout (`read` prints text); a failure is
-`{"error":"<sentence>", …}`.
+`{"error":"<sentence>", …}`. `open` and `list` name the `multiplexer`.
+
+A pane counts as the child's only while it shows the witness it had when it opened: herdr's
+terminal id, or tmux's pane id with the pid of the pane's own process. The witness is read
+again before every input, because both multiplexers address input by pane id alone and reuse
+ids after a restart. Under tmux, the agent in a pane is Claude Code in the foreground with a
+session file tied to that pane by process; until Claude Code writes that file, the child's
+status is `starting`.
 
 | Exit | Meaning |
 |---|---|
 | `0` | Done, including an `open` or `close` whose layout was refused or failed with nothing stranded |
-| `1` | Bad input, a herdr error, the registry could not be read or written, a shell never ready, a claim expired |
+| `1` | Bad input, a multiplexer error, the registry could not be read or written, a shell never ready, a claim expired, a registry of children opened under the other multiplexer, `wait --until done` under tmux |
 | `2` | `open`: the checkout is off its default branch |
 | `3` | `open`: the worktree exists, or a live child already has that name |
 | `4` | `wait`, `prompt`: timeout |
-| `5` | The pane is gone, or its terminal changed; no further input was sent |
+| `5` | The pane is gone, or its witness changed; no further input was sent |
 | `6` | A lock stayed busy for 120 s (`status: "checkout-busy"` for the checkout's); nothing was created |
 | `7` | `wait --until up`, `prompt`: the checkout is untrusted |
 | `8` | `prompt`: not sent |
 | `9` | Not a manager, or not the record's live owner |
-| `10` | This session does not run in herdr |
+| `10` | This session runs in neither tmux nor herdr, its own pane is unknown (`TMUX_PANE` or `HERDR_PANE_ID`), or `ORCHESTRATOR_MULTIPLEXER` forces the outer of two nested multiplexers |
 | `11` | Not a child pane of this manager |
 | `12` | `open`: 10 children are open and `--past-limit` was not given |
 | `13` | The pane's state does not allow it; `status` says which: `not-up`, `blocked`, `working`, `other-agent`, `unbound`, `busy` or `bound` |
-| `14` | The layout left a pane outside the tab; `layout.error` names the command that puts it back |
+| `14` | The layout left a pane outside the herdr tab; `layout.error` names the command that puts it back |
 | `15` | `layout`: refused for panes the orchestrator did not open |
 
-**The layout.** After every open and close the tab is laid out as main-columns: the manager
-full height on the left, the children in columns of two, in the order they started. The
-manager keeps at least 30 % of the width:
+**The layout.** After every open and close the window or tab is laid out as main-columns: the
+manager full height on the left, the children in columns of two, in the order they started.
+The manager keeps at least 30 % of the width:
 
 | Children | Manager width | Columns |
 |---|---|---|
@@ -201,47 +205,25 @@ manager keeps at least 30 % of the width:
 
 Focus stays where you left it. A re-layout turns zoom off.
 
-**Terminal slots.** A visible slot the manager opened in its tab joins the layout and counts
-toward the columns, not toward the limit of 10. A slot opened by another agent, or by a
-tmux-mcp too old to record its owner, counts as foreign.
+**Terminal slots.** A visible slot the manager opened in its window or tab joins the layout
+and counts toward the columns, not toward the limit of 10, and it is never typed into or
+closed. Under herdr, a slot opened by another agent, or by a tmux-mcp too old to record its
+owner, counts as foreign. Under tmux, tmux-mcp records no opener, so a slot another agent
+opened in the same window joins the layout too; a pane you opened counts as foreign.
 
-**Foreign panes.** A pane in the tab that the orchestrator did not open makes the layout
-refuse, and it moves nothing: herdr rearranges a tab only by parking its panes, and the
-orchestrator never touches a pane of yours. The child still opens, taking half of the last
-family pane. Move the pane to another tab or close it, and the next open or close lays out the
-tab again.
-
-## Children under tmux
-
-A manager runs each child in a visible slot of the terminal plugin, in its own window. It
-takes the lowest free slot, opens it with `layout: "agent-grid"`, types the child's launch
-line, waits for Claude Code, types the prompt, and answers the child's setup questions and
-menus one key at a time, reading the screen with `capture-pane` before and after each key.
-
-With the grid layout the manager's pane stays full height on the left, and the children
-share the right side:
-
-| Children | Manager width | Right side |
-|---|---|---|
-| 0 | 100 % | — |
-| 1 | 50 % | one pane |
-| 2–3 | 40 % | one column |
-| 4–6 | 30 % | 2 rows, up to 3 across |
-| 7–10 | 25 % | 2 rows, up to 5 across |
-| 11+ | 25 % | 3 rows |
-
-The layout is re-applied on every slot open and close. A tmux-mcp without the layout mode
-ignores the argument and places slots as it always has. More than 10 children at once need
-your word: the manager stops at 10 and tells you.
+**Foreign panes.** A pane in the window or tab that the orchestrator did not open makes the
+layout refuse, and it moves nothing: the orchestrator never touches a pane of yours. The child
+still opens, taking half of the last family pane. Move the pane elsewhere or close it, and the
+next open or close lays out again.
 
 A child closes only after it has reported and its work is proven merged (the PR is
 `MERGED`, or its branch is in the default branch). The manager then types `/quit`, chooses
-**Remove worktree**, which also deletes the branch, checks the shell came back, and closes
-the slot. Work that is not proven merged keeps its worktree; the manager's final report
-names it with its branch and last commit.
+**Remove worktree**, which also deletes the branch, and closes the pane. Work that is not
+proven merged keeps its worktree; the manager's final report names it with its branch and
+last commit.
 
 A child's own terminal slots are isolated, so they never split panes inside its manager's
-window.
+window or tab.
 
 ## The launcher
 
@@ -334,6 +316,7 @@ screen shows it). The other prompt outcomes:
 - `SENT (retyped once: the first copy was dropped)`: the first copy never reached the screen, so it was typed once more.
 - `SENT (unconfirmed)`: the prompt is on screen but Claude Code was not seen starting on it; look at the pane before acting.
 - `NOT_SENT`: the retyped copy did not land either, and it is never typed a third time; send the prompt by hand.
+- `FAILED`: tmux or herdr gave no usable answer, or a send failed on a pane that is still there. Nothing more is typed and the prompt file is kept; read the pane, then send the prompt again.
 
 ## The status band
 
@@ -543,6 +526,8 @@ the workbook (for example `prod..main`), and says whether anything in it is unpr
 | `ORCHESTRATOR_MULTIPLEXER` | launcher, hooks, `orch-state`, `orch-config`, `child-pane` | `tmux` or `herdr` overrides detection and the stored choice; any other value is an error |
 | `ORCHESTRATOR_CLAIM` | hooks, `orch-state` | Set by the launcher on the line it types: the launch claim the new session binds to. Never set it yourself |
 | `TMUX` | launcher, hooks, `orch-state`, `orch-config`, `child-pane` | tmux detection |
+| `TMUX_PANE` | `child-pane`, hooks | In a tmux manager, the main pane its children open beside; set by tmux. Unset or naming no pane, `child-pane` exits 10 |
+| `HERDR_BIN_PATH` | launcher, hooks, `orch-config`, `child-pane`, band | The herdr binary, as an absolute path; looked for before `PATH` and `~/.local/bin/herdr` |
 | `HERDR_ENV`, `HERDR_PANE_ID` | launcher, hooks, `orch-state`, `orch-config`, `child-pane` | herdr detection, checked against the pane's process tree; the pane to publish to; in a herdr manager also the main pane |
 | `HERDR_SOCKET_PATH` | `orch-config`, `child-pane`, hooks | Where terminal-slot records are found, and whether a herdr server can be there at all |
 | `HERDR_WORKSPACE_ID` | launcher | The workspace a new ticket tab opens in when this tmux runs inside herdr |

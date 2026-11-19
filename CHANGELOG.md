@@ -4,6 +4,124 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [terminal 5.6.2] - 2026-11-19
+
+### Fixed
+
+- **The pane-safety hook guards herdr too.** A raw `herdr pane send-text`, `send-keys`, `run`
+  or `close` into a pane whose foreground is not a bare shell is refused, as the tmux verbs
+  already were; the pane's leader is read from `herdr pane process-info`. `herdr agent prompt`
+  and `herdr agent send-keys` are refused when the target is an agent, and `herdr server stop`
+  and `herdr session stop <NAME>` are refused always, because they close every pane and agent
+  in that server or session. `herdr pane split` is not guarded.
+- **Every lookup shares one deadline.** tmux and herdr lookups together stay inside 3.5
+  seconds, at most three targets per command, and a target the hook cannot resolve (a gone
+  pane, no herdr binary, an unreadable answer) is allowed, never refused.
+- **Quoting and command prefixes no longer slip past the herdr guard.** The hook splits a
+  command into words as the shell does, so `--session="work"` looks up session `work` and a
+  quoted space no longer shifts the words. A herdr run through `env`, `sudo`, `timeout`,
+  `nice`, `nohup`, `command` or `exec`, by an absolute path, or as `$HERDR_BIN_PATH` is
+  checked like a bare `herdr`.
+- The hook's description names the herdr verbs it guards.
+- A refused Claude Code pane is named `Claude Code (2.1.327)` in the block message, not by
+  the bare version tmux reports as its foreground process.
+
+---
+
+## [dev 9.7.1] - 2026-11-19
+
+### Fixed
+
+- **The terminal plugin's MCP server is named `mux`, not `tmux`.** The stack detector's
+  sample health line, server-to-usage table and loadout example, and the context schema,
+  named it `tmux`, so a real `plugin:terminal:mux` matched no usage row and the developer
+  loadout lost the terminal skill. They now use the server's real key.
+- The cli-sessions reference says an isolated slot runs on the terminal plugin's own private
+  tmux server, so it works whether the session is in tmux, in herdr or in neither.
+
+---
+
+## [aside 1.0.1] - 2026-11-19
+
+### Changed
+
+- **The split-pane run works inside tmux or herdr.** The skill and the README say a task runs
+  in a split pane when the terminal plugin is installed and the session is inside either
+  multiplexer, not only tmux.
+
+---
+
+## [setup 1.11.1] - 2026-11-19
+
+### Fixed
+
+- **The statusline's worktree chip follows the multiplexer that owns the pane.** Under herdr
+  inside tmux, `TMUX_PANE` is inherited from the outer tmux, whose window belongs to herdr, so
+  the chip took the wrong window's `@cc_colour`. When both `TMUX_PANE` and `HERDR_PANE_ID` are
+  set, the script walks up its own processes and the nearer of the tmux pane's shell and a
+  herdr process owns the pane; when tmux does not own it, the chip takes `CLAUDE_WT_COLOUR`.
+- **`statusline.sh --sources` says where the theme and the chip colour came from**, and
+  `/setup:statusline-customize` runs it and shows the result. Under herdr, which reports no
+  terminal theme, it adds one line saying `COLORFGBG` or the default decided.
+- The project command lists the terminal plugin as an interactive terminal in tmux or herdr
+  panes, and the statusline skill points to a herdr reference.
+
+---
+
+## [claudish 2.17.2] - 2026-11-19
+
+### Fixed
+
+- **The run-status band says once when herdr leaves its colours to a fallback.** herdr reports
+  no terminal theme, so in a herdr pane `TERM_THEME` or the dark default decides when Claude
+  Code's theme is `auto`. The band now shows one toast, at the first claudish call of the
+  session, saying so. It never shows on a redraw, outside herdr, or when Claude Code's theme or
+  a tmux client answered.
+- The README gives the palette order as the band reads it: Claude Code's own `theme` setting
+  first, then the tmux client, then `TERM_THEME`, then dark.
+
+---
+
+## [orchestrator 0.6.0] - 2026-11-19
+
+### Changed
+
+- **Children open the same way under tmux and herdr.** A manager in tmux now opens each
+  child as a pane of its own window through `child-pane.ts`, as a manager in herdr already
+  did in its tab. Under tmux this adds the checkout lock until Claude Code is up, the child
+  registry, the limit of 10 in code, and the check before every input that the pane still
+  holds the process it opened. The manager skill has one procedure for children, not two.
+- **The layout is main-columns in a tmux window too.** The manager stays full height on the
+  left and the children fill columns of two, in the order they started; focus stays where
+  you left it. Terminal slots in the window join the layout and are never typed into.
+- **A child under tmux reads `starting` until Claude Code is tied to its pane.** The tie is
+  Claude Code's own session file, whose process runs under the pane's process; a stale file
+  or one from another pane never counts. `wait --until done` under tmux exits 1 and names
+  `--until idle`, because `done` is herdr's state.
+- **herdr is found at `HERDR_BIN_PATH` first**, then on `PATH`, then at
+  `~/.local/bin/herdr`.
+
+### Fixed
+
+- **A forced `ORCHESTRATOR_MULTIPLEXER` that names the outer of two nested multiplexers is
+  refused** with exit 10 before any pane call: the pane it would name hosts the inner
+  multiplexer, not the session. Under tmux an unset or dead `TMUX_PANE` exits 10 too.
+- **A registry of children opened under the other multiplexer is refused**, not reconciled
+  against panes it never listed.
+- **The status band takes this session's multiplexer from its own record.** Jump and Show
+  no longer guess tmux from `TMUX_PANE`, which herdr inside tmux also sets; a herdr session
+  is confirmed by `HERDR_PANE_ID`. The band looks for herdr in one order, `HERDR_BIN_PATH`,
+  then `PATH`, then `~/.local/bin/herdr`, like the rest of the plugin.
+- **Under tmux a failed send or read is reported as a failure.** Text that starts with a
+  hyphen is typed, not read as a tmux flag. `SENT` is logged only after a screen read shows
+  the prompt taken, and a send that failed stops delivery with the new `FAILED` outcome,
+  keeping the prompt file. Every tmux call gives up after 5 seconds. A Claude Code session file
+  with no status, or with a status word the plugin does not know, reads `unknown`, never
+  `idle`. A read that fails is an
+  error, not a closed pane, a timeout or `starting`.
+
+---
+
 ## [orchestrator 0.5.0] - 2026-11-19
 
 ### Changed

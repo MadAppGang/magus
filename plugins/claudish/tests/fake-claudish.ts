@@ -111,8 +111,8 @@ export type FakeOptions = {
   theme?: string
   /** the custom themes under FAKE_CLAUDE_DIR/themes, by name: what `$.fs.read` answers for `<name>.json`; any other theme file is missing */
   themeFiles?: Record<string, string>
-  /** what `$.env.get` answers for TERM_THEME, COLORFGBG and TMUX_PANE; unset by default, so the machine's own never leaks in */
-  env?: { TERM_THEME?: string; COLORFGBG?: string; TMUX_PANE?: string }
+  /** what `$.env.get` answers for TERM_THEME, COLORFGBG, TMUX_PANE, HERDR_PANE_ID and HERDR_ENV; unset by default, so the machine's own never leaks in */
+  env?: { TERM_THEME?: string; COLORFGBG?: string; TMUX_PANE?: string; HERDR_PANE_ID?: string; HERDR_ENV?: string }
   /**
    * what `$.env.get` answers for CLAUDISH_ACTIVE_MODEL_NAME, the model claudish launched the session
    * with (default `cx@gpt-test`, a session on the Codex pool); null: unset, a plain Claude Code session
@@ -712,7 +712,9 @@ export function harness(on: On, options: FakeOptions = {}): Harness {
     if (e.name === 'HOME') return { value: FAKE_HOME }
     if (e.name === 'CLAUDE_CONFIG_DIR') return { value: undefined }
     if (e.name === 'CLAUDISH_ACTIVE_MODEL_NAME') return { value: options.activeModel === undefined ? 'cx@gpt-test' : options.activeModel ?? undefined }
-    return e.name === 'TERM_THEME' || e.name === 'COLORFGBG' || e.name === 'TMUX_PANE' ? { value: options.env?.[e.name] } : next(e)
+    return e.name === 'TERM_THEME' || e.name === 'COLORFGBG' || e.name === 'TMUX_PANE' || e.name === 'HERDR_PANE_ID' || e.name === 'HERDR_ENV'
+      ? { value: options.env?.[e.name] }
+      : next(e)
   })
   on('session.end', ($, e) => ({ sessionId: e.sessionId }))
   on('ui.log', ($, e) => {

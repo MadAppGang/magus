@@ -1,6 +1,6 @@
 ---
 name: child
-description: Runs this session as a child of a ticket's manager, the bottom of three levels. It does one named part, usually in another repo, asks and reports only to its manager, and leaves closing to it. Use when a slot opens with /orchestrator:child.
+description: Runs this session as a child of a ticket's manager, the bottom of three levels. It does one named part, usually in another repo, asks and reports only to its manager, and leaves closing to it. Use when a pane opens with /orchestrator:child.
 disable-model-invocation: true
 argument-hint: "<ticket-id> <ticket-url> — <this child's part>"
 allowed-tools: Bash(bun:*)
@@ -73,12 +73,10 @@ prompt. If the prompt names none, ask the manager once.
   | You cannot go on without an answer | `block "<what you need>"`, then `unblock` once answered |
   | You take or free a shared environment (a test server, a staging database) | `hold "<what>"`, `release "<what>"` |
 
-- **Every terminal slot you open takes `isolated: true`**, on slot 2 or higher: test
-  suites, builds, servers, REPLs. You run in a slot of your manager's window, so a visible
-  slot of yours would split a pane inside the manager's layout. Background Bash is fine
-  too. Close your own slots with `close-pane` before you report.
-- **Under herdr you run in a pane of your manager's tab.** Never split, move or close herdr
-  panes there. `child-pane.ts` is your manager's.
+- **You run in a pane of your manager's tmux window or herdr tab.** Every terminal slot you
+  open takes `isolated: true`, on slot 2 or higher: test suites, builds, servers, REPLs.
+  Background Bash is fine too. Close your own slots with `close-pane` before you report.
+  Never split, move or close panes there. `child-pane.ts` is your manager's.
 - **A command that seems not to have run** may only be late. Check before resending, or it
   runs twice.
 - **A pull request is named by its full URL**, never a bare `PR #N`.
@@ -86,7 +84,7 @@ prompt. If the prompt names none, ask the manager once.
 ## Closing
 
 Do not quit this session, and do not remove your worktree or branch: your manager closes
-your slot or pane. Once it has proven your work merged it types `/quit` and removes the worktree;
+your pane. Once it has proven your work merged it types `/quit` and removes the worktree;
 otherwise it keeps it.
 
 Free every shared environment you hold (`orch-state release "<what>"`) first.

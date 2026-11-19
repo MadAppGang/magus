@@ -4,6 +4,8 @@ import { machine, seedFamily, start, captures } from "./fake-machine";
 import { SURFACES, mountBand, mountPane, press, pressRow, rowAction, textOf, SHOW_PANE_ID } from "./ui";
 import { CHILD, MANAGER, taskRows, NOW, ROOT } from "./testdata";
 
+const nestedHerdr = { kind: "herdr", nesting: "herdr-in-tmux" } as const;
+
 for (const surface of SURFACES) {
   test(`[REQ-3, REQ-6, REQ-9] TEST-1401 [R1.3, R1.6; §6 Mod wiring] ${surface} Show opens first, displays details/screen, and Hide reaches ui.close next`, async ($, on) => {
     const h = machine(on), records = seedFamily(h);
@@ -70,8 +72,8 @@ for (const surface of SURFACES) {
 
   test(`[REQ-3, REQ-6, REQ-9] TEST-1402 [R1.6, R2.1] ${surface} herdr wins over inherited tmux for Show and Jump`, async ($, on) => {
     const h = machine(on, { mux: "herdr" }), records = seedFamily(h);
-    h.seed({ ...records.find(r => r.key === MANAGER)!, herdr: { pane: "own-herdr", tab: "own-tab", workspace: "workspace" } });
-    h.seed({ ...records.find(r => r.key === CHILD)!, herdr: { pane: "child-pane", tab: "child-tab", workspace: "workspace" } });
+    h.seed({ ...records.find(r => r.key === MANAGER)!, mux: nestedHerdr, herdr: { pane: "own-herdr", tab: "own-tab", workspace: "workspace" } });
+    h.seed({ ...records.find(r => r.key === CHILD)!, mux: nestedHerdr, herdr: { pane: "child-pane", tab: "child-tab", workspace: "workspace" } });
     await start($, h, surface);
     const band = await mountBand($, surface);
     await pressRow(band, "child-01", "Jump");
@@ -84,7 +86,7 @@ for (const surface of SURFACES) {
 
   test(`[REQ-3, REQ-6, REQ-9] TEST-1402 [R1.6, R2.1] ${surface} cross-mux Show keeps details and Jump reports unreachable`, async ($, on) => {
     const h = machine(on), records = seedFamily(h);
-    h.seed({ ...records.find(r => r.key === CHILD)!, tasks: taskRows(), herdr: { pane: "other-pane", tab: null, workspace: null } });
+    h.seed({ ...records.find(r => r.key === CHILD)!, tasks: taskRows(), mux: { kind: "herdr", nesting: null }, herdr: { pane: "other-pane", tab: null, workspace: null } });
     await start($, h, surface);
     const band = await mountBand($, surface);
     await pressRow(band, "child-01", "Jump");
@@ -98,7 +100,7 @@ for (const surface of SURFACES) {
 
   test("[REQ-432] TEST-1402 " + surface + " inherited herdr env cannot re-address a tmux self record", async ($, on) => {
     const h = machine(on, { mux: "herdr" }), records = seedFamily(h);
-    h.seed({ ...records.find(r => r.key === CHILD)!, herdr: { pane: "child-pane", tab: "tab", workspace: "w" } });
+    h.seed({ ...records.find(r => r.key === CHILD)!, mux: { kind: "herdr", nesting: null }, herdr: { pane: "child-pane", tab: "tab", workspace: "w" } });
     await start($, h, surface);
     const band = await mountBand($, surface);
     await pressRow(band, "child-01", "Jump");
@@ -108,7 +110,7 @@ for (const surface of SURFACES) {
 
   test("[REQ-432] TEST-1402 " + surface + " missing PATH herdr retries once at home and remembers the binary for Show", async ($, on) => {
     const h = machine(on, { mux: "herdr", herdrAtFallback: true }), records = seedFamily(h);
-    for (const key of [MANAGER, CHILD]) h.seed({ ...records.find(r => r.key === key)!, herdr: { pane: key === MANAGER ? "own-herdr" : "child-pane", tab: "tab", workspace: "w" } });
+    for (const key of [MANAGER, CHILD]) h.seed({ ...records.find(r => r.key === key)!, mux: nestedHerdr, herdr: { pane: key === MANAGER ? "own-herdr" : "child-pane", tab: "tab", workspace: "w" } });
     await start($, h, surface);
     const band = await mountBand($, surface), before = h.commands.length;
     await pressRow(band, "child-01", "Jump");
@@ -124,7 +126,7 @@ for (const surface of SURFACES) {
 
   test("[REQ-432] TEST-1402 " + surface + " both herdr executables refused retain the unavailable toast", async ($, on) => {
     const h = machine(on, { mux: "herdr", herdrUnavailable: true }), records = seedFamily(h);
-    for (const key of [MANAGER, CHILD]) h.seed({ ...records.find(r => r.key === key)!, herdr: { pane: key === MANAGER ? "own-herdr" : "child-pane", tab: "tab", workspace: "w" } });
+    for (const key of [MANAGER, CHILD]) h.seed({ ...records.find(r => r.key === key)!, mux: nestedHerdr, herdr: { pane: key === MANAGER ? "own-herdr" : "child-pane", tab: "tab", workspace: "w" } });
     await start($, h, surface);
     const band = await mountBand($, surface);
     await pressRow(band, "child-01", "Jump");

@@ -7,7 +7,7 @@ Hands browser tasks to Aside, the user's own AI browser with its own logged-in a
 
 | | |
 |---|---|
-| Version | `1.0.0` |
+| Version | `1.0.1` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 1 |
 | Subagents | 0 |

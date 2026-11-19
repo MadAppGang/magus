@@ -31,23 +31,6 @@ error: report it once and carry on; only the status band and the hook depend on 
 Then read `${CLAUDE_PLUGIN_ROOT}/references/three-levels.md`, before anything else. If that
 read is skipped, the standing rules below still hold.
 
-## Step 0b: which route your children take
-
-```
-bun --env-file=/dev/null "${CLAUDE_PLUGIN_ROOT}/scripts/orch-config.ts" multiplexer
-```
-
-Read `session.mux` in its JSON, and nothing else:
-
-| `session.mux` | Read and follow | Skip entirely |
-|---|---|---|
-| `herdr` | "Children under herdr" | "Children under tmux" |
-| `tmux`, or `session` holds an `error` | "Children under tmux" | "Children under herdr" |
-
-Children open where this session runs. Never ask the user which multiplexer to use, and
-never run this script with `--set` or `--claim-question`: where new ticket windows open is
-triage's question, and `windows` in the JSON is triage's answer.
-
 ## Step 1: read the ticket and the workbook
 
 Find the tracker and read the ticket as the "Tracker" section of `three-levels.md` says:
@@ -87,8 +70,8 @@ These hold from now until the final report, including every phase of the workflo
    never `cd` into another checkout. A ticket may hold a list of related work across
    several repos: this repo's part here, every other repo's through a child, so the user's
    attention stays in one place.
-2. **Work in another repo goes to a child**, started beside this session: a terminal slot
-   under tmux, a herdr pane under herdr (below). Never edit another repo from this worktree.
+2. **Work in another repo goes to a child**, started beside this session in a pane of this
+   tmux window or herdr tab (below). Never edit another repo from this worktree.
 3. **Tickets belong to triage.** A hook refuses, in this session, any ticket launch, ticket
    create, title or description edit, **every label change**, and any write to another
    ticket, naming triage as the route. On your own ticket you set its state and assignee,
@@ -139,7 +122,7 @@ These hold from now until the final report, including every phase of the workflo
    Run one `orch-state` call at a time, never in the background.
 6. **Tracker text names a pull request by its full URL**, never a bare `PR #N`.
 
-## Starting a child, on either route
+## Starting a child
 
 **Name**: your ticket's slug plus 2 to 4 words for the child's part, from the script:
 
@@ -161,92 +144,11 @@ bun --env-file=/dev/null "${CLAUDE_PLUGIN_ROOT}/scripts/ticket-ref.ts" '<ticket-
    or released, report back the same way: PR, version or tag, what changed, what you
    checked, what is left."
 
-## Children under tmux
+## Children
 
-A child runs in a visible slot of the terminal plugin's `mux` server, in this window. Every
-step below goes through `mux` tools (`mcp__plugin_terminal_mux__<tool>`). Never send raw
-`tmux` commands into a slot pane: they bypass the slot registry.
-
-**The line**, from the launcher. It opens nothing and only checks the other repo's main
-checkout:
-
-```
-bun --env-file=/dev/null "${CLAUDE_PLUGIN_ROOT}/scripts/ticket-window.ts" --print-line \
-    --dir <other repo's main checkout> --name <name> --colour <colour> \
-    --ticket '<ticket-id>' --ticket-url '<ticket-url>'
-```
-
-It prints `{dir, branch, name, colour, line, claim}`; type `line` exactly as printed. The
-line carries a claim, so the child joins your family in the status band as it starts.
-Exit 2: that checkout is off its default branch; report the branch, never switch it, ask
-the user. Exit 3: the worktree exists, so that part is probably running already. Exit 1:
-report the message. The line takes no lock, so start one child at a time per repo. Once the
-child runs, record that you wait on it: `orch-state dep add session:<name>`.
-
-Read a slot with `capture-pane {slot: N}`. Use `watch-pane` only to wait for a pattern, with
-`mode: "quick"` and a timeout of 60 seconds or less; never to read a screen, never with
-`mode: "screen"`. Send one key per `send-keys` call and read the screen before and after
-it: a menu that changed is never answered blind.
-
-1. **Slot.** Call `list-slots` and take the lowest visible slot number not in use.
-2. **Soft limit 10.** With 10 child slots open, do not open an 11th. Tell the user once that
-   each pane is then small and every child needs watching, and wait for a child to close,
-   unless the user says go.
-3. **Open** with `open-pane {slot: N, layout: "agent-grid"}`. A response with no `layout`
-   field means the installed tmux-mcp has no layout mode; carry on with its placement.
-   `layoutApplied: false` comes with a `layoutDetail` sentence saying why; the slot is open
-   either way.
-4. **Start** with `send-keys {slot: N, keys: <line>, enter: true}`. If it returns an error,
-   read the slot with `capture-pane` first: the line may have run anyway. Retype it only if
-   it still sits unrun at the shell prompt.
-5. **Wait for Claude Code** with `watch-pane` on slot N, `mode: "quick"`, `timeout: 60` and
-   these triggers:
-
-   ```
-   pattern:Session color set,pattern:Workspace trust not yet accepted,exit
-   ```
-
-   Then read with `capture-pane`, whatever event came back. On `timeout`, watch again; after 10 minutes
-   with no Claude Code, report what the screen shows.
-6. **Trust refused** (`Workspace trust not yet accepted`). Only for a repo the workbook's
-   "Repos for children" or the user named: type `claude` with `enter: true`, read the
-   dialog (`❯ No, exit` / `Yes, I trust this folder`), send `Down`, read, send `Enter`, read
-   for the input box, type `/quit`, send `Enter`, then type the line again. Any other repo:
-   ask the user, because trusting a folder is a security decision.
-7. **Prompt.** `send-keys {slot: N, keys: <prompt>}` (literal, no `enter`), then a separate
-   `send-keys {slot: N, keys: "Enter", literal: false}`. A read straight after `Enter` often
-   still shows the text in the input box although it went through, so read again after a
-   short `watch-pane` (`triggers: "idle:2"`, `mode: "quick"`, `timeout: 10`). Send one more
-   `Enter` only if both reads show the prompt in the input box. Never type the prompt twice.
-8. **Drive the start.** Read until the workflow runs. Answer setup questions and menus from
-   the ticket and the code with named keys (`Up`, `Down`, `Enter`, a digit), one per call,
-   reading after each.
-9. **Watch.** Subscribe to each child with `SendMessage` and `notify_when_idle: true`; the
-   child's address is the `<name>` its start line passed to `-n`, as `ListAgents` shows it.
-   Read each child's slot between your own steps. A stuck child is your job, not triage's;
-   unblock what you can.
-10. **Close**, only after the child has reported and its work is merged or released.
-    First prove it merged: the PR's state is `MERGED`, or
-    `git -C <checkout> branch --merged origin/<default>` lists `worktree-<name>`, shown as
-    `+ worktree-<name>` while its worktree exists (a squash
-    merge fails this second test, so the PR state comes first). A branch with no commits
-    passes the second test too: treat it as merged only when the child reported that it had
-    nothing to commit. Then: `send-keys "/quit"`, `Enter`; wait for the menu with
-    `watch-pane` (`pattern:Keep worktree`, `mode: "quick"`, `timeout: 30`) and read it for
-    `1. Keep worktree` / `2. Remove worktree`. Never send a second `Enter` after `/quit`: on
-    the menu it picks Keep. `Down`, read, `Enter`; straight away `watch-pane` with
-    `pattern:Worktree removed,shell` (`mode: "quick"`, `timeout: 30`), because the line
-    shows only briefly before the screen clears. Confirm with `git -C <checkout> worktree
-    list` that the worktree is gone, then `close-pane {slot: N}`, then
-    `orch-state dep done session:<name>`.
-    **Not proven merged:** choose Keep (`Enter` on option 1), close the pane, and keep the
-    worktree, branch and last commit for the final report. Menu text not as expected:
-    `Escape`, keep the worktree, report.
-
-## Children under herdr
-
-A child runs in a herdr pane of this tab. After every open and close the script lays the tab
-out: you full height on the left, the children in columns of two. `child-pane` below means
+A child runs in a pane beside you, in the multiplexer this session runs in: a pane of this
+tmux window, or of this herdr tab. After every open and close the script lays it out: you
+full height on the left, the children in columns of two. `child-pane` below means
 
 ```
 bun --env-file=/dev/null "${CLAUDE_PLUGIN_ROOT}/scripts/child-pane.ts"
@@ -256,17 +158,18 @@ written out in full, as one plain command per Bash call, with no assignment in f
 `$(…)` or backtick. Give the Bash tool `timeout: 360000` for `open`, `timeout: 420000` for `prompt`, and
 `timeout: 180000` for `wait`, `close`, `layout`, `trust` and `retype`.
 
-Never call `herdr` yourself, and never move, close or split a pane that is not your child.
+Never call `tmux` or `herdr` on a child's pane yourself, and never move, close or split a
+pane that is not your child.
 Focus stays where the user left it. Every command prints one JSON document (`read` prints
 text). On any command:
 
 | Exit | Do |
 |---|---|
-| 5 | The pane closed, or herdr restarted under it, and nothing more was sent: `child-pane list`, `child-pane layout` if `relayout` is true, tell the user |
+| 5 | The pane closed, or the multiplexer restarted under it, and nothing more was sent: `child-pane list`, `child-pane layout` if `relayout` is true, tell the user |
 | 6 without `checkout-busy` | Another of your `child-pane` calls is running: one at a time |
 | 9 | This session is not the record's live owner: tell the user and stop these steps |
-| 10 | This session is not in herdr: use "Children under tmux" |
-| 14 | Pass `layout.error` to the user: it names the pane outside the tab and the command that puts it back. Leave that to them |
+| 10 | This session's multiplexer pane is unknown, or it is in neither tmux nor herdr: tell the user children cannot open, and stop these steps |
+| 14 | Pass `layout.error` to the user: it names the pane outside the herdr tab and the command that puts it back. Leave that to them |
 
 **1. Open.**
 
@@ -286,7 +189,7 @@ below) and `promptDir` from its JSON. Never run `--print-line` or type the line 
 | 1 otherwise | Report the message |
 | 2 | That checkout is off its default branch: report the branch, never switch it, ask the user |
 | 3 | The worktree exists or a child of that name is open: that part is probably running already |
-| 5 with `typed:false` | herdr restarted before the line was typed: `child-pane list`, `child-pane layout` if `relayout` is true, then `open` again |
+| 5 with `typed:false` | The multiplexer restarted before the line was typed: `child-pane list`, `child-pane layout` if `relayout` is true, then `open` again |
 | 6 with `checkout-busy` | Another child is still starting in that checkout; nothing was created. `wait --until up` on that child if it is yours, then `open` again |
 | 12 | 10 children are open. Tell the user once that each pane is then small and every child needs watching, and wait for one to close. Add `--past-limit` only when the user says go |
 
@@ -342,8 +245,10 @@ call, reading before and after. Keys: `enter`, `escape`, `up`, `down`, `left`, `
 `backspace`, `space`, a digit. For text, `send --pane P --text '<text>' --key enter`.
 
 **6. Watch.** `child-pane list` between your own steps is the first source: each child's
-`status` is `idle`, `working`, `blocked` or `done`. `read` only a child that is `blocked`, or
-idle at a question. `relayout: true` means a pane closed outside these steps: run
+`status` is `idle`, `working`, `blocked` or `done` (`done` only under herdr; under tmux a
+finished turn reads `idle`, and `wait --until done` exits 1). `starting` under tmux means
+Claude Code runs but has not yet written its session file. `read` only a child that is
+`blocked`, or idle at a question. `relayout: true` means a pane closed outside these steps: run
 `child-pane layout`. Subscribe to each child with `SendMessage` and `notify_when_idle: true`;
 its address is its `name`, as `ListAgents` shows it. A stuck child is your job, not triage's;
 unblock what you can.
@@ -367,13 +272,15 @@ name. `other-agent`: tell the user; it is never closed.
 the worktree, branch and last commit for the final report. Menu text not as expected:
 `--key escape`, keep the worktree, report.
 
-**8. Terminal slots.** A visible terminal slot you open under herdr sits in your tab and
-joins the layout: run `child-pane layout` after opening one. A slot opened by another agent,
-or by a tmux-mcp too old to record its owner, counts as foreign. `layout` exit 15 means the
-layout was refused for panes the orchestrator did not open: tell the user the stderr sentence
-once per session.
+**8. Terminal slots.** A visible terminal slot you open sits in your window or tab and joins
+the layout: run `child-pane layout` after opening one. It is laid out with the children and
+never typed into or closed by `child-pane`. Under herdr, a slot opened by another agent, or
+by a tmux-mcp too old to record its owner, counts as foreign. Under tmux, tmux-mcp records no
+opener, so a slot another agent opened in this window counts as yours for placement; a pane
+the user opened counts as foreign. `layout` exit 15 means the layout was refused for panes
+the orchestrator did not open: tell the user the stderr sentence once per session.
 
-## Every child, on either route
+## Every child
 
 - **Pass up only what is the user's:** a product or scope decision, money, a production
   deploy, anything destructive or outward-facing, or what the ticket and code cannot
@@ -399,7 +306,7 @@ once per session.
 - Free every shared environment you hold (`orch-state release "<what>"`) before the report.
 
 **Final report**, to the user and triage: what shipped (PR URLs, versions, tags), what is
-proven and how, what is not and where it was recorded, and which child slots or panes are closed. For
+proven and how, what is not and where it was recorded, and which child panes are closed. For
 every line of the progress table, say whether it is done, moved (to which ticket), or dropped
 by the user. For every child worktree, say whether it was removed (merged proven, and how) or
 kept; name each kept one with its worktree path, branch and last commit, and why it was kept.

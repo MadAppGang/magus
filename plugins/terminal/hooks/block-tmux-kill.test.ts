@@ -160,3 +160,70 @@ describe("evaluate — the decision gate", () => {
     expect(evaluate("tmux send-keys -t %1 ok && tmux send-keys -t %2 bad", lookup, yes)).toContain("'claude'");
   });
 });
+
+const absent = () => "";
+const installed = () => true;
+const unavailable = () => false;
+const env = { HERDR_PANE_ID: "wG:p59", HERDR_BIN_PATH: "/example/bin/herdr", QA_MUX: "/example/bin/herdr" };
+
+const blocked = [
+  ["herdr pane send-text w9:p8R test", "pane", "send-text", "w9:p8R", false],
+  ["herdr pane send-keys wG:p59 enter", "pane", "send-keys", "wG:p59", false],
+  ["herdr pane run wG:p59 test", "pane", "run", "wG:p59", false],
+  ["herdr pane close wG:p59", "pane", "close", "wG:p59", false],
+  ["herdr agent prompt reviewer 'do x'", "agent", "prompt", "reviewer", false],
+  ["herdr agent send-keys w9:p8R enter", "agent", "send-keys", "w9:p8R", false],
+  ['herdr pane run "$HERDR_PANE_ID" echo', "pane", "run", "wG:p59", false],
+  ["herdr pane close -- wG:p59", "pane", "close", "wG:p59", false],
+  ["herdr --session work pane run wG:p59 echo", "pane", "run", "wG:p59", true],
+  ["herdr --session=work pane run wG:p59 echo", "pane", "run", "wG:p59", true],
+  ["herdr agent prompt --wait reviewer test", "agent", "prompt", "reviewer", false],
+  ["herdr agent prompt --until=idle --timeout 500 reviewer test", "agent", "prompt", "reviewer", false],
+  ["herdr pane run wG:p59 ls --help", "pane", "run", "wG:p59", false],
+  ["herdr pane send-text wG:p59 --help", "pane", "send-text", "wG:p59", false],
+  ["'herdr' 'pane' 'close' 'wG:p59'", "pane", "close", "wG:p59", false],
+  ['"$HERDR_BIN_PATH" pane close wG:p59', "pane", "close", "wG:p59", false],
+  ['"$QA_MUX" pane close wG:p59', "pane", "close", "wG:p59", false],
+  ...["env QA=1", "sudo", "timeout 2", "nice", "nohup", "command", "exec", "echo ok &&"].map(
+    (prefix) => [`${prefix} herdr pane close wG:p59`, "pane", "close", "wG:p59", false] as const),
+] as const;
+
+for (const [command, kind, verb, target, scoped] of blocked) {
+  test(`[REQ-1] blocks ${command} against a Claude ${kind}`, () => {
+    const message = evaluate(command, absent, unavailable, t =>
+      t.kind === kind && t.verb === verb && t.target === target &&
+      JSON.stringify(t.sessionArgs) === JSON.stringify(scoped ? ["--session", "work"] : []) ? "claude" : "",
+    installed, env);
+    const ending = kind === "pane" ? `pane '${target}', whose foreground process is 'claude' — not a shell.`
+      : `agent '${target}' (claude).`;
+    expect(message?.split("\n")[0]).toBe(
+      `BLOCKED: raw 'herdr ${kind} ${verb}' would ${kind === "pane" ? "target" : "type into"} ${ending}`);
+  });
+}
+
+for (const [command, scope] of [
+  ["herdr server stop", "in this herdr server."],
+  ["herdr --session=work server stop", "in this herdr server."],
+  ["herdr session stop work", "in session 'work'."],
+  ["herdr session stop --json work", "in session 'work'."],
+]) {
+  test(`[REQ-1] blocks ${command} without a binary or lookup`, () => {
+    const verb = scope.includes("server") ? "server" : "session";
+    expect(evaluate(command!, absent, unavailable, absent, unavailable)?.split("\n")[0]).toBe(
+      `BLOCKED: herdr ${verb} stop would close every pane and agent ${scope}`);
+  });
+}
+
+for (const command of ["herdr --help", "herdr pane --help", "herdr pane send-text --help",
+  "herdr agent prompt -h", "herdr pane split --current --direction right",
+  "herdr --machine=box pane close w1:p1", "echo herdr pane close w1:p1"]) {
+  test(`[REQ-2] allows ${command}`, () => {
+    expect(evaluate(command, absent, unavailable, () => "claude", installed, env)).toBeNull();
+  });
+}
+
+for (const [foreground, available] of [["zsh", true], ["-zsh", true], ["", true], ["claude", false]] as const) {
+  test(`[REQ-2] allows a shell or unresolved lookup: ${foreground || "empty"}, available=${available}`, () => {
+    expect(evaluate("herdr pane send-text w9:p8R x", absent, unavailable, () => foreground, () => available)).toBeNull();
+  });
+}

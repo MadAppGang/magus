@@ -115,7 +115,7 @@ export function isOwn(own: OwnTicket | null, target: GuardTarget): boolean {
 
 const R_LAUNCH =
   "Tickets and ticket sessions belong to triage. Send triage the request by SendMessage, with what you read or ran. " +
-  "A child for a part in another repo starts with ticket-window.ts --print-line; --dry-run checks a start and opens nothing.";
+  "A child for a part in another repo opens with child-pane.ts open; ticket-window.ts --dry-run checks a start and opens nothing.";
 const R_CHILD_LAUNCH = "A child starts no sessions. Send the need to your manager by SendMessage.";
 const R_CHILD_PANES = "A child opens no panes and starts no sessions. Send the need to your manager by SendMessage.";
 const R_CHILD_PANE_FORM = 'Run child-pane.ts as bun --env-file=/dev/null "${CLAUDE_PLUGIN_ROOT}/scripts/child-pane.ts" <command> …, with no assignment in front and no $(…) or backtick.';
@@ -174,7 +174,7 @@ function rForms(role: "manager" | "child", own: OwnTicket | null, why: string): 
     `${why} Tickets and ticket sessions belong to triage: send triage the request by SendMessage, with what you read or ran. ${PLAIN_ONLY} ` +
     `Allowed: ${READ_FORMS}; gh issue comment ${n} -R ${repo} --body|--body-file|--attach …; ` +
     `gh issue edit ${n} -R ${repo} --add-assignee|--remove-assignee …; gh issue close|reopen ${n} -R ${repo} [--comment …]; ` +
-    `ticket-window.ts --print-line to start a child, or --dry-run. ${MENTION_TEXT}`
+    `child-pane.ts open to start a child, or ticket-window.ts --dry-run. ${MENTION_TEXT}`
   );
 }
 

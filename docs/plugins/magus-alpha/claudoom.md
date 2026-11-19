@@ -7,7 +7,7 @@ Plays Doom-engine WADs in a Claude Code pane: runs doom-cli (GPLv2, built from u
 
 | | |
 |---|---|
-| Version | `0.1.0` |
+| Version | `0.1.1` |
 | Marketplace | [`magus-alpha`](./index.md) |
 | Commands | 0 |
 | Subagents | 0 |

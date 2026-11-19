@@ -21,7 +21,7 @@ Ask Claude for something that lives in your accounts: "reply to Jack in Slack #d
 | `aside` skill | Writes the task brief, runs `aside exec`, updates you about every 60 seconds, steers or stops the run, reports the result. `aside repl` for page debugging only. |
 | `/aside:doctor` | Checks that the CLI is installed, an account is signed in and the hosts are reachable. |
 
-With the terminal plugin inside tmux, the run happens in a split pane beside you and you see all of its output. Without it, the run goes to the background.
+With the terminal plugin, inside tmux or herdr, the run happens in a split pane beside you and you see all of its output. Without it, the run goes to the background.
 
 The CLI can drive the Aside on this machine or on another one, such as your laptop. Name the machine and Claude passes `--host`. An offline host stops the task; it never moves to this machine.
 

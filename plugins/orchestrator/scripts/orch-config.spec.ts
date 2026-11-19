@@ -21,7 +21,7 @@ const cases = [
   [{ HERDR_ENV: "1", HERDR_PANE_ID: "w1:p1" }, "herdr", "detected", null, null],
   [nested, "herdr", "provisional", "herdr-in-tmux", "herdr-in-tmux"],
   [{ TMUX: "host" }, "tmux", "provisional", "herdr-installed", null],
-  [{ ...nested, ORCHESTRATOR_MULTIPLEXER: "tmux" }, "tmux", "forced", null, null],
+  [{ ...nested, ORCHESTRATOR_MULTIPLEXER: "tmux" }, "tmux", "forced", null, "herdr-in-tmux"],
   [{ ORCHESTRATOR_MULTIPLEXER: "herdr", HERDR_PANE_ID: "w1:p1" }, "herdr", "forced", null, null],
 ] as const;
 for (const [env, mux, source, ask, nesting] of cases) test("[REQ-401, REQ-402] TEST-2401 reads session and window facts as one exact JSON document " + JSON.stringify(env), async () => {
@@ -57,7 +57,7 @@ test("[REQ-402, REQ-405] TEST-2402 --set keeps unknown keys and recomputes neste
 test("[REQ-402, REQ-405] TEST-2403 plain tmux stored herdr opens windows there but its children remain tmux", async () => {
   const s = space(), r = await read(s, ["--set", "herdr"], { TMUX: "host" });
   expect(r.code).toBe(0);
-  expect(body(r)).toMatchObject({ session: { mux: "tmux" }, windows: { mux: "herdr", source: "stored", ask: null, note: "New ticket windows open as herdr tabs (your stored choice). This session's own children stay in tmux slots." } });
+  expect(body(r)).toMatchObject({ session: { mux: "tmux" }, windows: { mux: "herdr", source: "stored", ask: null, note: "New ticket windows open as herdr tabs (your stored choice). This session's own children stay in this tmux window." } });
   const forced = await read(s, ["--set", "herdr"], { TMUX: "host", ORCHESTRATOR_MULTIPLEXER: "tmux" });
   expect(forced.code).toBe(0);
   expect(forced.stdout + forced.stderr).toContain("ORCHESTRATOR_MULTIPLEXER=tmux still overrides this");
