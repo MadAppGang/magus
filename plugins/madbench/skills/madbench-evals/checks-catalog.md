@@ -1096,7 +1096,7 @@ the record that says so, with `metadata.state` as known at that moment (`docs/ch
 
 | type | Transport | Config | Notes |
 |---|---|---|---|
-| `custom:exec` | spawn any CLI, envelope on stdin | `command` (list, preferred) or `value` (shlex-split), `timeout` (default 30s) | environment scrubbed to `PATH`, `HOME`, `LANG`, `LC_ALL`, `TMPDIR` plus `MADBENCH=1` |
+| `custom:exec` | spawn any CLI, envelope on stdin | `command` (list, preferred) or `value` (shlex-split), `timeout` (default 30s) | runs in the bench file's folder; environment scrubbed to `PATH`, `HOME`, `LANG`, `LC_ALL`, `TMPDIR` plus `MADBENCH=1` |
 | `custom:http` | POST the envelope | `url` or `value` (http/https only), `timeout` (30s), `headers` | **Service** kind |
 | `custom:gosrc` | compile Go source, cache by SHA256(source + Go version), run it | `inline:`, `value:` (path), or the type suffix; `timeout` (30s) | compiled at evaluation time |
 | `custom:wasm` | Wazero, WASI preview1 | `value:` (module path) or the type suffix | 5s timeout, 64 MiB memory ceiling; must export `alloc` |
@@ -1116,6 +1116,11 @@ the record that says so, with `metadata.state` as known at that moment (`docs/ch
   value: ./checks/grade.wasm
 ```
 
+A `custom:exec` command runs in the bench file's folder, so `./grade.ts` means the file beside
+`madbench.yaml` from any start directory. A bare name (`bun`) resolves through `PATH`; an
+absolute path is left alone. The grading program reads the agent's workspace from
+`session.work_dir`.
+
 `madbench preflight` reports a missing grading program before any spend, and every finding is
 **blocking** (exit 3, nothing run, nothing spent).
 
@@ -1123,13 +1128,15 @@ the record that says so, with `metadata.state` as known at that moment (`docs/ch
 |---|---|
 | A `value: "file://…"` program exists and is not a directory | the scenario, for `ts`, `js`, `python` |
 | The managed runtime (`bun`, `uv`) is available | the script family — advisory when madbench may auto-install, blocking when not |
-| `command[0]`/`command[1]` exist, when they contain a path separator | `custom:exec` |
+| `command[0]`/`command[1]` exist in the bench file's folder, when they contain a path separator | `custom:exec` |
 | The `go` toolchain is on `PATH` | `custom:gosrc` |
 | The `.wasm` module exists and is not a directory | `custom:wasm` |
 
-Two source spellings are **not** covered, because they resolve against the process working
-directory: a bare `value:`/type-suffix path on `custom:gosrc`, and a `custom:exec` command
-with no path separator.
+A bare `value:`/type-suffix path on `custom:gosrc` is **not** covered, because it resolves
+against the process working directory. `custom:exec` checks only `command[0]` and
+`command[1]`, and skips an element with no path separator: `["python3", "grade.py"]` and
+the third element of `["bun", "run", "./grade.ts"]` are not checked, so a missing script
+there errors at grading.
 
 ---
 

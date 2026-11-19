@@ -4,6 +4,20 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [madbench 0.12.9] - 2026-11-19
+
+### Changed
+
+- **The madbench skills are synced to madbench 0.59.0**, so /madbench:madbench and the bench
+  agent describe the harness that is installed. A real run now opens with
+  `madbench <bench> --pane`, which finds the multiplexer that owns the session (herdr or tmux,
+  the nearer one when nested) and opens the split itself. The checks catalog says that a
+  `custom:exec` command runs in the bench file's folder. `madbench skills --check` reports
+  `current`. Where Homebrew is not used (Linux), the plugin installs madbench v0.59.0 when
+  madbench is missing.
+
+---
+
 ## [terminal 5.6.2] - 2026-11-19
 
 ### Fixed

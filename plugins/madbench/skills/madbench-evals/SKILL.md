@@ -119,24 +119,23 @@ written yet.** "The plumbing was verified out of band" is an `environment:mcp-re
 ## Runs are visible
 
 A real bench run happens **where the user can watch it: by default, a split pane beside the
-conversation**. Nothing needs building. Take the first of these that works:
+conversation**. Nothing needs building. Run it through plain Bash:
 
-1. **A terminal-pane tool in your harness** (a tmux or terminal plugin that opens a pane the
-   user can see). Open a visible pane beside the conversation and run the bench there.
-2. **You are inside tmux** (`$TMUX_PANE` is set). Split your own window:
+```bash
+madbench <bench> --pane --report-json <absolute path>
+```
 
-   ```bash
-   tmux split-window -h -d -t "$TMUX_PANE" -c "<bench directory>" \
-     'madbench <bench> --report-json <absolute path>; echo "madbench exit $?"; read -r _'
-   ```
+`--pane` decides who owns your pane from the process tree (herdr or tmux, the nearer one when
+they are nested) and opens a split beside the conversation without taking focus. The split
+runs the default coloured output, and the command returns at once. The pane prints
+`madbench exit <code>` and holds until the user presses Enter. The new pane inherits the
+multiplexer's environment, not this shell's, so a key or `MADBENCH_*` knob exported only in
+this shell does not reach the run; `./.env` (read in the pane's working directory) and flags do.
 
-   `-d` keeps focus on the conversation. The trailing `echo` prints the exit code, and `read`
-   holds the pane open so the user can read the final verdict; they close it with Enter. The
-   report path is absolute, because the pane starts in the bench directory.
-3. **Neither.** Give the user `madbench <bench> --ui --report-json <path>` to run in their
-   own terminal, and wait for them to say it has finished.
+If it prints "no herdr or tmux pane owns this session", give the user the printed command
+(they may add `--ui`) and wait for them to say it has finished.
 
-In a pane you opened, use madbench's **default coloured output**, not `--ui`. It ends on its
+In the pane, use madbench's **default coloured output**, not `--ui`. It ends on its
 own when the run does, while `--ui` waits for a key to quit. Add `--watch` to show every
 agent's live screen as well; it is the view for a driven interactive run (refused beside
 `--ui`, `--plain` and `--manual`). The run is over when the report JSON exists and the pane
@@ -309,7 +308,7 @@ madbench check bench.yaml           # NEGATIVE control: every graded check must 
 madbench glossary check . --skip testdata   # the words: no deprecated or other tools' word in the Bench, its README, its code
 madbench demo                       # offline emulated bench: no keys, no spend
 madbench bench.yaml --harness mock  # dry-run your YAML offline
-madbench bench.yaml --report-json out.json   # a real run: in a split pane beside the conversation ("Runs are visible")
+madbench bench.yaml --pane --report-json <absolute path>   # a real run: in a split pane beside the conversation ("Runs are visible")
 madbench bench.yaml --ui --report-json out.json  # the same run in the user's own terminal, when no pane can be opened
 madbench bench.yaml --report-dir .reports   # versioned, incrementally written history
 madbench bench.yaml --fail-on-failure       # CI: exit 1 on a failed scenario
