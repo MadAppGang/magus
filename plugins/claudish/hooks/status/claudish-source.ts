@@ -59,7 +59,7 @@ export type McpCall = (server: string, tool: string, args: Record<string, unknow
 const CONTRACT_VERSION = 1
 const SLOT_STATES: ReadonlySet<string> = new Set([
   'STARTING', 'RUNNING', 'AWAITING_INPUT', 'AWAITING_PERMISSION',
-  'COMPLETED', 'FAILED', 'CANCELLED', 'TIMEOUT', 'EMPTY',
+  'COMPLETED', 'FAILED', 'CANCELLED', 'TIMEOUT', 'EMPTY', 'SHAPE_MISMATCH',
 ])
 const FAILURE_REASONS: ReadonlySet<string> = new Set([
   'cancelled', 'timeout', 'boot_timeout', 'boot_blocked', 'first_run_dialog', 'agent_rejected',

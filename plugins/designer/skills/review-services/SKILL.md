@@ -102,7 +102,7 @@ Read `${JUDGE_DIR}/response-<slot>.md` for the one slot in the run's `slots` map
 the ```json block. That block is `SEMANTIC_DIFF` (two images) or the review findings (one
 image).
 
-A slot in state `FAILED` or `EMPTY` (`shape_mismatch`, `nonzero_exit`) produced no
+A slot in state `FAILED` or `EMPTY` (`shape_mismatch`, `nonzero_exit`), or `SHAPE_MISMATCH`, produced no
 verdict. Read `${JUDGE_DIR}/errors/<slot>.log` for the reason, record it under
 Obstacles, and go to Step 6. Never fill the categories from the pixel diff, and never
 report a score the judge did not write.

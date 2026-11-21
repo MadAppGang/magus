@@ -201,6 +201,7 @@ function terminalPhrase(run: ClaudishRun, slot: string, state: ClaudishSlotState
       return 'TIMEOUT'
     case 'FAILED':
     case 'EMPTY':
+    case 'SHAPE_MISMATCH':
       if (reason && detail) return `${state} (${reason}: ${detail})`
       return reason ? `${state} (${reason})` : detail ? `${state} (${detail})` : state
     case 'LOST':
@@ -220,6 +221,7 @@ const OUTCOMES: readonly (readonly [ClaudishSlotState, string])[] = [
   ['COMPLETED', 'completed'],
   ['FAILED', 'failed'],
   ['EMPTY', 'empty'],
+  ['SHAPE_MISMATCH', 'wrong format'],
   ['TIMEOUT', 'timed out'],
   ['CANCELLED', 'cancelled'],
 ]

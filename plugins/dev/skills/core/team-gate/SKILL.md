@@ -16,7 +16,7 @@ Every gate site in `/dev:dev`, `/dev:fix` and `/dev:audit` follows it; none rest
 
 `N` is the number of external slots the gate launched. A **ballot** is an external slot
 whose `status` state is `COMPLETED` and whose `response-<slot>.md` matched
-`require_pattern`. FAILED, EMPTY, still-RUNNING at the poll ceiling, and never-started
+`require_pattern`. FAILED, EMPTY, SHAPE_MISMATCH, still-RUNNING at the poll ceiling, and never-started
 slots are not ballots. Count both by slot identity: walk the slots map, leave out the id
 `slots.internal`, and count the rest — never derive either from the summary's `succeeded`,
 which includes the internal slot when it completed and omits it when it failed.

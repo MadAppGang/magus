@@ -7,6 +7,7 @@
 export type ClaudishSlotState =
   | 'STARTING' | 'RUNNING' | 'AWAITING_INPUT' | 'AWAITING_PERMISSION'   // live
   | 'COMPLETED' | 'FAILED' | 'CANCELLED' | 'TIMEOUT' | 'EMPTY'          // claudish terminal
+  | 'SHAPE_MISMATCH'                                                    // claudish terminal: an answer that missed require_pattern
   | 'LOST'                                                              // the mod's own terminal
   | 'UNKNOWN'                                                           // the mod's own live-ish: a state outside the set, or none
 

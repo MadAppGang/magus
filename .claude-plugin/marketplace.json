@@ -77,7 +77,7 @@
       "name": "claudish",
       "source": "./plugins/claudish",
       "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting, manages async sessions, and shows the session's runs live above the prompt, with stop and live-screen tabs. Required by code-search, dev, multimodel and designer.",
-      "version": "2.18.1",
+      "version": "2.18.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -97,6 +97,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "2.18.2",
+          "date": "2026-11-21",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "The status mod ends a team run whose slots end SHAPE_MISMATCH"
+        },
         {
           "version": "2.18.1",
           "date": "2026-11-21",
@@ -129,14 +137,6 @@
             "Changed"
           ],
           "summary": "The claudish-usage skill lists task_type on team and create_session (claudish 14.20.0 or\u2026"
-        },
-        {
-          "version": "2.17.0",
-          "date": "2026-11-10",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "The status band picks light or dark from Claude Code's own theme"
         }
       ]
     },
@@ -208,7 +208,7 @@
       "name": "multimodel",
       "source": "./plugins/multimodel",
       "description": "Multi-model collaboration and orchestration. Runs one task across several AI models under a task type (judge, research, plan, debug, brainstorm, implement, test, collaborate), each with its own result, or delegates it to one model running a full Claude Code session.",
-      "version": "6.3.0",
+      "version": "6.3.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -232,6 +232,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "6.3.1",
+          "date": "2026-11-21",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "/multimodel:team counts a SHAPE_MISMATCH slot as finished and not usable, beside FAILED and\u2026"
+        },
         {
           "version": "6.3.0",
           "date": "2026-11-19",
@@ -263,11 +271,6 @@
             "Changed"
           ],
           "summary": "/multimodel:team runs each task as one of eight task types, each with its own result"
-        },
-        {
-          "version": "5.9.1",
-          "date": "2026-10-23",
-          "summary": "Multi-model-validation picks the review route by cli-sessions.md \u00a71. Inside a claudish child it\u2026"
         }
       ]
     },
@@ -275,7 +278,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "9.8.0",
+      "version": "9.8.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -315,6 +318,14 @@
       "strict": true,
       "releases": [
         {
+          "version": "9.8.1",
+          "date": "2026-11-21",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "The team-gate skill names SHAPE_MISMATCH beside FAILED and EMPTY as a slot that is not a ballot"
+        },
+        {
           "version": "9.8.0",
           "date": "2026-11-19",
           "kinds": [
@@ -345,14 +356,6 @@
             "Changed"
           ],
           "summary": "/dev:architect gets its multi-model proposals from /multimodel:team --type plan"
-        },
-        {
-          "version": "9.6.1",
-          "date": "2026-11-01",
-          "kinds": [
-            "Fixed"
-          ],
-          "summary": "/dev:qa external writers read their own prompt (MTL-283)"
         }
       ]
     },
@@ -759,7 +762,7 @@
       "name": "designer",
       "source": "./plugins/designer",
       "description": "UI design validation. Compares a rendered screen against its reference by pixel diff, then reviews the result for spacing, hierarchy and design-system consistency.",
-      "version": "0.13.0",
+      "version": "0.13.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -781,6 +784,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.13.1",
+          "date": "2026-11-21",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "The review-services skill treats a slot in state SHAPE_MISMATCH like FAILED and EMPTY: it\u2026"
+        },
         {
           "version": "0.13.0",
           "date": "2026-11-19",
@@ -809,11 +820,6 @@
             "Added"
           ],
           "summary": "Both agents have a color: field again: review is purple, ui is green. With agent-colours\u2026"
-        },
-        {
-          "version": "0.10.0",
-          "date": "2026-09-27",
-          "summary": "/designer:ui serves artboards over 127.0.0.1, because browser-use does not load file:// pages,\u2026"
         }
       ]
     },

@@ -88,6 +88,21 @@ test('wake: blocked team slot — seen waiting for a tick, then FAILED (blocked)
   expect(Object.keys(ledger(h).entries)).toEqual([`${modRun(h).id}/01`])
 })
 
+test('wake: a run whose only slot ends SHAPE_MISMATCH is finished — settled, one prompt saying run finished', async ($, on) => {
+  const h = harness(on, { models: ['m-a'] })
+  await start($ as never)
+  await teamRun($, h)
+  const run = h.fake.runs[0]!
+  h.fake.set(run.runId, '01', 'SHAPE_MISMATCH', 'shape_mismatch')
+  await h.clock.advance(1000)
+  expect(modRun(h).slots[0]?.state).toBe('SHAPE_MISMATCH')
+  expect(modRun(h).settledAt).not.toBeNull()
+  expect(h.submits).toHaveLength(1)
+  expect(h.submits[0]).toContain('slot 01 m-a: SHAPE_MISMATCH (shape_mismatch)')
+  expect(h.submits[0]).toContain('run finished: 1 of 1 slot done (1 wrong format)')
+  expect(h.toasts).toEqual(['01 m-a wrong format !'])
+})
+
 // REGRESSION: a run is LOST only when neither the feed nor its status.json knows it — session dev-fix-20261121-113021-b87954e5
 test('wake: LOST recovers — unreachable 5 min with no status.json: LOST unsettled, "state unknown"; listed again: RUNNING, then COMPLETED wakes', async ($, on) => {
   let refuse = false

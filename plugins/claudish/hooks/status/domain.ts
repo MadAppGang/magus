@@ -102,7 +102,7 @@ export const PARKED_RETRY_MS = 10 * 60_000
 // ── state classes ─────────────────────────────────────────────────────────────
 
 const TERMINAL: ReadonlySet<ClaudishSlotState> = new Set<ClaudishSlotState>([
-  'COMPLETED', 'FAILED', 'CANCELLED', 'TIMEOUT', 'EMPTY', 'LOST',
+  'COMPLETED', 'FAILED', 'CANCELLED', 'TIMEOUT', 'EMPTY', 'SHAPE_MISMATCH', 'LOST',
 ])
 
 export function isTerminal(state: ClaudishSlotState): boolean {
@@ -128,15 +128,14 @@ export const STATE_LOOK: Readonly<Record<ClaudishSlotState, StateLook>> = {
   EMPTY: { code: 'NIL', tone: 'fail', glyph: '✕', word: 'empty', color: 'error', group: 'failed' },
   CANCELLED: { code: 'STP', tone: 'stopped', glyph: '■', word: 'stopped', color: 'inactive', group: 'stopped' },
   LOST: { code: 'LST', tone: 'fail', glyph: '?', word: 'lost', color: 'error', group: 'failed' },
+  SHAPE_MISMATCH: { code: 'FMT', tone: 'format', glyph: '!', word: 'wrong format', color: 'warning', group: 'wrong format' },
   UNKNOWN: { code: '???', tone: 'unclear', glyph: '?', word: 'unknown', color: 'inactive', group: 'running' },
 }
 
-/** An answer that exists but missed the required shape: not empty, and not a crash. */
-const WRONG_FORMAT: StateLook = { code: 'FMT', tone: 'format', glyph: '!', word: 'wrong format', color: 'warning', group: 'wrong format' }
-
-/** A slot's look: its state's, except an EMPTY slot whose answer only missed the required shape. */
+/** A slot's look: its state's, except an EMPTY slot whose answer only missed the required shape,
+ *  which looks like SHAPE_MISMATCH: an answer that exists, not empty, and not a crash. */
 export function lookOf(state: ClaudishSlotState, reason: string | null): StateLook {
-  return state === 'EMPTY' && reason === 'shape_mismatch' ? WRONG_FORMAT : STATE_LOOK[state]
+  return state === 'EMPTY' && reason === 'shape_mismatch' ? STATE_LOOK.SHAPE_MISMATCH : STATE_LOOK[state]
 }
 
 // ── ids and hashes ────────────────────────────────────────────────────────────
@@ -421,6 +420,7 @@ export function trailKindOf(slot: ClaudishSlot): { kind: ClaudishTrailKind; tool
     case 'CANCELLED': return { kind: 'stop', tool: null }
     case 'FAILED':
     case 'EMPTY':
+    case 'SHAPE_MISMATCH':
     case 'TIMEOUT':
     case 'LOST': return { kind: 'fail', tool: null }
     case 'RUNNING': {

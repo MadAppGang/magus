@@ -4,6 +4,49 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [claudish 2.18.2] - 2026-11-21
+
+### Fixed
+
+- **The status mod ends a team run whose slots end `SHAPE_MISMATCH`.** claudish reports a
+  slot whose answer missed `require_pattern` in the terminal state `SHAPE_MISMATCH`. The mod
+  read it as an unknown, live state, so the run never finished in the band and no wake
+  notice came. The slot now reads as finished, with the "wrong format" badge an `EMPTY`
+  slot with reason `shape_mismatch` already had, and the run's notice counts it as
+  "wrong format". Other unknown states still read as live.
+- The `claudish-usage` skill names `SHAPE_MISMATCH` beside `FAILED` and `EMPTY` as a slot
+  with no usable answer.
+
+---
+
+## [multimodel 6.3.1] - 2026-11-21
+
+### Fixed
+
+- `/multimodel:team` counts a `SHAPE_MISMATCH` slot as finished and not usable, beside
+  `FAILED` and `EMPTY`: the wake loop stops restarting its Monitor for it, and the failure
+  tables report it as FAILED.
+
+---
+
+## [dev 9.8.1] - 2026-11-21
+
+### Fixed
+
+- The team-gate skill names `SHAPE_MISMATCH` beside `FAILED` and `EMPTY` as a slot that
+  is not a ballot.
+
+---
+
+## [designer 0.13.1] - 2026-11-21
+
+### Fixed
+
+- The review-services skill treats a slot in state `SHAPE_MISMATCH` like `FAILED` and
+  `EMPTY`: it produced no verdict.
+
+---
+
 ## [claudish 2.18.1] - 2026-11-21
 
 ### Fixed

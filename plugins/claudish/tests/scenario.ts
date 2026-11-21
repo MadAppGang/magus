@@ -27,7 +27,7 @@ export const GOLDEN_UNCHANGED = `{"unchanged":true,"seq":57,"final":false}`
 // ── contract vocabulary the fakes answer with ────────────────────────────────
 
 export const CAPABILITIES = ['list', 'status', 'cancel', 'capture', 'capture_since_seq', 'capture_spans'] as const
-export const TERMINAL = ['COMPLETED', 'FAILED', 'CANCELLED', 'TIMEOUT', 'EMPTY'] as const
+export const TERMINAL = ['COMPLETED', 'FAILED', 'CANCELLED', 'TIMEOUT', 'EMPTY', 'SHAPE_MISMATCH'] as const
 
 export type Json = Record<string, unknown>
 

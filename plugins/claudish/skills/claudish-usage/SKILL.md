@@ -552,7 +552,7 @@ before the mapping is consulted. **Never write an example naming a file like
 `grok-result.md`** — the tool does not produce those, and a workflow that expects one reads
 nothing.
 
-A slot whose `models[<slot>].state` is `FAILED` or `EMPTY` produced no usable answer;
+A slot whose `models[<slot>].state` is `FAILED`, `EMPTY` or `SHAPE_MISMATCH` produced no usable answer;
 `error.reason` says why.
 
 #### Deciding whether a quiet slot is stuck

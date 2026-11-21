@@ -768,7 +768,7 @@ until grep -Eqs '"status": *"(completed|failed|cancelled|timeout)"' "$d/meta.jso
 
 On each wake: read `slots.json`, call `list_sessions(include_completed=true)`, act on that
 session's row, and end the turn while others still run. A row that is neither terminal
-(`COMPLETED`, `FAILED`, `TIMEOUT`, `CANCELLED`, `EMPTY`) nor `AWAITING_*`, at the ceiling or
+(`COMPLETED`, `FAILED`, `TIMEOUT`, `CANCELLED`, `EMPTY`, `SHAPE_MISMATCH`) nor `AWAITING_*`, at the ceiling or
 before it: start the Monitor again without asking; the session has its own deadline.
 
 `AWAITING_INPUT` or `AWAITING_PERMISSION`: `capture_session`, then `cancel_session`, and record
@@ -1013,13 +1013,13 @@ as its own. A refused turn skips C3, and `TESTED_n` stays `TESTED_{n-1}`.
    `collaborate.json`.
 
 Turn status: `OK` (COMPLETED, non-empty patch, HEAD unmoved); `no_change`;
-`FAILED {reason_detail}` (FAILED, EMPTY); `TIMED OUT`; `CANCELLED`; `FAILED blocked`;
+`FAILED {reason_detail}` (FAILED, EMPTY, SHAPE_MISMATCH); `TIMED OUT`; `CANCELLED`; `FAILED blocked`;
 `FAILED refused {code}`; `FAILED head_moved`; `not started` for a turn after a stop. Only
 `OK` counts as usable.
 
 ### C4 — A failed turn
 
-FAILED, EMPTY, TIMEOUT, CANCELLED, blocked or refused. Keep its edits; never revert anything
+FAILED, EMPTY, SHAPE_MISMATCH, TIMEOUT, CANCELLED, blocked or refused. Keep its edits; never revert anything
 automatically. It does not count. When HEAD also moved, C4b replaces this step.
 
 - `agent_rejected`: every turn passes the same agent, so stop without asking. The report
@@ -1079,7 +1079,7 @@ A slot's outcome comes from `status.models[{slot}].state`:
 | State | Treatment |
 |---|---|
 | `COMPLETED` | Usable: read its response. Judge: parse the vote |
-| `FAILED` / `EMPTY` | Not usable. `error.reason` says why |
+| `FAILED` / `EMPTY` / `SHAPE_MISMATCH` | Not usable. `error.reason` says why |
 | reason `shape_mismatch` | It answered but not in the required format. Report FAILED; **do not go hunting for a verdict or findings in its prose** |
 | reason `agent_rejected` in every slot | The agent is not installed, or a preference names a bad one. Report FAILED naming `claude plugin install dev@magus` or the preference; never retry with another agent |
 | reason `cancelled` | You cancelled it in Step 2c. Report CANCELLED |
@@ -1322,7 +1322,7 @@ Save the verification table and the result to `{SESSION_DIR}/report.md`.
 | Condition | Report as | Counts? |
 |---|---|---|
 | `shape_mismatch` | FAILED; no hunting in the reply | No |
-| `FAILED`, `EMPTY` | FAILED + `error.reason` | No |
+| `FAILED`, `EMPTY`, `SHAPE_MISMATCH` | FAILED + `error.reason` | No |
 | `team` start refused after a `user_required_model` retry, or `unknown_model` | the code and the live alternatives; nothing started | n/a |
 | `agent_rejected` in every slot | FAILED, names the install or the bad preference; no retry with another agent | No |
 | `prompt_not_accepted` in every slot | as claudish-usage says | No |
@@ -1336,7 +1336,7 @@ implement and test:
 
 | Condition | Report as | Counts? |
 |---|---|---|
-| `FAILED`, `EMPTY` | `FAILED {reason_detail}` | No |
+| `FAILED`, `EMPTY`, `SHAPE_MISMATCH` | `FAILED {reason_detail}` | No |
 | `agent_rejected` in every slot | FAILED, names `claude plugin install dev@magus` or the bad preference; no retry with another agent | No |
 | `prompt_not_accepted` in every slot | as claudish-usage says | No |
 | `TIMEOUT` | `TIMED OUT`, patch kept, not offered | No |
@@ -1355,7 +1355,7 @@ collaborate:
 
 | Condition | Report as | Counts? |
 |---|---|---|
-| turn `FAILED`, `EMPTY` | `FAILED {reason_detail}`, edits kept, continue or stop (C4) | No |
+| turn `FAILED`, `EMPTY`, `SHAPE_MISMATCH` | `FAILED {reason_detail}`, edits kept, continue or stop (C4) | No |
 | turn `TIMEOUT` | `TIMED OUT`, edits kept, continue or stop | No |
 | turn `CANCELLED` | `CANCELLED`, edits kept, continue or stop | No |
 | turn `AWAITING_*` | `FAILED blocked` + the question, edits kept, continue or stop | No |
