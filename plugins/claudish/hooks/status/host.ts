@@ -81,6 +81,8 @@ export type Host = {
   sessionId(): Promise<string>
   /** the engine's ui.scroll to the end of one of this mod's panes; a refusal is ignored */
   scrollEnd(id: string): Promise<void>
+  /** appends one line to the mod's record of failed feed answers, which outlives the session; never rejects */
+  record(line: string): Promise<void>
 }
 
 const MAX_PASSES = 8

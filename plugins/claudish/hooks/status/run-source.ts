@@ -160,6 +160,10 @@ export type RunSource = {
   /** One list call per feed that has a watched run; answers keyed by feed and by run id. Several runs may
    *  share a ref.address (one path started twice); each is matched by its own ref.token, exactly. */
   poll(runs: readonly WatchedRun[]): Promise<PollBatch>
+  /** The run's own record, kept where the run lives, as one observation: null when there is none that
+   *  belongs to this run (absent, unreadable, written by another run, or naming no slot), and for a run
+   *  that keeps no record. Never rejects. poll.ts asks only for a run its feed did not report this tick. */
+  readRun(ref: ClaudishRunRef): Promise<PollResult | null>
   stop(ref: ClaudishRunRef, slot: string): Promise<StopResult>
   /** sinceSeq: the last seq drawn, 0 before the first frame. withSpans: ask for the child's colours;
    *  poll.ts passes the feed's can.spans, and nothing else may ask. */

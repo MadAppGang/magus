@@ -126,7 +126,7 @@ for (const surface of SURFACES) {
     expect(runs(h).list[0]?.lostReason).toBe('unreachable')
     expect(feeds(h)[PANEL]?.kind).toBe('speaks')
     expect(h.submits).toHaveLength(1) // one wake, naming the four LOST slots
-    expect(h.submits[0]!.match(/no longer reported by claudish, so check its status/g)).toHaveLength(4)
+    expect(h.submits[0]!.match(/state unknown: claudish stopped reporting it and it may still be running, so check its status/g)).toHaveLength(4)
   })
 
   test(`feeds: one bad entry — that row reads unknown model, the feed still speaks [${surface}]`, async ($, on) => {
@@ -218,7 +218,7 @@ for (const surface of SURFACES) {
     await h.clock.settle()
     expect(h.submits).toHaveLength(1) // 1 wake names the LOST slots; the pending entry is delivered with it
     expect(h.submits[0]).toContain('slot 01 gpt-6.1-sol: COMPLETED')
-    expect(h.submits[0]!.match(/no longer reported by claudish/g)).toHaveLength(3)
+    expect(h.submits[0]!.match(/state unknown: claudish stopped reporting it/g)).toHaveLength(3)
     expect(Object.values(ledger(h).entries).every(e => e.kind === 'delivered')).toBe(true)
   })
 

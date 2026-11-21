@@ -7,8 +7,9 @@
 // adapters call it. (The plugin's PreToolUse command hook, hooks/allow-read-verbs.ts, names
 // claudish's read-only tools too; it is not part of the mod.)
 // It calls MCP only through the McpCall it was given (register.tsx builds the mod's one MCP
-// closure), holds no state, and decides nothing about display, cadence, support policy or
-// waking: it reports what the server answered.
+// closure) and reads a run's record only through the ReadText it was given, holds no state, and
+// decides nothing about display, cadence, support policy or waking: it reports what the server
+// answered, or what the run's record says.
 
 import type { McpToolResult } from 'claude-code'
 import type { ClaudishColor, ClaudishFrame, ClaudishRecentStep, ClaudishRunKind, ClaudishRunRef, ClaudishSlot, ClaudishSlotState, ClaudishStyleSpan, ClaudishViewer } from '../../types'
@@ -376,6 +377,51 @@ function pollResult(kind: ClaudishRunKind, rows: readonly Json[], token: string,
   return mapped ? { kind: 'ok', slots: [mapped], ...(tracksViewer ? viewersOf([[row, mapped]]) : {}) } : { kind: 'missing', reason: 'session row has no slot id' }
 }
 
+// ── a run's own record on disk ────────────────────────────────────────────────
+
+/** Reads one file's text; rejects when it cannot. register.tsx passes the engine's file read. */
+export type ReadText = (path: string) => Promise<unknown>
+
+const noDisk: ReadText = () => Promise.reject(new Error('no file read given'))
+
+/**
+ * A panel run's `<path>/status.json`, the record claudish keeps beside the run, as an observation.
+ * Trusted only when its `runId` is this run's per-start id exactly (a later run may reuse the path)
+ * and every entry under `models` maps to a slot; null otherwise. A delegation keeps no such record.
+ * The record carries no live view: idle time, activity and recent steps are absent.
+ */
+async function readRun(read: ReadText, ref: ClaudishRunRef): Promise<PollResult | null> {
+  if (ref.kind !== 'panel') return null
+  let text: unknown
+  try {
+    text = await read(`${ref.address}/status.json`)
+  } catch {
+    return null
+  }
+  const body = typeof text === 'string' ? parseObject(text) : null
+  if (!body || body.runId !== ref.token || !isObject(body.models)) return null
+  const slots: ClaudishSlot[] = []
+  for (const [slot, entry] of Object.entries(body.models)) {
+    if (!isObject(entry)) return null
+    const mapped = mapSlot({
+      slot,
+      model: entry.model,
+      provider: entry.provider,
+      state: entry.state,
+      reason: isObject(entry.error) ? entry.error.reason : undefined,
+      tokens_in: entry.tokensIn,
+      tokens_out: entry.tokensOut,
+      tool_calls: entry.toolCalls,
+      turns_completed: entry.turnsCompleted,
+      cost_usd: entry.costUsd,
+      last_activity_at: entry.lastActivityAt,
+    })
+    if (!mapped) return null
+    slots.push(mapped)
+  }
+  return slots.length > 0 ? { kind: 'ok', slots } : null
+}
+
 // ── stop ──────────────────────────────────────────────────────────────────────
 
 function stopResult(result: McpToolResult | Error, ref: ClaudishRunRef, slot: string): StopResult {
@@ -621,10 +667,15 @@ export const settleCall = (p: Promise<McpToolResult>): Promise<McpToolResult | E
     (e: unknown) => (e instanceof Error ? e : new Error(String(e))),
   )
 
-/** The run feeds of the RunSource (allowance-source.ts adds the allowance report). register.tsx passes its one MCP closure; tests may pass a stub. */
-export function makeClaudishSource(call: McpCall): RunFeeds {
+/**
+ * The run feeds of the RunSource (allowance-source.ts adds the allowance report). register.tsx passes
+ * its one MCP closure and its file read; tests may pass stubs. Without a file read, no record is read.
+ */
+export function makeClaudishSource(call: McpCall, readText: ReadText = noDisk): RunFeeds {
   return {
     recognizeCall,
+
+    readRun: ref => readRun(readText, ref),
 
     async poll(runs: readonly WatchedRun[]): Promise<PollBatch> {
       const byFeed = new Map<string, WatchedRun[]>()

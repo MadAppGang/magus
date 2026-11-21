@@ -4,6 +4,52 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [claudish 2.18.1] - 2026-11-21
+
+### Fixed
+
+- **The status mod no longer ends a live or finished team run as LOST.** When the list
+  feed stops answering, or the server no longer lists a run, the mod reads the run's own
+  `status.json` and uses it while it is current: every slot ended, or a live slot active in
+  the last 5 minutes. A run that finished while the feed was down now settles COMPLETED.
+- **LOST is no longer final after the feed stops answering.** A later answer replaces it,
+  and a slot that completes afterwards wakes the session as usual.
+- **A LOST slot reads "state unknown", not "finished".** The notice says the slot may still
+  be running and to check its status; it never says "run finished" while a slot is LOST,
+  and the header counts such slots as "N slots with unknown state".
+
+### Added
+
+- **Each failed feed check is recorded** as one JSON line (time, answer kind, error, runs)
+  in `claudish-status-feed.log` in the Claude config folder; the newest 500 lines are kept.
+
+### Migration notes
+
+- A session that already holds a LOST notice for a slot gets that notice once more after
+  the update, under the new wording.
+- A tab that already moved to its ended state does not reopen when its slot comes back.
+
+---
+
+## [magus 7.16.2] - 2026-11-21
+
+### Changed
+
+- **The release publishes without waiting on the Intel Mac binary.** Until that binary is
+  published, magus on an Intel Mac runs from source through Bun; without Bun it exits with
+  a message to install Bun, and an upgrade keeps running the earlier binary.
+
+---
+
+## [magus 7.16.1] - 2026-11-21
+
+### Changed
+
+- **The release builds run on Blacksmith runners.** No change to the magus CLI itself; this
+  release proves the new release pipeline end to end.
+
+---
+
 ## [magus 7.16.0] - 2026-11-19
 
 ### Changed

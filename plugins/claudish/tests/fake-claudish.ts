@@ -41,6 +41,8 @@ export const CWD = '/w'
 /** The home the fake answers for HOME, and Claude Code's config folder under it. */
 export const FAKE_HOME = '/fake-home'
 export const FAKE_CLAUDE_DIR = `${FAKE_HOME}/.claude`
+/** Where the mod keeps its record of failed feed ticks, under Claude Code's config folder. */
+export const STATUS_FEED_LOG = `${FAKE_CLAUDE_DIR}/claudish-status-feed.log`
 
 /** One override of a list answer: a whole answer, an error text, or a rejection. */
 export type ListOverride = { text: string; isError?: boolean } | { deny: string }
@@ -199,6 +201,33 @@ export type Harness = {
   panesAnswer: () => Promise<UiPane[]> | UiPane[]
   /** a state.set whose key this answers true for misses (isSet false: another write beat it), as contention does */
   failWrite: ((key: string) => boolean) | null
+  /**
+   * The files `$.fs.read` answers under CWD and FAKE_CLAUDE_DIR, by absolute path (a run's
+   * `<path>/status.json`, the mod's own log), and every `$.fs.write` there lands here too.
+   * Any other path under those folders is missing, so the machine's own disk is never read.
+   */
+  files: Map<string, string>
+  /** every `$.fs.write` under CWD or FAKE_CLAUDE_DIR, in order */
+  fileWrites: { path: string; text: string }[]
+}
+
+/**
+ * A run's own record as claudish writes it at `<path>/status.json`: its run id and one entry
+ * per slot under `models`. `states` sets a slot's state (default: what the fake slot shows);
+ * `runId` overrides the record's id (a different run that wrote the same path). `activeAt`: when
+ * each live slot was last active (default: the run's start, a record that never advances).
+ */
+export function statusJson(run: FakeRun, states: Record<string, string> = {}, runId: string = run.runId, activeAt: number = run.startedAt): string {
+  const models = Object.fromEntries(run.slots.map(s => {
+    const state = states[s.slot] ?? s.control.state
+    return [s.slot, {
+      model: s.model, provider: 'Fake', state,
+      tokensIn: 100, tokensOut: 10, toolCalls: 1, turnsCompleted: 1,
+      startedAt: iso(run.startedAt), lastActivityAt: iso(isTerminal(state) ? run.startedAt : activeAt),
+      ...(isTerminal(state) ? { completedAt: iso(run.startedAt + 1000) } : {}),
+    }]
+  }))
+  return JSON.stringify({ startedAt: iso(run.startedAt), runId, kind: 'run', models })
 }
 
 /** What the engine draws of its own at a site the plugin passes on (a stand-in, recognisable by key). */
@@ -690,7 +719,10 @@ export function harness(on: On, options: FakeOptions = {}): Harness {
     panes: [],
     panesAnswer: () => h.panes,
     failWrite: null,
+    files: new Map(),
+    fileWrites: [],
   }
+  const faked = (path: string) => path.startsWith(`${CWD}/`) || path.startsWith(`${FAKE_CLAUDE_DIR}/`)
   on('session.start', ($, e) => ({ cwd: e.cwd }))
   // The theme the badges' palette follows (spec §9): pinned here, never read from the machine.
   on('config.list', () => ({
@@ -701,12 +733,22 @@ export function harness(on: On, options: FakeOptions = {}): Harness {
   }))
   // Claude Code's config folder, pinned: HOME answers FAKE_HOME and CLAUDE_CONFIG_DIR is unset, so
   // the theme files read are options.themeFiles and never the machine's own.
+  // A run's status.json and the mod's own files come from h.files; nothing under CWD is real.
   on('fs.read', ($, e, next) => {
-    if (!e.path.startsWith(`${FAKE_CLAUDE_DIR}/`)) return next(e)
+    if (!faked(e.path)) return next(e)
+    const file = h.files.get(e.path)
+    if (file !== undefined) return { value: file }
+    if (!e.path.startsWith(`${FAKE_CLAUDE_DIR}/`)) throw new Error(`ENOENT: ${e.path}`)
     const name = e.path.match(/^.*\/themes\/([^/]+)\.json$/)?.[1]
     const text = name === undefined ? undefined : options.themeFiles?.[name]
     if (text === undefined) throw new Error(`ENOENT: ${e.path}`)
     return { value: text }
+  })
+  on('fs.write', ($, e, next) => {
+    if (!faked(e.path)) return next(e)
+    h.files.set(e.path, e.text)
+    h.fileWrites.push({ path: e.path, text: e.text })
+    return { value: undefined }
   })
   on('env.get', ($, e, next) => {
     if (e.name === 'HOME') return { value: FAKE_HOME }

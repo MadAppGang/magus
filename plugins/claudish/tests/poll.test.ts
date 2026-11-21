@@ -2,7 +2,7 @@ import type { Register } from 'claude-code'
 import { expect } from 'claude-code/testing'
 import { test } from './kit'
 import type { ClaudishFeedSupport, ClaudishLedger, ClaudishRuns } from '../types'
-import { CREATE_TOOL, TEAM_TOOL, harness, start, type Harness } from './fake-claudish'
+import { CREATE_TOOL, STATUS_FEED_LOG, TEAM_TOOL, harness, start, statusJson, type Harness } from './fake-claudish'
 
 const FEED = 'plugin:claudish:claudish#panel'
 const DFEED = 'plugin:claudish:claudish#delegation'
@@ -160,7 +160,152 @@ test('poll: server restart — the run vanishes, LOST only after ≥5 misses spa
   await h.clock.advance(10_000)
   expect(h.fake.listCalls('runs').length).toBe(listed)
   expect(h.submits).toHaveLength(1) // one wake telling the model to check its status
-  expect(h.submits[0]!.match(/no longer reported by claudish, so check its status/g)).toHaveLength(4)
+  // nothing knows the run any more, but nothing says it ended either: its state is unknown, never "finished"
+  expect(h.submits[0]!.match(/state unknown: claudish stopped reporting it and it may still be running, so check its status/g)).toHaveLength(4)
+  expect(h.submits[0]).toContain('4 with unknown state, claudish no longer reports them')
+  expect(h.submits[0]).not.toContain('run finished')
+  expect(h.submits[0]).not.toContain('No more messages')
+})
+
+const STATUS = '/w/r1/status.json'
+
+// REGRESSION: a run is LOST only when neither the feed nor its status.json knows it — session dev-fix-20261121-113021-b87954e5
+test('poll: unreachable feed, status.json answers — slots show their recorded states for 5 min+, never LOST, never "finished"', async ($, on) => {
+  let bad: 'refuse' | 'garble' | null = null
+  let flip = 0
+  // the live run keeps writing its record: its running slot's activity time follows the clock
+  let refresh: (() => void) | null = null
+  const h = harness(on, {
+    models: ['m-a', 'm-b'],
+    listAnswer: () => {
+      refresh?.()
+      if (bad === null) return undefined
+      flip += 1
+      return bad === 'refuse' && flip % 2 === 1
+        ? { text: '{"error":{"code":"invalid_args","message":"x"}}', isError: true }
+        : { text: 'Output too large to show' }
+    },
+  })
+  await start($)
+  await $.tool.call({ tool: TEAM_TOOL, mode: 'run', path: 'r1' })
+  await h.clock.advance(1000)
+  const run = h.fake.runs[0]!
+  h.fake.set(run.runId, '02', 'COMPLETED')
+  refresh = () => h.files.set(STATUS, statusJson(run, { '01': 'RUNNING', '02': 'COMPLETED' }, run.runId, h.clock.now()))
+  refresh()
+  bad = 'refuse'
+  await h.clock.advance(5 * 60_000 + 30_000)
+  expect(h.submits.filter(t => t.includes('run finished') || t.includes('No more messages'))).toEqual([])
+  expect(runs(h).list[0]?.slots.map(s => [s.slot, s.state])).toEqual([['01', 'RUNNING'], ['02', 'COMPLETED']])
+  expect(runs(h).list[0]?.lostReason).toBeNull()
+  expect(runs(h).list[0]?.settledAt).toBeNull()
+  // the record says every slot finished: the run settles COMPLETED, and the wake says so
+  h.fake.set(run.runId, '01', 'COMPLETED')
+  refresh = null
+  h.files.set(STATUS, statusJson(run, { '01': 'COMPLETED', '02': 'COMPLETED' }))
+  await h.clock.advance(60_000)
+  expect(runs(h).list[0]?.slots.map(s => s.state)).toEqual(['COMPLETED', 'COMPLETED'])
+  expect(runs(h).list[0]?.settledAt).not.toBeNull()
+  expect(h.submits.some(t => t.includes('slot 01 m-a: COMPLETED'))).toBe(true)
+  expect(h.submits.some(t => t.includes('slot 02 m-b: COMPLETED'))).toBe(true)
+  expect(h.submits.filter(t => t.includes('state unknown') || t.includes('LOST'))).toEqual([])
+})
+
+// REGRESSION: a stale status.json does not keep a dead run alive
+test('poll: unreachable feed, status.json frozen RUNNING — the stale record stops counting; LOST "state unknown" after the bound plus 5 min', async ($, on) => {
+  let refuse = false
+  const h = harness(on, { models: ['m-a'], listAnswer: () => (refuse ? { deny: 'transport down' } : undefined) })
+  await start($)
+  await $.tool.call({ tool: TEAM_TOOL, mode: 'run', path: 'r1' })
+  await h.clock.advance(1000)
+  const run = h.fake.runs[0]!
+  h.files.set(STATUS, statusJson(run, { '01': 'RUNNING' })) // activity time never advances
+  refuse = true
+  await h.clock.advance(4 * 60_000)
+  expect(runs(h).list[0]?.slots.map(s => s.state)).toEqual(['RUNNING'])
+  await h.clock.advance(7 * 60_000)
+  expect(runs(h).list[0]?.slots.map(s => s.state)).toEqual(['LOST'])
+  expect(runs(h).list[0]?.lostReason).toBe('unreachable')
+  expect(h.submits).toHaveLength(1)
+  expect(h.submits[0]).toContain('slot 01 m-a: state unknown')
+})
+
+// REGRESSION: a stale status.json does not keep a dead run alive
+test('poll: server restart, status.json frozen RUNNING — the stale record stops counting; the run settles LOST', async ($, on) => {
+  const h = harness(on, { models: ['m-a'] })
+  await start($)
+  await $.tool.call({ tool: TEAM_TOOL, mode: 'run', path: 'r1' })
+  await h.clock.advance(1000)
+  const run = h.fake.runs[0]!
+  h.files.set(STATUS, statusJson(run, { '01': 'RUNNING' })) // activity time never advances
+  h.fake.restart()
+  await h.clock.advance(4 * 60_000)
+  expect(runs(h).list[0]?.slots.map(s => s.state)).toEqual(['RUNNING'])
+  expect(runs(h).list[0]?.settledAt).toBeNull()
+  await h.clock.advance(2 * 60_000)
+  expect(runs(h).list[0]?.slots.map(s => s.state)).toEqual(['LOST'])
+  expect(runs(h).list[0]?.lostReason).toBe('vanished')
+  expect(runs(h).list[0]?.settledAt).not.toBeNull()
+  expect(h.submits.join('\n')).toContain('state unknown')
+})
+
+// REGRESSION: a run is LOST only when neither the feed nor its status.json knows it — session dev-fix-20261121-113021-b87954e5
+test('poll: server restart, status.json of this run says COMPLETED — the run settles COMPLETED, never LOST', async ($, on) => {
+  const h = harness(on, { models: ['m-a', 'm-b'] })
+  await start($)
+  await $.tool.call({ tool: TEAM_TOOL, mode: 'run', path: 'r1' })
+  await h.clock.advance(1000)
+  const run = h.fake.runs[0]!
+  h.files.set(STATUS, statusJson(run, { '01': 'COMPLETED', '02': 'COMPLETED' }))
+  h.fake.restart()
+  await h.clock.advance(60_000)
+  expect(runs(h).list[0]?.slots.map(s => [s.slot, s.state])).toEqual([['01', 'COMPLETED'], ['02', 'COMPLETED']])
+  expect(runs(h).list[0]?.lostReason).toBeNull()
+  expect(runs(h).list[0]?.settledAt).not.toBeNull()
+  expect(h.submits.length).toBeGreaterThanOrEqual(1)
+  expect(h.submits.join('\n')).toContain('slot 01 m-a: COMPLETED')
+  expect(h.submits.join('\n')).toContain('slot 02 m-b: COMPLETED')
+  expect(h.submits.filter(t => t.includes('unknown') || t.includes('no longer reported'))).toEqual([])
+})
+
+// REGRESSION: a run is LOST only when neither the feed nor its status.json knows it — session dev-fix-20261121-113021-b87954e5
+test('poll: server restart, status.json written by another run at the same path — it does not count, the run ends LOST', async ($, on) => {
+  const h = harness(on, { models: ['m-a', 'm-b'] })
+  await start($)
+  await $.tool.call({ tool: TEAM_TOOL, mode: 'run', path: 'r1' })
+  await h.clock.advance(1000)
+  const run = h.fake.runs[0]!
+  h.files.set(STATUS, statusJson(run, { '01': 'COMPLETED', '02': 'COMPLETED' }, `${run.runId}-other`))
+  h.fake.restart()
+  await h.clock.advance(60_000)
+  expect(runs(h).list[0]?.slots.map(s => s.state)).toEqual(['LOST', 'LOST'])
+  expect(runs(h).list[0]?.lostReason).toBe('vanished')
+  expect(runs(h).list[0]?.settledAt).not.toBeNull()
+})
+
+// REGRESSION: a run is LOST only when neither the feed nor its status.json knows it — session dev-fix-20261121-113021-b87954e5
+test('poll: failed feed ticks — each non-speaking list answer leaves one record with time, kind and code or reason; an ok tick none', async ($, on) => {
+  const bad: ({ text: string; isError?: boolean })[] = []
+  const h = harness(on, { models: ['m-a'], listAnswer: () => bad.shift() })
+  await start($)
+  await $.tool.call({ tool: TEAM_TOOL, mode: 'run', path: 'r1' })
+  await h.clock.advance(1000)
+  expect(h.files.get(STATUS_FEED_LOG)).toBeUndefined()
+  const refusal = { text: '{"error":{"code":"invalid_args","message":"x"}}', isError: true }
+  bad.push(refusal, refusal, { text: 'Output too large to show' })
+  await h.clock.advance(1000 + 2000 + 4000) // three failed ticks, backing off
+  await h.clock.advance(8000) // the next answers ok
+  const lines = (h.files.get(STATUS_FEED_LOG) ?? '').split('\n').filter(l => l.trim() !== '')
+  expect(lines).toHaveLength(3)
+  const records = lines.map(l => JSON.parse(l) as Record<string, unknown>)
+  for (const r of records) expect(JSON.stringify(r)).toMatch(/"2026-10-07T\d\d:\d\d:\d\d(\.\d+)?Z"/)
+  expect(JSON.stringify(records[0])).toContain('"refused"')
+  expect(JSON.stringify(records[0])).toContain('"invalid_args"')
+  expect(JSON.stringify(records[1])).toContain('"refused"')
+  expect(JSON.stringify(records[2])).toContain('"garbled"')
+  expect(JSON.stringify(records[2])).toContain('not a JSON object')
+  await h.clock.advance(10_000)
+  expect((h.files.get(STATUS_FEED_LOG) ?? '').split('\n').filter(l => l.trim() !== '')).toHaveLength(3)
 })
 
 test('poll: never listed — synthetic * slot LOST after the missing deadline, then no more list calls', async ($, on) => {

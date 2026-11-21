@@ -107,7 +107,8 @@ function bindHost($: EngineInterface): Host {
   const call: McpCall = (server, tool, args) => $.mcp.call(server, tool, args) // the mod's one MCP closure
   return {
     store: bindStore($),
-    source: { ...makeClaudishSource(call), ...makeAllowanceSource(call) }, // run feeds + the allowance report
+    // run feeds + the allowance report; a run's record is read from where the run lives
+    source: { ...makeClaudishSource(call, path => $.fs.read(path)), ...makeAllowanceSource(call) },
     now: () => $.clock.now(),
     after: (ms, fn) => $.clock.after(ms, fn),
     toast: (text, timeoutMs) => $.ui.toast(text, timeoutMs === undefined ? undefined : { timeoutMs }),
@@ -119,6 +120,39 @@ function bindHost($: EngineInterface): Host {
     messages: () => $.session.messages(),
     sessionId: () => $.session.id(),
     scrollEnd: id => $.ui.scroll({ in: id, to: 'end' }).then(() => undefined, () => undefined),
+    record: line => recordFeedLine($, line),
+  }
+}
+
+/** The feed record keeps at most this many lines: the newest. */
+const FEED_RECORD_LINES = 500
+/** Each line of the feed record is cut to this many characters. */
+const FEED_RECORD_LINE_MAX = 2_000
+
+/** Claude Code's config folder: CLAUDE_CONFIG_DIR, else ~/.claude; null when neither is known. */
+async function claudeConfigDir($: EngineInterface): Promise<string | null> {
+  const configDir = await $.env.get('CLAUDE_CONFIG_DIR')
+  const home = await $.env.get('HOME')
+  return typeof configDir === 'string' && configDir !== '' ? configDir : typeof home === 'string' && home !== '' ? `${home}/.claude` : null
+}
+
+/**
+ * Appends one line to `<config dir>/claudish-status-feed.log`, keeping the newest
+ * FEED_RECORD_LINES, each cut to FEED_RECORD_LINE_MAX characters. A missing file reads as
+ * empty; any failure is ignored, so a tick never fails on its record. It is a read-modify-write
+ * of a file every session shares, so two sessions failing in the same instant can lose a line,
+ * which a diagnostic record accepts.
+ */
+async function recordFeedLine($: EngineInterface, line: string): Promise<void> {
+  try {
+    const dir = await claudeConfigDir($)
+    if (dir === null) return
+    const path = `${dir}/claudish-status-feed.log`
+    const was = await $.fs.read(path).then(t => (typeof t === 'string' ? t : ''), () => '')
+    const lines = [...was.split('\n').filter(l => l !== ''), line.slice(0, FEED_RECORD_LINE_MAX)].slice(-FEED_RECORD_LINES)
+    await $.fs.write(path, `${lines.join('\n')}\n`)
+  } catch {
+    // the record is a diagnostic: losing a line never stops the poll
   }
 }
 
@@ -162,9 +196,7 @@ async function claudeAppearance($: EngineInterface): Promise<Appearance | null> 
   try {
     const name = (await $.config.list()).find(row => row.key === 'theme')?.value
     if (typeof name !== 'string' || !name.startsWith('custom:')) return themeNameAppearance(name)
-    const configDir = await $.env.get('CLAUDE_CONFIG_DIR')
-    const home = await $.env.get('HOME')
-    const dir = typeof configDir === 'string' && configDir !== '' ? configDir : typeof home === 'string' && home !== '' ? `${home}/.claude` : null
+    const dir = await claudeConfigDir($)
     if (dir === null) return null
     const text = await $.fs.read(`${dir}/themes/${name.slice('custom:'.length)}.json`)
     return themeNameAppearance(typeof text === 'string' ? (JSON.parse(text) as { base?: unknown })?.base : undefined)

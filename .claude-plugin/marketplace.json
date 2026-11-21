@@ -77,7 +77,7 @@
       "name": "claudish",
       "source": "./plugins/claudish",
       "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting, manages async sessions, and shows the session's runs live above the prompt, with stop and live-screen tabs. Required by code-search, dev, multimodel and designer.",
-      "version": "2.18.0",
+      "version": "2.18.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -97,6 +97,15 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "2.18.1",
+          "date": "2026-11-21",
+          "kinds": [
+            "Fixed",
+            "Added"
+          ],
+          "summary": "The status mod no longer ends a live or finished team run as LOST"
+        },
         {
           "version": "2.18.0",
           "date": "2026-11-19",
@@ -128,14 +137,6 @@
             "Changed"
           ],
           "summary": "The status band picks light or dark from Claude Code's own theme"
-        },
-        {
-          "version": "2.16.1",
-          "date": "2026-11-08",
-          "kinds": [
-            "Fixed"
-          ],
-          "summary": "A notice that was not delivered now shows before the agent badge in the band header"
         }
       ]
     },

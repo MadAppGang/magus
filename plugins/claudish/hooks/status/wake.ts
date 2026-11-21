@@ -204,7 +204,7 @@ function terminalPhrase(run: ClaudishRun, slot: string, state: ClaudishSlotState
       if (reason && detail) return `${state} (${reason}: ${detail})`
       return reason ? `${state} (${reason})` : detail ? `${state} (${detail})` : state
     case 'LOST':
-      return 'no longer reported by claudish, so check its status'
+      return 'state unknown: claudish stopped reporting it and it may still be running, so check its status'
     default:
       return state
   }
@@ -222,27 +222,29 @@ const OUTCOMES: readonly (readonly [ClaudishSlotState, string])[] = [
   ['EMPTY', 'empty'],
   ['TIMEOUT', 'timed out'],
   ['CANCELLED', 'cancelled'],
-  ['LOST', 'lost'],
 ]
 
 /**
  * A panel run's standing, said outright: how many slots are done and how they ended, and, once
  * every slot is terminal, that the run is finished. The model must not infer the end from the
- * absence of a "still running" line. Null for a run with no slots yet.
+ * absence of a "still running" line. A LOST slot is not done: its state is unknown, so a run
+ * holding one is never called finished. Null for a run with no slots yet.
  */
 function progressLine(run: ClaudishRun): string | null {
   const total = run.slots.length
   if (total === 0) return null
-  const done = run.slots.filter(s => isTerminal(s.state))
+  const done = run.slots.filter(s => isTerminal(s.state) && s.state !== 'LOST')
+  const lost = run.slots.filter(s => s.state === 'LOST').length
   const tally = OUTCOMES
     .map(([state, word]) => [done.filter(s => s.state === state).length, word] as const)
     .filter(([n]) => n > 0)
     .map(([n, word]) => `${n} ${word}`)
     .join(', ')
   const counted = `${done.length} of ${total} ${total === 1 ? 'slot' : 'slots'} done${tally ? ` (${tally})` : ''}`
-  return done.length === total
-    ? `  run finished: ${counted}. No more messages will arrive for this run.`
-    : `  progress: ${counted}`
+  if (done.length === total) return `  run finished: ${counted}. No more messages will arrive for this run.`
+  if (lost === 0) return `  progress: ${counted}`
+  const after = run.settledAt === null ? 'a message follows if claudish reports them again' : 'claudish no longer reports them'
+  return `  progress: ${counted}; ${lost} with unknown state, ${after}`
 }
 
 type SlotClaim = { slot: string; terminal: ClaudishSlotState | null; wait: { n: number; state: ClaudishSlotState } | null }
@@ -274,12 +276,15 @@ export function composeWake(
     const slots = byRun.get(k.runId) ?? new Map<string, SlotClaim>()
     byRun.set(k.runId, slots)
     const sc = slots.get(k.slot) ?? { slot: k.slot, terminal: null, wait: null }
-    if (k.wait === null) sc.terminal = c.state
+    // A slot claimed both LOST and with a state reported since: the reported state wins.
+    if (k.wait === null) sc.terminal = sc.terminal === null || sc.terminal === 'LOST' ? c.state : sc.terminal
     else if (sc.wait === null || k.wait > sc.wait.n) sc.wait = { n: k.wait, state: c.state }
     slots.set(k.slot, sc)
   }
 
   let finished = 0
+  /** LOST claims: their state is unknown, so they are never counted as finished */
+  let unknown = 0
   let waiting = 0
   const blocks: string[] = []
   for (const run of runs) {
@@ -294,12 +299,13 @@ export function composeWake(
       let phrase: string
       if (sc.slot === '*') {
         lines.push(`  - run ${runLabel(run)} never appeared in claudish's list, so check its status`)
-        finished += 1
+        unknown += 1
         fetch.push({ slot: sc.slot, state: 'LOST', asked: false })
         continue
       }
       if (sc.terminal !== null) {
-        finished += 1
+        if (sc.terminal === 'LOST') unknown += 1
+        else finished += 1
         phrase = terminalPhrase(run, sc.slot, sc.terminal, now?.reason ?? null, now?.detail ?? null)
         if (sc.wait !== null) {
           const had = `it had been waiting for ${waitWord(sc.wait.state)}`
@@ -329,12 +335,16 @@ export function composeWake(
     blocks.push(lines.join('\n'))
   }
   if (orphans.length > 0) {
-    finished += orphans.length
-    blocks.push(['Runs no longer listed here:', ...orphans.map(o => `  - ${o.key}: ${o.state}`)].join('\n'))
+    for (const o of orphans) {
+      if (o.state === 'LOST') unknown += 1
+      else finished += 1
+    }
+    blocks.push(['Runs no longer listed here:', ...orphans.map(o => `  - ${o.key.replace(/#lost$/, '')}: ${o.state}`)].join('\n'))
   }
 
   const heads: string[] = []
   if (finished > 0) heads.push(`${finished} ${finished === 1 ? 'slot' : 'slots'} finished`)
+  if (unknown > 0) heads.push(`${unknown} ${unknown === 1 ? 'slot' : 'slots'} with unknown state`)
   if (waiting > 0) heads.push(waiting === 1 ? 'a delegated session is waiting for you' : `${waiting} delegated sessions are waiting for you`)
   const head = heads.join('; ')
   return [`${head.charAt(0).toUpperCase()}${head.slice(1)}. (ref ${nonce})`, ...blocks].join('\n')

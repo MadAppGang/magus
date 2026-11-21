@@ -5,13 +5,14 @@
 // Names no claudish tool or field: the adapter behind host.source speaks claudish.
 
 import type { Frozen, Next, SessionEndInput, ToolCallInput, ToolCallResult } from 'claude-code'
-import type { ClaudishFeatures, ClaudishFeedSupport, ClaudishPaneView, ClaudishRun, ClaudishRuns } from '../../types'
+import type { ClaudishFeatures, ClaudishFeedSupport, ClaudishPaneView, ClaudishRun, ClaudishRuns, ClaudishSlot } from '../../types'
 import {
   CLAIM_NO_RESIZE,
   CLAIM_NO_RUN,
   CLAIM_NO_SIZE,
   CLAIM_RUN_ENDED,
   FINAL_GRACE_MS,
+  RECORD_FRESH_MS,
   NO_CAPTURE_NOTE,
   NO_SCREEN_NOTE,
   SHOW_PANE_ID,
@@ -35,7 +36,7 @@ import { serverOfTool } from './claudish-source'
 import type { Host } from './host'
 import { expandReplay, notePressOpen, pollCollapsed, replayHolds, stopTrackingViewer, takeReplayView } from './replay'
 import { activeTab, showTabs } from './layout'
-import type { FeedAnswer, PollBatch, ResizeResult } from './run-source'
+import type { FeedAnswer, PollBatch, PollResult, ResizeResult } from './run-source'
 import { applyViewer, askOrder, forgetViewOrder, noteClaimRefused, settleClaim, type ClaimOutcome } from './view'
 import * as wake from './wake'
 
@@ -313,27 +314,54 @@ export function applySupport(
   return [sameData(feeds, next) ? (feeds as Record<string, ClaudishFeedSupport>) : next, out] as const
 }
 
-/** Every run of this tick's merge, from the batch and the feeds as just updated. */
+/** What this tick's feed answer says of one unsettled run; null when it says nothing yet. */
+function observe(
+  run: ClaudishRun,
+  batch: PollBatch,
+  feeds: Readonly<Record<string, ClaudishFeedSupport>>,
+  withdrawn: ReadonlySet<string>,
+): RunObservation | null {
+  const key = feedKey(run.ref)
+  if (withdrawn.has(key)) return { kind: 'withdrawn' }
+  if (!batch.feeds.has(key) || feeds[key]?.kind !== 'speaks') return null
+  const result = batch.runs.get(run.id)
+  // A speaking feed answers every run it was asked about: no result means the run started
+  // after this tick's poll went out, so it is not observed until the next tick.
+  if (batch.feeds.get(key)?.kind !== 'speaks') return { kind: 'unreachable' }
+  if (!result) return null
+  return result.kind === 'ok' ? { kind: 'ok', slots: result.slots } : { kind: 'missing' }
+}
+
+/** A record is current when every slot in it ended, or a live slot was active within RECORD_FRESH_MS of now. */
+function isCurrent(slots: readonly ClaudishSlot[], now: number): boolean {
+  const live = slots.filter(s => !isTerminal(s.state))
+  return live.length === 0 || live.some(s => s.lastActivityAt !== null && now - s.lastActivityAt <= RECORD_FRESH_MS)
+}
+
+/** A run the feed did not report this tick: unreachable or missing. Only these have their record read. */
+function unreported(observed: RunObservation | null): boolean {
+  return observed?.kind === 'unreachable' || observed?.kind === 'missing'
+}
+
+/**
+ * Every run of this tick's merge, from the batch and the feeds as just updated. `records`: the
+ * run's own record, by run id, read for runs the feed did not report; where one answers ok and is
+ * current it is the observation, so a run is LOST only when neither its feed nor a current record knows it.
+ */
 export function mergeAll(
   runs: ClaudishRuns,
   batch: PollBatch,
   feeds: Readonly<Record<string, ClaudishFeedSupport>>,
   withdrawn: ReadonlySet<string>,
   now: number,
+  records: ReadonlyMap<string, PollResult> = new Map(),
 ): ClaudishRuns {
   let changed = false
   const list = runs.list.map(run => {
     if (run.settledAt !== null) return run
-    const key = feedKey(run.ref)
-    let observed: RunObservation | null = null
-    if (withdrawn.has(key)) observed = { kind: 'withdrawn' }
-    else if (batch.feeds.has(key) && feeds[key]?.kind === 'speaks') {
-      const result = batch.runs.get(run.id)
-      // A speaking feed answers every run it was asked about: no result means the run started
-      // after this tick's poll went out, so it is not observed until the next tick.
-      if (batch.feeds.get(key)?.kind !== 'speaks') observed = { kind: 'unreachable' }
-      else if (result) observed = result.kind === 'ok' ? { kind: 'ok', slots: result.slots } : { kind: 'missing' }
-    }
+    let observed = observe(run, batch, feeds, withdrawn)
+    const record = records.get(run.id)
+    if (unreported(observed) && record?.kind === 'ok' && isCurrent(record.slots, now)) observed = { kind: 'ok', slots: record.slots }
     if (!observed) return run
     const merged = mergeRun(run, observed, now)
     if (merged !== run) changed = true
@@ -497,10 +525,24 @@ export async function tick(host: Host): Promise<void> {
     // trigger: the allowance loop probes again if it had found the report unsupported.
     if ([...batch.feeds.values()].some(a => a.kind === 'speaks' && a.can.allowance === true)) allowancePoll.reprobe(host)
 
+    // Each failed feed answer leaves one line in the mod's record, which outlives the session.
+    for (const [key, answer] of batch.feeds) {
+      if (answer.kind === 'speaks') continue
+      const labels = watched.filter(r => feedKey(r.ref) === key).map(r => r.label)
+      await host.record(JSON.stringify({ at: new Date(now).toISOString(), feed: key, ...answer, runs: labels }))
+    }
+
     const before = runsNow
     const feedsAfter = feedsNow
-    if (mergeAll(runsNow, batch, feedsAfter, support.withdrawn, now) !== runsNow) {
-      runsNow = await host.store.runs.update(v => (v.epoch !== epoch ? v : mergeAll(v, batch, feedsAfter, support.withdrawn, at)))
+    // The run's own record, for each run its feed did not report this tick.
+    const records = new Map<string, PollResult>()
+    for (const run of runsNow.list) {
+      if (run.settledAt !== null || !unreported(observe(run, batch, feedsAfter, support.withdrawn))) continue
+      const record = await host.source.readRun(run.ref)
+      if (record) records.set(run.id, record)
+    }
+    if (mergeAll(runsNow, batch, feedsAfter, support.withdrawn, now, records) !== runsNow) {
+      runsNow = await host.store.runs.update(v => (v.epoch !== epoch ? v : mergeAll(v, batch, feedsAfter, support.withdrawn, at, records)))
     }
     if (runsNow.epoch !== epoch) return // a /clear or resume landed mid-tick: drop this tick's work
     for (const run of runsNow.list) {

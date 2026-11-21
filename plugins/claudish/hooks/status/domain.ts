@@ -29,8 +29,14 @@ export const STYLE_SPANS_PER_LINE = 24
 /** A run missing from its list is LOST only after this many misses spanning MISSING_LOST_MS. */
 export const MISSING_LOST_POLLS = 5
 export const MISSING_LOST_MS = 30_000
-/** A speaking feed that keeps failing ends its runs LOST after this long. */
+/** A speaking feed that keeps failing shows its runs' live slots LOST after this long, until it answers again. */
 export const UNREACHABLE_LOST_MS = 5 * 60_000
+/**
+ * A run's own record stands in for its feed only while it is current: every slot ended, or a live
+ * slot active within this long. A record a dead server left behind stops counting, so the run's
+ * unreachable and missing clocks run as if there were none.
+ */
+export const RECORD_FRESH_MS = UNREACHABLE_LOST_MS
 /** A slot in a state outside the closed set ends LOST after this long. */
 export const UNKNOWN_LOST_MS = 10 * 60_000
 /** Past this many runs, the oldest settled, fully delivered runs fold into `earlier`. */
@@ -174,12 +180,21 @@ export function waitKey(id: string, slot: string, n: number): string {
   return `${id}/${slot}#w${n}`
 }
 
-/** A wake ledger key taken apart; `wait` is the entry number of a wait key, null for a terminal key. */
+/**
+ * `${runId}/${slot}#lost`: the key of a slot that went LOST. Apart from its terminal key, so a
+ * slot later reported again still owes the wake for the state it then reaches.
+ */
+export function lostKey(id: string, slot: string): string {
+  return `${id}/${slot}#lost`
+}
+
+/** A wake ledger key taken apart; `wait` is the entry number of a wait key, null for a terminal or LOST key. */
 export function parseWakeKey(key: string): { runId: string; slot: string; wait: number | null } {
   const cut = key.indexOf('/')
   const rest = key.slice(cut + 1)
-  const m = /^(.*)#w(\d+)$/.exec(rest)
-  return m ? { runId: key.slice(0, cut), slot: m[1] ?? '', wait: Number(m[2]) } : { runId: key.slice(0, cut), slot: rest, wait: null }
+  const m = /^(.*)#(?:w(\d+)|lost)$/.exec(rest)
+  if (!m) return { runId: key.slice(0, cut), slot: rest, wait: null }
+  return { runId: key.slice(0, cut), slot: m[1] ?? '', wait: m[2] === undefined ? null : Number(m[2]) }
 }
 
 /** The label a run is shown and named by: `label`, or `label·N` for the N-th start at its address. */
@@ -478,11 +493,8 @@ export function nextTrails(
 }
 
 function mergeOk(prev: ClaudishRun, observed: readonly ClaudishSlot[], now: number): ClaudishRun {
-  // LOST is terminal and final in the mod: a slot that reappears keeps it.
-  const seen = observed.map(s => {
-    const p = prev.slots.find(x => x.slot === s.slot)
-    return p?.state === 'LOST' ? p : s
-  })
+  // LOST means the state could not be read, not that the slot ended: a slot reported again takes what is reported.
+  const seen = observed
   // A slot the answer no longer lists keeps what it last showed, until the missing bound.
   const kept = prev.slots.filter(p => !seen.some(s => s.slot === p.slot))
   let slots = [...seen, ...kept]
@@ -507,7 +519,7 @@ function mergeOk(prev: ClaudishRun, observed: readonly ClaudishSlot[], now: numb
     ...prev,
     slots,
     unknownSince,
-    lostReason,
+    lostReason: slots.some(s => s.state === 'LOST') ? lostReason : null,
     missedPolls: 0,
     missingSince: null,
     unreachableSince: null,
@@ -542,7 +554,8 @@ export function mergeRun(prev: ClaudishRun, observed: RunObservation, now: numbe
     case 'unreachable': {
       const unreachableSince = prev.unreachableSince ?? now
       next = { ...prev, unreachableSince }
-      if (now - unreachableSince >= UNREACHABLE_LOST_MS) next = settle(applyLost(next, 'unreachable'), now)
+      // Not settled: the feed may answer again, and what it then reports replaces LOST.
+      if (now - unreachableSince >= UNREACHABLE_LOST_MS) next = applyLost(next, 'unreachable')
       break
     }
     case 'withdrawn':
@@ -568,10 +581,10 @@ function waitEntryState(w: ClaudishWait, n: number): ClaudishSlotState {
 }
 
 /**
- * Every wake unit the given (drawn) runs owe: the terminal key of each terminal slot, and
- * the key of every wait entry 1..entries of each slot whatever it is doing now. The ledger
- * decides which are new; this only lists them, so an entry a throwing tick never noticed is
- * listed again on the next.
+ * Every wake unit the given (drawn) runs owe: the terminal key of each terminal slot (the LOST
+ * key of a LOST one), and the key of every wait entry 1..entries of each slot whatever it is
+ * doing now. The ledger decides which are new; this only lists them, so an entry a throwing
+ * tick never noticed is listed again on the next.
  */
 export function wakeUnits(runs: readonly ClaudishRun[]): WakeUnit[] {
   const out: WakeUnit[] = []
@@ -579,7 +592,10 @@ export function wakeUnits(runs: readonly ClaudishRun[]): WakeUnit[] {
     for (const [slot, w] of Object.entries(run.waits)) {
       for (let n = 1; n <= w.entries; n++) out.push({ key: waitKey(run.id, slot, n), state: waitEntryState(w, n) })
     }
-    for (const s of run.slots) if (isTerminal(s.state)) out.push({ key: slotKey(run.id, s.slot), state: s.state })
+    for (const s of run.slots) {
+      if (s.state === 'LOST') out.push({ key: lostKey(run.id, s.slot), state: s.state })
+      else if (isTerminal(s.state)) out.push({ key: slotKey(run.id, s.slot), state: s.state })
+    }
   }
   return out
 }

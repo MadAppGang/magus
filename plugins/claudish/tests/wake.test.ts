@@ -88,6 +88,36 @@ test('wake: blocked team slot — seen waiting for a tick, then FAILED (blocked)
   expect(Object.keys(ledger(h).entries)).toEqual([`${modRun(h).id}/01`])
 })
 
+// REGRESSION: a run is LOST only when neither the feed nor its status.json knows it — session dev-fix-20261121-113021-b87954e5
+test('wake: LOST recovers — unreachable 5 min with no status.json: LOST unsettled, "state unknown"; listed again: RUNNING, then COMPLETED wakes', async ($, on) => {
+  let refuse = false
+  const h = harness(on, { models: ['m-a'], listAnswer: () => (refuse ? { deny: 'transport down' } : undefined) })
+  await start($ as never)
+  await teamRun($, h)
+  const run = h.fake.runs[0]!
+  refuse = true
+  await h.clock.advance(5 * 60_000 + 30_000)
+  expect(modRun(h).slots[0]?.state).toBe('LOST')
+  expect(modRun(h).lostReason).toBe('unreachable')
+  expect(modRun(h).settledAt).toBeNull()
+  expect(h.submits).toHaveLength(1)
+  expect(h.submits[0]).toContain('slot 01 m-a: state unknown')
+  expect(h.submits[0]).not.toContain('run finished')
+  expect(h.submits[0]).not.toContain('No more messages')
+  // the feed answers again and lists the slot: LOST is replaced by what it says
+  refuse = false
+  await h.clock.advance(31_000)
+  expect(modRun(h).slots[0]?.state).toBe('RUNNING')
+  expect(modRun(h).lostReason).toBeNull()
+  expect(modRun(h).settledAt).toBeNull()
+  h.fake.set(run.runId, '01', 'COMPLETED')
+  await h.clock.advance(1000)
+  expect(modRun(h).settledAt).not.toBeNull()
+  expect(h.submits).toHaveLength(2)
+  expect(h.submits[1]).toContain('slot 01 m-a: COMPLETED')
+  expect(Object.keys(ledger(h).entries).sort()).toEqual([`${modRun(h).id}/01`, `${modRun(h).id}/01#lost`].sort())
+})
+
 // ── delegations: wait entries ─────────────────────────────────────────────────
 
 test('wake: delegation waits — each entry wakes once (1 → 2), and its end once more (3); three keys delivered', async ($, on) => {
@@ -666,6 +696,25 @@ test('wake: composeWake (pure) — two runs at one path named apart; a key with 
   expect(text).toContain('  still running: 02 m-b')
   expect(text).toContain('  - gone0000/03: COMPLETED')
   expect(text).toContain('Fetch the result now: fetch it.')
+})
+
+test('wake: composeWake (pure) — a LOST slot is never counted as finished: its own head, unknown state', () => {
+  const lost = panel('bbbb0001', 1, [slot({ state: 'LOST' }), slot({ slot: '02', model: 'm-b', state: 'LOST' })])
+  const allLost = composeWake([lost], [
+    { key: 'bbbb0001/01#lost', state: 'LOST' },
+    { key: 'bbbb0001/02#lost', state: 'LOST' },
+  ], 'w222222', words)
+  expect(allLost.split('\n')[0]).toBe('2 slots with unknown state. (ref w222222)')
+  expect(allLost).not.toContain('finished')
+  const mixed = panel('bbbb0002', 1, [slot({ state: 'COMPLETED' }), slot({ slot: '02', model: 'm-b', state: 'LOST' })])
+  const text = composeWake([mixed], [
+    { key: 'bbbb0002/01', state: 'COMPLETED' },
+    { key: 'bbbb0002/02#lost', state: 'LOST' },
+  ], 'w333333', words)
+  expect(text.split('\n')[0]).toBe('1 slot finished; 1 slot with unknown state. (ref w333333)')
+  const orphan = composeWake([], [{ key: 'gone0000/01#lost', state: 'LOST' }], 'w444444', words)
+  expect(orphan).toContain('  - gone0000/01: LOST')
+  expect(orphan).not.toContain('#lost')
 })
 
 test('wake: units (pure) — a delegation with two entries now COMPLETED owes #w1, #w2 and its end; a panel run terminal keys only', () => {
