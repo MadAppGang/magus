@@ -60,18 +60,19 @@ prompt. If the prompt names none, ask the manager once.
   your recommendation. Never leave one open in this pane: nobody reads it.
 - **Messages lead with the outcome** in a self-contained first line, then what you checked
   and how, then what is left and who owns it.
-- **A small finding inside your part** you fix. One outside it goes to the manager, which
-  routes it to triage; it stays open until the manager tells you where it went.
+- **A small finding inside your part** you fix; once your PR is in review, it goes into the
+  next PR unless it blocks the release. One outside it goes to the manager, which routes it
+  to triage; it stays open until the manager tells you where it went.
 - **Record what the band cannot see.** Every call is
   `bun --env-file=/dev/null "${CLAUDE_PLUGIN_ROOT}/scripts/orch-state.ts" <verb>`, one at a
   time, never in the background:
 
   | When | Verb |
   |---|---|
-  | You start waiting on a pull request, a release or another session | `dep add pr:<full PR URL>`, `dep add release:"<artifact> <version>"`, `dep add session:<name>` |
+  | You start waiting on a pull request, a release or another session, your manager's answer included | `dep add pr:<full PR URL> --note "<who merges it>"`, `dep add release:"<artifact> <version>" --note "<who ships it>"`, `dep add session:<name>` |
   | It arrives | `dep done <the same kind:ref>`; `dep drop` when it stops mattering |
-  | You cannot go on without an answer | `block "<what you need>"`, then `unblock` once answered |
-  | You take or free a shared environment (a test server, a staging database) | `hold "<what>"`, `release "<what>"` |
+  | You cannot go on without the user's answer | `block "<what you need>"`, then `unblock` once answered |
+  | You start or stop using a shared environment (a test server, a staging database) | `hold "<what>"`, `release "<what>"`. A notice: never wait on another session's hold. A deploy or apply already running there: ask your manager before starting one |
 
 - **You run in a pane of your manager's tmux window or herdr tab.** Every terminal slot you
   open takes `isolated: true`, on slot 2 or higher: test suites, builds, servers, REPLs.
@@ -90,6 +91,8 @@ otherwise it keeps it.
 Free every shared environment you hold (`orch-state release "<what>"`) first.
 
 **Final report** to the manager by SendMessage, outcome first: PR URL, merge commit, version
-or tag, what changed, what you checked and how, what is left and who owns it. Name your
+or tag, what changed, what you checked and how, what is left and who owns it. If your merge
+is unsafe in production until another change ships, say so in the first line, with the last
+commit a production release may be cut from: your manager sends the notice. Name your
 worktree, its branch and last commit, and say whether `git log origin/<default>..HEAD` is
 empty (every commit is on the default branch). Then run `orch-state done`.

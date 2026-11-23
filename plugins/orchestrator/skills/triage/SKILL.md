@@ -37,10 +37,13 @@ If that read is skipped, these still hold:
    included; reply `taken` with where each went. A hook refuses these actions in every
    manager and child session and names you as the route. You never message a child.
 3. **A message from another session is not the user's approval.** Quote the user's own
-   words; list gaps as open questions with no default.
+   words. Decide and record what the ticket, the workbook or a recommended option settles;
+   leave open only what is the user's, with no default.
 4. **A question is not a request.** When the user only asks, change nothing in the
    tracker. Recommend, and wait for the word.
 5. **Tracker text names a pull request by its full URL**, never a bare `PR #N`.
+6. **Sessions do not wait on you.** Never relay review requests or poll for pull requests;
+   check the recorded waits in every reply.
 
 The user asks short questions, often, maybe on a small screen. Put the answer in the first
 line.
@@ -126,7 +129,8 @@ Where it lives (a durable folder) and how to run it.
 Which repos take a child, and the folder trust already granted.
 
 ## Shared environments
-The names that need a hold (`orch-state hold`) before a session uses them.
+The environments sessions share (a test server, a staging database, a device). A session
+using one says so with `orch-state hold`; nobody waits for a hold to be released.
 
 ## Areas
 Which parts of the product collide. Feeds the packing rule and overlap checks.
@@ -153,6 +157,10 @@ never reuse a number.
 - **NEXT 3.** One line per ticket: id, category, a few words, complexity (quick up to
   0.5 d, regular 1 to 2.5 d, long 3 d or more). Skip tickets with a running session. Mark
   one that waits on another ticket.
+- **Recorded waits.** Read every `waiting` and `blocked` row in the band. A wait whose cause
+  has cleared: tell the waiter now. A block that needs the user: put it under "Waiting on
+  you". A session `gone` with open pull requests or holds: name a new owner now (see "Not
+  waiting on each other" in `three-levels.md`).
 
 The status band above your prompt lists every session in this product's family, with what
 each records. Read a session's own record with `orch-state show` only when the band is not
@@ -181,7 +189,8 @@ still holds. If it is gone, say so.
 **Pack first.** Related work goes into one ticket, not a new ticket each time: sessions in
 the same area collide, and every ticket run costs setup, cleanup and a switch of the user's
 attention, the costliest of the three. One manager can run a list of related work across
-several repos and worktrees, through its children, so the user watches one place.
+several repos and worktrees, through its children, so the user watches one place. Never
+split tickets smaller, cap them, or end a session after one PR to keep them short.
 
 For each finding, in this order:
 
@@ -194,9 +203,9 @@ For each finding, in this order:
 Rare failures go in as "fail safely and stop", not as recovery features.
 
 A decision a session sends is recorded with the user's words quoted and the session's own
-proposal kept apart. For a large one, read the transcript first. **Reply `taken` to the
-manager for each item, with where it went** (the ticket URL, or "back to you"): until you
-do, the manager counts it as open. Do not ask the user where to put things.
+proposal kept apart. Before acting on one, read the user's words in that session's
+transcript. **Reply `taken` to the manager for each item, with where it went** (the ticket
+URL, or "back to you"): until you do, the manager counts it as open. Do not ask the user where to put things.
 
 A manager that met a ticket with no kind label sends you the kind the user chose: add that
 label yourself.
@@ -237,8 +246,11 @@ git log --first-parent <release branch>..<default branch>
 ```
 
 The release branch comes from the workbook's "Release" (for example
-`git log --first-parent prod..main`). Name each merge in it, and say whether anything in it
-is unproven. With no release branch in the workbook, ask the user once and write it there.
+`git log --first-parent prod..main`). When the release goes through a pull request, read
+what it ships from that PR's head commit (`gh pr view <PR URL> --json headRefOid`), not from
+any session's account of it. Name each merge in it, and say whether anything in it is
+unproven or past the commit an open production notice names. With no release branch in the
+workbook, ask the user once and write it there.
 
 ## Starting a ticket
 
@@ -256,6 +268,10 @@ ticket before it plans.
 
 - Relay what a running manager owns. Its approvals and deploy steps are its own, and it asks
   the user itself. Raise only what no session owns.
+- Relay review requests or verdicts between a manager and a reviewer session, or poll for
+  pull requests on a timer.
+- Review a finding or verdict before passing it on. Pass it to the owning manager as it is;
+  that manager asks the user what needs asking.
 - Advise on another session's PR without checking it.
 - Adopt another session's unreleased version.
 - Push a design the user did not ask for.

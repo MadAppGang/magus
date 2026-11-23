@@ -293,6 +293,41 @@
 
 ---
 
+## [orchestrator 0.7.0] - 2026-11-24
+
+### Changed
+
+- **Sessions no longer wait on each other.** A new "Not waiting on each other" section in
+  the shared rules: only Request changes blocks a merge, and a reviewer's please items go
+  into the next PR; a PR in review takes no new findings unless they block the release; each
+  session tags and ships its own release; managers send review requests to the product's
+  reviewer session directly, and triage neither relays them nor polls for PRs.
+- **Whoever clears a wait tells the waiter at once.** A waiting session records what it
+  waits for with `orch-state dep add`, naming who clears a PR or release with `--note`, and
+  tells that session once. The session that merges, releases, deploys, lifts a notice or
+  answers messages the waiter the moment it is done. Triage checks the recorded waits in
+  every reply, and names a new owner at once for the open PRs and holds of a session that is
+  gone.
+- **A hold on a shared environment is a notice, not a lock.** Nobody waits for a hold to be
+  released. A deploy or apply that is actually running is different: ask its owner before
+  starting another. The workbook's "Shared environments" now names what sessions share.
+- **A merge that is unsafe in production until another change ships sends a notice** at
+  merge time to every session that releases that repo, naming the last commit a production
+  release may be cut from, and lifts it the same way. The release scope check reads what a
+  release ships from the release PR's head commit, not from a session's account.
+- **No obvious questions to the user.** What the ticket, the workbook or a recommended option
+  settles is decided and recorded; only scope, money, a production go, destructive or
+  outward-facing steps, and what the code and ticket cannot settle go to the user. A
+  reviewer gives a verdict or Request changes with a concrete fix. Triage passes findings
+  and verdicts to the owning manager as they are.
+- **A relayed "the user said" is checked in the user's own words** before acting on it, and
+  a request the user refused in one session is not done by another unless the user asks for
+  it again.
+- **Related findings keep packing onto the running ticket.** The rules now say outright not
+  to split tickets smaller, cap them, or end a session after one PR.
+
+---
+
 ## [orchestrator 0.6.0] - 2026-11-19
 
 ### Changed

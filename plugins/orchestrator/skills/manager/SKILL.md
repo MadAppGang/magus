@@ -113,14 +113,16 @@ These hold from now until the final report, including every phase of the workflo
 
    | When | Verb |
    |---|---|
-   | You start waiting on a child, a pull request or a release | `dep add session:<child name>`, `dep add pr:<full PR URL>`, `dep add release:"<artifact> <version>"` |
+   | You start waiting on a session, a pull request or a release | `dep add session:<name>`, `dep add pr:<full PR URL> --note "<who merges it>"`, `dep add release:"<artifact> <version>" --note "<who ships it>"`; then tell that session once, by SendMessage, with your session name |
    | It arrives | `dep done <the same kind:ref>`; `dep drop` when it stops mattering |
    | You cannot go on without the user | `block "<what you need>"`, then `unblock` once answered |
-   | You take or free a shared environment (the workbook's "Shared environments") | `hold "<what>"`, `release "<what>"` |
+   | You start or stop using a shared environment (the workbook's "Shared environments") | `hold "<what>"`, `release "<what>"`. A notice: never wait on another session's hold. Before a deploy or apply there, ask the owner of one already running |
    | After the final report | `done` |
 
    Run one `orch-state` call at a time, never in the background.
 6. **Tracker text names a pull request by its full URL**, never a bare `PR #N`.
+7. **Nobody waits by default.** Only Request changes blocks your merge, and a hold is a
+   notice. When you clear what another session waits on, tell it by SendMessage at once.
 
 ## Starting a child
 
@@ -284,7 +286,8 @@ the orchestrator did not open: tell the user the stderr sentence once per sessio
 
 - **Pass up only what is the user's:** a product or scope decision, money, a production
   deploy, anything destructive or outward-facing, or what the ticket and code cannot
-  settle. Put it to the user here, in full.
+  settle. Put it to the user here, in full. Decide the rest, note the decision below the
+  table, and carry on.
 - **Order the work** and show it in the table. Parallel release PRs collide on version
   files, so agree the order first.
 - **Link each child's PR** on the ticket with a progress comment, by its full URL.
@@ -296,13 +299,24 @@ the orchestrator did not open: tell the user the stderr sentence once per sessio
 - Release with `/dev:release` unless the workbook's "Release" names another procedure.
   Follow its merge rule; without one, merge only when every check has passed, and never
   with `gh pr merge --auto`, which merges at once where no check is required.
+- **Review.** Send each review request yourself: by SendMessage to the product's reviewer
+  session, when it has one, with the PR's full URL and your session name. Merge by "Not
+  waiting on each other" in `three-levels.md`: only Request changes blocks, please items go
+  into the next PR, and a PR in review takes no new findings unless they block the release.
 - **Release scope check.** Before a release, list what it ships with
   `git log --first-parent <release branch>..<default branch>`, the release branch from the
-  workbook (for example `prod..main`), and say whether anything in it is unproven. With no
-  release branch in the workbook, ask the user and send the answer to triage.
-- A release ships this session's work. Never adopt another session's unreleased version.
+  workbook (for example `prod..main`). When the release goes through a pull request, list it
+  from that PR's head commit (`gh pr view <PR URL> --json headRefOid`), not from any
+  session's account. Say whether anything in it is unproven or past the commit an open
+  production notice names. With no release branch in the workbook, ask the user and send
+  the answer to triage.
+- **No shared releases.** This session tags and ships its own release. Never wait to ship
+  together with another session, and never adopt another session's unreleased version.
 - A release is done when the artifact exists and has run, not when the tag is pushed.
-- Tell triage what others were waiting on: tag, version, and anything still unproven.
+- **A merge unsafe in production** until another change ships: send the production notice
+  in `three-levels.md` at merge time, and lift it the same way once that change ships.
+- The moment you merge, release or deploy what another session waits on, tell that session
+  by SendMessage, and tell triage: tag, version, and anything still unproven.
 - Free every shared environment you hold (`orch-state release "<what>"`) before the report.
 
 **Final report**, to the user and triage: what shipped (PR URLs, versions, tags), what is

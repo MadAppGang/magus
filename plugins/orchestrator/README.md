@@ -16,7 +16,13 @@ levels follow are in `references/three-levels.md`.
 same area collide, and every ticket run costs setup, cleanup and a switch of your
 attention, the costliest of the three. So triage packs related work into one ticket, and
 its manager runs the whole list, across one or several repos and worktrees through its
-children, while your attention stays in one place.
+children, while your attention stays in one place. Triage never splits tickets smaller,
+caps them, or ends a session after one PR to keep them short.
+
+**Sessions do not wait on each other.** A reviewer's "please" never blocks a merge, each
+session ships its own release, a hold on a shared environment is only a notice, and the
+session that clears a wait tells the waiter at once. The rules are in
+`references/three-levels.md`, under "Not waiting on each other".
 
 ## Requirements
 
@@ -363,9 +369,9 @@ bun scripts/orch-state.ts <verb> [flags]
 |---|---|---|
 | `register --role triage\|manager\|child [--name N] [--ticket '<id>'] [--ticket-url '<url>']` | binds this session to its record, or creates one | each role skill, as it loads |
 | `tasks` | replaces the task list with the markdown table on stdin (`\| # \| Step \| Who \| State \|`) and prints it back, normalised | the manager, in the same step that updates its progress table |
-| `dep add <kind>:<ref> [--note T]`, `dep done`, `dep drop` | a dependency on a session (`session:<name>`), a pull request (`pr:<full URL>`) or a release (`release:"<artifact> <version>"`) | any level, when it starts waiting and when that arrives |
+| `dep add <kind>:<ref> [--note T]`, `dep done`, `dep drop` | a dependency on a session (`session:<name>`), a pull request (`pr:<full URL>`) or a release (`release:"<artifact> <version>"`); `--note` names who clears it | any level, when it starts waiting and when that arrives |
 | `block "<reason>"`, `unblock` | the session needs you | any level |
-| `hold "<what>"`, `release "<what>"` | the session holds a shared environment, such as a test server | any level |
+| `hold "<what>"`, `release "<what>"` | the session is using a shared environment, such as a test server. A notice: nobody waits on it | any level |
 | `done` | the session finished, after its final report | manager, child |
 | `show [--table]` | prints the record, or its task table | anyone |
 | `prune [--days 7]` | deletes records of sessions gone that long with their pane registries, claims and prompt files older than 24 hours, and stale temporary files | anyone |
@@ -496,7 +502,7 @@ line in the product's `CLAUDE.md` makes every session find it.
 ## Release              release branch, release procedure, merge rule, scope check
 ## Status script        where it lives, how to run it
 ## Repos for children   which repos take a child, trust already granted
-## Shared environments  names that need a hold
+## Shared environments  what sessions share; a hold is only a notice
 ## Areas                which parts collide (feeds the packing rule and overlap checks)
 ## Decisions            your words, quoted, and where each was recorded
 ```
