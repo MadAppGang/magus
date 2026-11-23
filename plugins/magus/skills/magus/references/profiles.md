@@ -76,11 +76,21 @@ plugins depend on: …").
 
 ## A project with no profiles
 
-`magus install` or `magus update` there shows "No profiles in this project yet", lists the
-plugins (PROJECT) and MCP servers it would save, warns about anything a teammate will not
-have (a plugin from no marketplace, a setting pointing at a folder on this computer), and
-asks `Save as profile "<id>"?`. Saying yes saves and activates it. Without a terminal it
-stops and names `magus profile init`.
+`magus update` there sets the project up without asking, in a terminal and in CI alike:
+it saves profile `default` from the project's PROJECT plugins, MCP servers and settings
+(empty when there are none; USER plugins stay USER), starts using it, prints one line
+("This project now uses profile default · …") and the reminder to commit
+`.claude/profiles.json`, then updates. It names any MCP servers it saved, since their
+settings can carry tokens. `--check` and `--dry-run` set nothing up; they say so and exit
+1. It refuses in the home folder and in Claude Code's own config folder, whose settings
+are USER settings.
+
+`magus install` there shows "No profiles in this project yet", lists the plugins (PROJECT)
+and MCP servers it would save, warns about anything a teammate will not have (a plugin
+from no marketplace, a setting pointing at a folder on this computer), and asks
+`Save as profile "<id>"?`. Saying yes saves and activates it. Without a terminal it stops
+and names `magus profile init`. `magus profile init` does the same, and with `--yes`
+saves without asking — an empty profile too, when the project has no plugins yet.
 
 ## Subfolders
 

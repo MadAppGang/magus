@@ -4,6 +4,33 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [magus 7.17.0] - 2026-11-23
+
+### Changed
+
+- **`magus update` sets up a project that has no profiles, then updates it.** It saves the
+  project's PROJECT plugins and MCP servers as profile `default`, switches to it, and
+  carries on, without asking, in a terminal and in CI. A project with no PROJECT plugins
+  gets an empty `default` profile instead of a refusal; USER plugins stay USER. One line
+  says what was saved, and a second names any MCP servers to check before you commit
+  `.claude/profiles.json`.
+- **`magus profile init` works in a project with no PROJECT plugins**, creating an empty
+  `default` profile.
+- `update` does not set up your home folder or Claude Code's own config folder, because
+  their settings are USER settings. `--check`, `--dry-run`, a subfolder of a project with
+  profiles, and a `.claude/profiles.json` that does not parse still change nothing.
+
+---
+
+## [magus plugin 1.1.1] - 2026-11-23
+
+### Changed
+
+- The profiles and commands references describe how `magus update` sets up a project
+  that has no profiles.
+
+---
+
 ## [claudish 2.18.2] - 2026-11-21
 
 ### Fixed

@@ -28,8 +28,8 @@
 - Works on the ACTIVE profile: installs what it declares but this machine lacks, and moves
   everything behind to the version its marketplace publishes. Removes deprecated plugins.
 - **Applies without asking, forward only** — no downgrade, no delete. That includes running
-  CLI-tool installers (brew, bun). The only question it asks is adoption, in a project with
-  no profiles.
+  CLI-tool installers (brew, bun). In a project with no profiles it first saves and uses
+  profile `default` from what the project has, without asking (see `profiles.md`).
 - A pin naming an older version is reported, not chased: only the newest version is
   installable.
 - `--dry-run` prints the plan, writes nothing, always exits 0.
