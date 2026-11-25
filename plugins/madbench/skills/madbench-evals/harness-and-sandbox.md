@@ -336,6 +336,19 @@ received the result and spoke last.
 **Handing off is still visible**: `session.steps.main` is 0 on exactly these runs, the
 per-thread breakdown is in `Session.Subagents`, and `session:turn-count` still counts one turn.
 
+### When a typed prompt is not taken
+
+A turn does not end before the transcript shows that the agent took its prompt; a `Stop` read before
+that is an earlier turn's, unless it is stamped in a second after the prompt's record. A `Stop`
+that lands while the prompt sits in the input box, in the second the prompt is then recorded,
+refuses the run. A turn that a `Stop` ended with its prompt alone, and no response from
+the agent, refuses the run. A lost Enter is pressed again, but never on a prompt
+that starts with `/` or `!`: a lost Enter on a command is not recovered. A prompt that is
+never taken ends the Scenario at its `timeout:` with `prompt N was not delivered`; one that is
+taken and not answered, with `prompt N was delivered at <time> and got no answer`. The row is an
+ERROR with no Checks. Its Session is kept with `incomplete` and `prompts` (when each prompt was
+sent and taken, and what ended its turn), and is never graded: `docs/harness.md`.
+
 ### When a run's background work is finished
 
 The Stop hook ends a **turn**, and a turn ends when the MAIN thread stops. Background work

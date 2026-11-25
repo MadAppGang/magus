@@ -4,6 +4,20 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [madbench 0.12.10] - 2026-11-25
+
+### Changed
+
+- **The madbench skills are synced to madbench 0.60.0**, so /madbench:madbench and the bench
+  agent describe the harness that is installed. The harness reference now says what happens
+  when a typed prompt is not taken: a lost Enter is pressed again, except on a prompt that
+  starts with `/` or `!`; a prompt that is never taken ends the Scenario at its `timeout:`
+  with `prompt N was not delivered`; and such a run is an ERROR that is never graded.
+  `madbench skills --check` reports `current`. Where Homebrew is not used (Linux), the
+  plugin installs madbench v0.60.0 when madbench is missing.
+
+---
+
 ## [lsp 0.1.1] - 2026-11-25
 
 ### Added
