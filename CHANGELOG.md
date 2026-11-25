@@ -4,6 +4,22 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [magus 7.17.1] - 2026-11-25
+
+### Fixed
+
+- **A dependency a plugin stopped declaring is no longer added to your profile.** When a
+  plugin dropped a dependency, `magus update` could record that dependency as your own
+  plugin: `Added mnemex@magus to profile "default"`. It then stayed on after the dependency
+  was gone. magus now knows the entry came from the earlier dependency and leaves the
+  profile as it is. A profile that already got such an entry keeps it: remove the plugin
+  from `.claude/profiles.json` and run `magus update`.
+- **The MCP registry screen waits before it shows whether a server is installed.** For a
+  moment after it opened, an installed server could show as not installed, and Enter
+  installed over it. The screen now shows `Loading...` until it knows.
+
+---
+
 ## [dev 9.8.2] - 2026-11-25
 
 ### Fixed
