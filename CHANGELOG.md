@@ -4,6 +4,34 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [lsp 0.1.0] - 2026-11-25
+
+### Added
+
+- **New `lsp` plugin: language servers that stop when idle, and one shared gopls per worktree.**
+  It serves `gopls` for Go and `typescript-language-server` for TypeScript and JavaScript.
+  After 10 minutes with no traffic the server stops, and Claude Code starts it again at the
+  next request, so an open but idle session holds no language server memory. Sessions in
+  the same worktree with the same Go settings connect to one shared gopls daemon. Each
+  session keeps its own gopls session, so unsaved edits never cross. Measured with 2
+  sessions on a 400-file Go module: 2699 MB before, 1301 MB with the shared daemon.
+- **The plain server runs when the wrapper cannot.** If Bun is missing or older than 1.4.0,
+  or the start check takes over 3 seconds, the plugin starts the plain server instead. A
+  shared gopls that fails during startup is replaced once by a plain one. Every reason is
+  printed on the server's stderr, starting with `lsp:`.
+- `MAGUS_LSP_IDLE_MINUTES` sets the idle time (default 10, `0` turns idle stop off).
+
+### Migration notes
+
+- The plugin declares the same file extensions as the official `gopls-lsp` and
+  `typescript-lsp` plugins, and the first plugin loaded wins an extension. Uninstall those
+  two: `/plugin uninstall gopls-lsp` and `/plugin uninstall typescript-lsp`.
+- Each idle stop shows as `crashed with exit code 1` in `/plugin`'s Errors tab. That is
+  how Claude Code learns to restart the server; a request at the exact moment of the stop
+  can fail once.
+
+---
+
 ## [magus 7.17.1] - 2026-11-25
 
 ### Fixed

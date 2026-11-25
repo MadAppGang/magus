@@ -1,0 +1,70 @@
+{
+  "name": "lsp",
+  "version": "0.1.0",
+  "description": "Language servers for Go (gopls) and TypeScript/JavaScript behind a wrapper that stops an idle server and lets Claude Code restart it on demand. Sessions in one worktree with the same Go settings share one gopls daemon; when the wrapper cannot start, the plain server runs.",
+  "author": {
+    "name": "Jack Rudenko",
+    "email": "i@madappgang.com",
+    "company": "MadAppGang"
+  },
+  "license": "MIT",
+  "keywords": [
+    "lsp",
+    "language-server",
+    "gopls",
+    "go",
+    "typescript",
+    "javascript",
+    "idle",
+    "memory"
+  ],
+  "category": "development",
+  "lspServers": {
+    "gopls": {
+      "command": "sh",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/bin/launch.sh",
+        "gopls"
+      ],
+      "extensionToLanguage": {
+        ".go": "go"
+      }
+    },
+    "typescript": {
+      "command": "sh",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/bin/launch.sh",
+        "typescript-language-server",
+        "--stdio"
+      ],
+      "extensionToLanguage": {
+        ".ts": "typescript",
+        ".tsx": "typescriptreact",
+        ".js": "javascript",
+        ".jsx": "javascriptreact",
+        ".mts": "typescript",
+        ".cts": "typescript",
+        ".mjs": "javascript",
+        ".cjs": "javascript"
+      }
+    }
+  },
+  "requires": {
+    "schema": 2,
+    "bin": [
+      {
+        "name": "bun",
+        "check": [
+          "bun",
+          "--version"
+        ],
+        "install": [
+          {
+            "via": "bootstrap",
+            "tool": "bun"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1089,6 +1089,39 @@
           "summary": "The skills cover meroku 6.2.0's KMS signing keys"
         }
       ]
+    },
+    {
+      "name": "lsp",
+      "source": "./plugins/lsp",
+      "description": "Language servers for Go (gopls) and TypeScript/JavaScript behind a wrapper that stops an idle server and lets Claude Code restart it on demand. Sessions in one worktree with the same Go settings share one gopls daemon; when the wrapper cannot start, the plain server runs.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Jack Rudenko",
+        "email": "i@madappgang.com",
+        "company": "MadAppGang"
+      },
+      "category": "development",
+      "keywords": [
+        "lsp",
+        "language-server",
+        "gopls",
+        "go",
+        "typescript",
+        "javascript",
+        "idle",
+        "memory"
+      ],
+      "strict": true,
+      "releases": [
+        {
+          "version": "0.1.0",
+          "date": "2026-11-25",
+          "kinds": [
+            "Added"
+          ],
+          "summary": "New lsp plugin: language servers that stop when idle, and one shared gopls per worktree"
+        }
+      ]
     }
   ]
 }
