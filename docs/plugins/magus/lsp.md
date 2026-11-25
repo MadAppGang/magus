@@ -7,7 +7,7 @@ Language servers for Go (gopls) and TypeScript/JavaScript behind a wrapper that 
 
 | | |
 |---|---|
-| Version | `0.1.0` |
+| Version | `0.1.1` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 0 |
 | Subagents | 0 |

@@ -42,6 +42,9 @@ the first one loaded wins, so remove those two:
 /plugin uninstall typescript-lsp
 ```
 
+While either one is still enabled, every new session starts with a warning that names
+it and the `claude plugin uninstall … --scope …` command that removes it.
+
 To see which plugin serves `.go` now, run `/plugin` and look for a language server
 named `gopls` under `lsp`, or open a `.go` file and check the server's stderr for an
 `lsp:` line.

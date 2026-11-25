@@ -4,6 +4,17 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [lsp 0.1.1] - 2026-11-25
+
+### Added
+- At session start, lsp warns when the official `gopls-lsp` or `typescript-lsp` plugin is
+  also enabled, and names the `claude plugin uninstall … --scope …` command for each.
+  Claude Code gives a file type to only one language server plugin and records the other
+  only in its debug log, so with both installed lsp could silently not run for Go or
+  TypeScript files.
+
+---
+
 ## [lsp 0.1.0] - 2026-11-25
 
 ### Added

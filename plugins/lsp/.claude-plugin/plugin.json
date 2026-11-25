@@ -1,6 +1,6 @@
 {
   "name": "lsp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Language servers for Go (gopls) and TypeScript/JavaScript behind a wrapper that stops an idle server and lets Claude Code restart it on demand. Sessions in one worktree with the same Go settings share one gopls daemon; when the wrapper cannot start, the plain server runs.",
   "author": {
     "name": "Jack Rudenko",
