@@ -123,7 +123,7 @@ standing directive without your approval through `/dev:learn --apply`.
 
 ## Requirements
 
-Depends on `claudish` and `mnemex`; the versions are in `.claude-plugin/plugin.json`.
+Depends on `claudish`; the version is in `.claude-plugin/plugin.json`.
 `multimodel` is optional. Commands that can use it (`/dev:architect`, and model review in
 `/dev:audit`) suggest installing it when it is missing, then continue without it.
 Hooks and scripts run on `bun`.

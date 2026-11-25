@@ -278,7 +278,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "9.8.1",
+      "version": "9.8.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -318,6 +318,14 @@
       "strict": true,
       "releases": [
         {
+          "version": "9.8.2",
+          "date": "2026-11-25",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "dev no longer brings the mnemex plugin with it"
+        },
+        {
           "version": "9.8.1",
           "date": "2026-11-21",
           "kinds": [
@@ -348,14 +356,6 @@
             "Added"
           ],
           "summary": "Every claudish panel and session the dev commands start names its kind of work"
-        },
-        {
-          "version": "9.6.2",
-          "date": "2026-11-07",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "/dev:architect gets its multi-model proposals from /multimodel:team --type plan"
         }
       ]
     },

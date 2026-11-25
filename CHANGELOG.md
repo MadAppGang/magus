@@ -4,6 +4,17 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [dev 9.8.2] - 2026-11-25
+
+### Fixed
+
+- **`dev` no longer brings the `mnemex` plugin with it.** `dev` declared `mnemex` as a
+  plugin dependency, so a profile that lists `dev` without `mnemex` got `mnemex` back on
+  every `magus update`. Nothing in `dev` calls it, so the declaration is gone. A profile
+  that wants `mnemex` lists it; the `claudish` dependency stays.
+
+---
+
 ## [magus 7.17.0] - 2026-11-23
 
 ### Changed

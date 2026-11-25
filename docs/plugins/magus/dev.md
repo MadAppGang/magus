@@ -7,7 +7,7 @@ Universal development assistant. Detects the project stack and routes work to sp
 
 | | |
 |---|---|
-| Version | `9.8.1` |
+| Version | `9.8.2` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 17 |
 | Subagents | 12 |
@@ -45,14 +45,13 @@ Each one does a single job. The commands pick which to call — you rarely name 
 
 ### MCP servers
 
-`dev` ships no MCP server. It declares two plugin dependencies and uses theirs.
+`dev` ships no MCP server. It declares one plugin dependency and uses its server.
 
 | Dependency | What `dev` gets from it |
 |---|---|
 | [`claudish`](./claudish.md) | The calls to other models behind every review gate |
-| [`mnemex`](./mnemex.md) | Semantic and AST-level code search |
 
-Install `dev` with [magus](../../guides/install.md) and both come with it.
+Install `dev` with [magus](../../guides/install.md) and `claudish` comes with it.
 [`multimodel`](./multimodel.md) is optional: `/dev:architect` and `/dev:audit` use it when it
 is installed, and suggest installing it when it is not. Without
 `claudish` the review gates can't run. The commands still work — they just lose the outside
