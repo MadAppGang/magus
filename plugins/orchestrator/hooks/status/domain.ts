@@ -30,6 +30,12 @@ export const STALE_RECORD_MS = 24 * 3_600_000
 export const RUN_TIMEOUT_MS = 3_000
 /** A process found live is checked against a fresh `ps` snapshot again after this long. */
 export const LIVE_RECHECK_MS = 10_000
+/**
+ * A record directory is listed again this long after its last listing even when its time did
+ * not move, so a refused listing or a write in the same timestamp quantum is stale at most this long.
+ * Files whose time and size did not change are still not read.
+ */
+export const RELIST_MS = 30_000
 /** Below this many band columns a row keeps only its label, its status and Show. */
 export const NARROW_COLUMNS = 60
 

@@ -48,7 +48,8 @@ function bindHost($: EngineInterface): Host {
       tmuxPane: text(await $.env.get('TMUX_PANE')),
       herdrPane: text(await $.env.get('HERDR_PANE_ID')),
     }),
-    list: dir => $.fs.list(dir).then(entries => entries.map(e => ({ name: e.name })), () => []),
+    list: dir => $.fs.list(dir).then(entries => entries.map(e => ({ name: e.name, mtimeMs: e.mtimeMs, size: e.size })), () => []),
+    mtime: path => $.fs.stat(path).then(s => s.mtimeMs, () => null),
     read: path => $.fs.read(path).then(t => (typeof t === 'string' ? t : null), () => null),
     exists: path => $.fs.exists(path).catch(() => false),
     run: async (argv, timeoutMs) => {

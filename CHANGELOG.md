@@ -293,6 +293,23 @@
 
 ---
 
+## [orchestrator 0.7.1] - 2026-11-25
+
+### Fixed
+
+- **The status band no longer costs an idle session a sixth of a core.** Every 2 s tick read
+  the identity and progress file of every record in the state directory, about a thousand
+  file reads a tick with 525 records. The band now keeps the records it read and checks the
+  modification time of the two record folders each tick; only a folder that changed is
+  listed, and only its new or changed files are read. A progress file that does not exist is
+  no longer read. Each folder is still listed in full at most every 30 s, and again on the
+  next tick after any read in it failed, so a refused read or listing cannot leave the band
+  stale. Measured in one idle session with a copy of a real state directory: 27 to 29% of a
+  core before, 2.3 to 2.9% after, against 1.0% for a session with no record. A changed, new
+  or removed record still shows on the next tick.
+
+---
+
 ## [orchestrator 0.7.0] - 2026-11-24
 
 ### Changed

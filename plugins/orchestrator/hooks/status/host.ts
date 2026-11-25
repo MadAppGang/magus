@@ -36,8 +36,10 @@ export type Host = {
   now(): Promise<number>
   after(ms: number, fn: () => void): Timer
   env(): Promise<OrchestratorEnv>
-  /** a directory's entry names; [] when missing or refused */
-  list(dir: string): Promise<readonly { name: string }[]>
+  /** a directory's entries with their size and modification time; [] when missing or refused */
+  list(dir: string): Promise<readonly { name: string; mtimeMs: number; size: number }[]>
+  /** a path's modification time in ms; null when missing or refused */
+  mtime(path: string): Promise<number | null>
   /** a file's text; null when missing or refused */
   read(path: string): Promise<string | null>
   exists(path: string): Promise<boolean>

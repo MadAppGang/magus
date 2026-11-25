@@ -961,7 +961,7 @@
       "name": "orchestrator",
       "source": "./plugins/orchestrator",
       "description": "Runs ticket work as three levels of Claude Code sessions: triage owns tickets and the plan, a manager per ticket works in its own tmux window or herdr tab and worktree, children in panes beside it. A status band lists them; a guard keeps ticket changes with triage. Needs bun, git, tmux or herdr.",
-      "version": "0.7.0",
+      "version": "0.7.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -979,6 +979,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.7.1",
+          "date": "2026-11-25",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "The status band no longer costs an idle session a sixth of a core"
+        },
         {
           "version": "0.7.0",
           "date": "2026-11-24",
@@ -1012,14 +1020,6 @@
             "Fixed"
           ],
           "summary": "The status band no longer keeps several CPU cores busy"
-        },
-        {
-          "version": "0.4.2",
-          "date": "2026-11-17",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "The status band and pane draw each session's role as a filled badge: its name (triage, manager,\u2026"
         }
       ]
     },

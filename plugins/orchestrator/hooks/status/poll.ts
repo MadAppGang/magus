@@ -2,9 +2,12 @@
 //
 // A tick: is this session in a family (its index entry exists and names a record whose
 // sessionId is its own id)? If not, nothing else is read and the next check is 5 s away. If
-// so: every record, a `ps` snapshot of every process when one is due, the session files of the live ones, the
-// merge into rows, ROWS. The capture loop reads the shown session's screen into SCREEN once a
-// second while the pane is placed.
+// so: the modification times of `sessions/` and `progress/`, and only when one of them moved
+// or its last listing is RELIST_MS old, that directory's listing and the files in it that are new or whose time or size changed;
+// every other record comes from the copy kept since the last read. Then a `ps` snapshot of
+// every process when one is due, the session files of the live ones, the merge into rows,
+// ROWS. The capture loop reads the shown session's screen into SCREEN once a second while
+// the pane is placed.
 
 import type { OrchestratorRecord, OrchestratorRow } from '../../types'
 import { isSessionId, parseIdentity, parsePsStarts, psAllArgv } from '../../scripts/lib/state-core'
@@ -19,6 +22,7 @@ import {
   LIVE_RECHECK_MS,
   PLAIN_CHECK_MS,
   QUIET_TICK_MS,
+  RELIST_MS,
   RUN_TIMEOUT_MS,
   SHOW_PANE_ID,
 } from './domain'
@@ -61,6 +65,27 @@ const capture: { gen: number; live: boolean } = { gen: 0, live: false }
  * reused by another process carries another start time, so it is another key.
  */
 const procs: { snapshot: Map<number, string>; at: number; dead: Set<string> } = { snapshot: new Map(), at: -Infinity, dead: new Set() }
+/**
+ * The record files last read, per directory (`sessions/`, `progress/`): the directory's
+ * modification time when it was listed (null when it or a file listed in it could not be
+ * read, so it is listed again), when it was listed, each file's time, size and text by name,
+ * and the records parsed from them. Every create, rename over and removal in a directory moves
+ * its time, and the record store writes only by those, so an unmoved directory holds the files
+ * as last read; a listing older than RELIST_MS is taken again anyway, which bounds how long a
+ * refused listing or a write in the same timestamp quantum as the stat stays unseen.
+ */
+type CachedFile = { mtimeMs: number; size: number; text: string }
+const recordCache: {
+  dirs: Map<string, number | null>
+  listedAt: Map<string, number>
+  files: Map<string, Map<string, CachedFile>>
+  records: OrchestratorRecord[] | null
+} = {
+  dirs: new Map(),
+  listedAt: new Map(),
+  files: new Map(),
+  records: null,
+}
 /** The environment does not change under a running process: read once per load. */
 let envCache: OrchestratorEnv | null = null
 
@@ -115,16 +140,55 @@ async function ownedKey(host: Host, paths: Paths, sessionId: string): Promise<st
   return identity !== null && identity.key === key && identity.sessionId === sessionId ? key : null
 }
 
-async function readRecords(host: Host, paths: Paths): Promise<OrchestratorRecord[]> {
-  const files = new Map<string, RecordFiles>()
-  for (const entry of await host.list(`${paths.stateDir}/sessions`)) {
+/**
+ * Brings one directory's cached record files up to date; true when they changed. The time is
+ * taken before the listing, so a write landing between the two is seen on the next call. The
+ * directory is listed when its time moved, when the last listing is RELIST_MS old, or when the
+ * clock stepped back past it. A file whose name, time and size match the cache is not read
+ * again; one that cannot be read is left out and not cached, and the directory is listed
+ * again on the next call.
+ */
+async function syncDir(host: Host, dir: string, pathOf: (key: string) => string, now: number): Promise<boolean> {
+  const m = await host.mtime(dir)
+  const cached = recordCache.files.get(dir)
+  const listedAt = recordCache.listedAt.get(dir) ?? -Infinity
+  const fresh = now - listedAt < RELIST_MS && now >= listedAt
+  if (cached !== undefined && m !== null && recordCache.dirs.get(dir) === m && fresh) return false
+  const next = new Map<string, CachedFile>()
+  let changed = cached === undefined
+  let missed = false
+  for (const entry of await host.list(dir)) {
     const key = keyOfFileName(entry.name)
     if (key === null) continue
-    const identity = await host.read(identityPathOf(paths, key))
-    if (identity === null) continue
-    files.set(key, { identity, progress: await host.read(progressPathOf(paths, key)) })
+    const old = cached?.get(key)
+    if (old !== undefined && old.mtimeMs === entry.mtimeMs && old.size === entry.size) {
+      next.set(key, old)
+      continue
+    }
+    changed = true
+    const text = await host.read(pathOf(key))
+    if (text !== null) next.set(key, { mtimeMs: entry.mtimeMs, size: entry.size, text })
+    else missed = true
   }
-  return parseRecords(files)
+  if (cached !== undefined && [...cached.keys()].some(k => !next.has(k))) changed = true
+  recordCache.files.set(dir, next)
+  recordCache.dirs.set(dir, missed ? null : m)
+  recordCache.listedAt.set(dir, now)
+  return changed
+}
+
+/** Every record, parsed again only when `sessions/` or `progress/` changed since the last call. */
+async function readRecords(host: Host, paths: Paths, now: number): Promise<OrchestratorRecord[]> {
+  const sessionsDir = `${paths.stateDir}/sessions`
+  const progressDir = `${paths.stateDir}/progress`
+  const sessionsChanged = await syncDir(host, sessionsDir, key => identityPathOf(paths, key), now)
+  const progressChanged = await syncDir(host, progressDir, key => progressPathOf(paths, key), now)
+  if (recordCache.records !== null && !sessionsChanged && !progressChanged) return recordCache.records
+  const progress = recordCache.files.get(progressDir)!
+  const files = new Map<string, RecordFiles>()
+  for (const [key, f] of recordCache.files.get(sessionsDir)!) files.set(key, { identity: f.text, progress: progress.get(key)?.text ?? null })
+  recordCache.records = parseRecords(files)
+  return recordCache.records
 }
 
 async function scanSessionFiles(host: Host, paths: Paths): Promise<SessionFile[]> {
@@ -194,7 +258,7 @@ async function livenessAll(
 
 /** The rows of `selfKey`'s family, read now, and why liveness could not be read (null when it was). */
 async function familyRows(host: Host, paths: Paths, selfKey: string, now: number): Promise<{ rows: OrchestratorRow[]; unreadable: string | null }> {
-  const records = await readRecords(host, paths)
+  const records = await readRecords(host, paths, now)
   const self = records.find(r => r.key === selfKey)
   if (!self) return { rows: [], unreadable: null }
   const inTree = new Set(familyTree(selfKey, records).map(e => e.key))

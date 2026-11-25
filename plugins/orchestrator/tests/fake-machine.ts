@@ -1,9 +1,38 @@
 import { mock } from "claude-code/testing";
-import type { On, FsEntry, ProcessRunResult, UiPane } from "claude-code";
+import type { On, FsEntry, FsStat, ProcessRunResult, UiPane } from "claude-code";
 import type { Engine } from "claude-code/testing";
 import type { OrchestratorRecord } from "../types";
 import { record, NOW, START, ROOT, PRODUCT, SELF, TRIAGE, MANAGER, CHILD } from "./testdata";
 import { ENGINE_DRAWING, type Surface } from "./ui";
+
+function parentOf(path: string): string | null {
+  if (path === "/" || !path.includes("/")) return null;
+  const i = path.lastIndexOf("/");
+  return i === 0 ? "/" : path.slice(0, i);
+}
+// File times follow writes, not the clock: every set or delete stamps the file and each of its
+// ancestor directories with a strictly increasing value, so two writes inside one tick still
+// differ, and an untouched file keeps its stamp however far the clock moves.
+class StampedFiles extends Map<string, string> {
+  readonly stamps = new Map<string, number>();
+  readonly dirs = new Map<string, number>();
+  private writes = 0;
+  private touch(path: string): number {
+    const stamp = NOW + ++this.writes;
+    for (let dir = parentOf(path); dir !== null; dir = parentOf(dir)) this.dirs.set(dir, stamp);
+    return stamp;
+  }
+  override set(path: string, text: string): this {
+    this.stamps.set(path, this.touch(path));
+    return super.set(path, text);
+  }
+  override delete(path: string): boolean {
+    if (!super.delete(path)) return false;
+    this.stamps.delete(path);
+    this.touch(path);
+    return true;
+  }
+}
 
 const ok = (stdout = "", exitCode = 0, stderr = ""): ProcessRunResult => ({
   exitCode, stdout, stderr, isStdoutTruncated: false, isStderrTruncated: false,
@@ -12,7 +41,7 @@ export function machine(on: On, options: { selfId?: string; mux?: "tmux" | "herd
   const effects: string[] = [];
   const clock = mock.clock(on, { now: NOW });
   const stateDir = ROOT + "/state", sessionsDir = ROOT + "/config/sessions";
-  const files = new Map<string, string>(), starts = new Map<number, string>();
+  const files = new StampedFiles(), starts = new Map<number, string>();
   const fsCalls: { op: string; path: string; at: number }[] = [];
   const commands: string[][] = [], toasts: string[] = [];
   const fills: { text: string; mode: string }[] = [];
@@ -21,7 +50,7 @@ export function machine(on: On, options: { selfId?: string; mux?: "tmux" | "herd
   const h = {
     clock, stateDir, sessionsDir, files, starts, fsCalls, commands, effects, toasts, fills, opens, closes,
     panes: [] as UiPane[], placed: options.placed !== false, fillAllowed: true,
-    denyPs: false, psExit: 0, denyReads: false, captureExit: 0, captureText: "live screen\ntrailing spaces   ",
+    denyPs: false, psExit: 0, denyReads: false, denyReadsUnder: null as string | null, denyLists: false, captureExit: 0, captureText: "live screen\ntrailing spaces   ",
     herdrAtFallback: options.herdrAtFallback ?? false, herdrUnavailable: options.herdrUnavailable ?? false,
     openerExits: [0], client: "/dev/tty-test\tproduct\n",
     seed(r: OrchestratorRecord) {
@@ -58,18 +87,30 @@ export function machine(on: On, options: { selfId?: string; mux?: "tmux" | "herd
   on("fs.read", ($, e) => {
     effects.push("fs.read"); fsCalls.push({ op: "read", path: e.path, at: clock.now() });
     const value = files.get(e.path);
-    return value === undefined || h.denyReads ? { deny: "not found" } : { value };
+    const denied = h.denyReads || (h.denyReadsUnder !== null && e.path.startsWith(h.denyReadsUnder));
+    return value === undefined || denied ? { deny: "not found" } : { value };
   });
   on("fs.list", ($, e) => {
     effects.push("fs.list"); fsCalls.push({ op: "list", path: e.path, at: clock.now() });
+    if (h.denyLists) return { deny: "listing refused" };
     const prefix = e.path.replace(/\/+$/, "") + "/";
     const entries = new Map<string, FsEntry>();
     for (const [path, text] of files) {
       if (!path.startsWith(prefix)) continue;
       const suffix = path.slice(prefix.length), name = suffix.split("/")[0]!;
-      entries.set(name, { name, kind: suffix.includes("/") ? "dir" : "file", size: text.length, mtimeMs: clock.now(), isLink: false });
+      // as FsEntry spells it: a file carries its own size and time, a directory 0 for both
+      const isDir = suffix.includes("/");
+      entries.set(name, { name, kind: isDir ? "dir" : "file", size: isDir ? 0 : text.length, mtimeMs: isDir ? 0 : files.stamps.get(path)!, isLink: false });
     }
     return { value: [...entries.values()] };
+  });
+  on("fs.stat", ($, e) => {
+    effects.push("fs.stat"); fsCalls.push({ op: "stat", path: e.path, at: clock.now() });
+    const path = e.path.length > 1 ? e.path.replace(/\/+$/, "") : e.path;
+    const text = files.get(path), dir = files.dirs.get(path);
+    if (text !== undefined) return { value: { kind: "file", size: text.length, mtimeMs: files.stamps.get(path)!, isLink: false } satisfies FsStat };
+    if (dir !== undefined) return { value: { kind: "dir", size: 0, mtimeMs: dir, isLink: false } satisfies FsStat };
+    return { deny: "not found" };
   });
   on("process.run", ($, e) => {
     effects.push("process.run");
