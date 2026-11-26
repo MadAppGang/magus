@@ -4,6 +4,16 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [browser-use 2.2.2] - 2026-11-26
+
+### Changed
+
+- `browser_press_key` and `retry_with_browser_use_agent` return an out-of-range `count` or
+  `max_steps` error the same way they return their other argument errors. The text the
+  client reads is unchanged.
+
+---
+
 ## [multimodel 6.4.1] - 2026-11-26
 
 ### Fixed

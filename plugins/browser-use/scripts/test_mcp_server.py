@@ -2054,6 +2054,13 @@ class TestRetryAgentResults(unittest.IsolatedAsyncioTestCase):
                 self.assertIn("Task completed", text)
                 self.assertEqual(self.agents[0].max_steps, expected)
 
+    async def test_the_handler_returns_the_max_steps_error_as_text(self):
+        # The handler reports a bad max_steps the way it reports a missing
+        # task: as its own return value, not through the call_tool wrapper.
+        text = await _make_server()._handle_retry_with_browser_use_agent({"task": "t", "max_steps": 0})
+        self.assertTrue(text.startswith("Error: max_steps"), text)
+        self.assertEqual(self.agents, [])
+
 
 # ---------------------------------------------------------------------------
 # Live-page custom tools: evaluate, focus, keyboard, save_screenshot
@@ -2182,6 +2189,13 @@ class TestPressKeyCountLimit(_ToolTestCase):
                 result = json.loads(await self.call_text("browser_press_key", **arguments))
                 self.assertEqual(result, {"pressed": "Enter", "count": presses})
                 self.assertEqual(len(self.daemon.params_of("Input.dispatchKeyEvent")), 2 * presses)
+
+    async def test_the_handler_returns_the_count_error_as_text(self):
+        # The handler reports a bad count the way it reports a missing key:
+        # as its own return value, not through the call_tool wrapper.
+        text = await self.server._handle_press_key({"key": "Enter", "count": 0})
+        self.assertTrue(text.startswith("Error: count"), text)
+        self.assertNotIn("Input.dispatchKeyEvent", self.daemon.methods())
 
 
 class TestSaveScreenshotTool(_ToolTestCase):

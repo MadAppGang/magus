@@ -544,18 +544,19 @@ _PRESS_COUNT_RANGE = (1, 100)
 _MAX_STEPS_RANGE = (1, 200)
 
 
-def _bounded_int(args: dict[str, Any], name: str, default: int, bounds: tuple[int, int]) -> int:
+def _bounded_int(args: dict[str, Any], name: str, default: int, bounds: tuple[int, int]) -> int | str:
     """
     The integer argument `name`, or `default` when it is absent or null.
-    Raises _ToolError for anything else that is not an integer within bounds;
-    a bool is refused, though Python counts it as an int.
+    Anything else that is not an integer within bounds returns the error text,
+    for the handler to return as it returns its other argument errors; a bool
+    is refused, though Python counts it as an int.
     """
     value = args.get(name)
     if value is None:
         return default
     low, high = bounds
     if isinstance(value, bool) or not isinstance(value, int) or not low <= value <= high:
-        raise _ToolError(f"Error: {name} must be an integer from {low} to {high}, got {value!r}.")
+        return f"Error: {name} must be an integer from {low} to {high}, got {value!r}."
     return value
 
 
@@ -2266,6 +2267,8 @@ class MagusBrowserServer:
         if not isinstance(task, str) or not task.strip():
             return "Error: task is required."
         max_steps = _bounded_int(args, "max_steps", 100, _MAX_STEPS_RANGE)
+        if isinstance(max_steps, str):
+            return max_steps
         choice = self._agent_llm_choice()
         if args.get("model"):
             choice = replace(choice, model=str(args["model"]))
@@ -2607,6 +2610,8 @@ class MagusBrowserServer:
         if not isinstance(key, str) or not key:
             return "Error: key is required."
         count = _bounded_int(args, "count", 1, _PRESS_COUNT_RANGE)
+        if isinstance(count, str):
+            return count
         self._live()
         try:
             await self._activate_current_tab()
