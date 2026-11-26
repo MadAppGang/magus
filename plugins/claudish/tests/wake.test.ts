@@ -103,6 +103,20 @@ test('wake: a run whose only slot ends SHAPE_MISMATCH is finished — settled, o
   expect(h.toasts).toEqual(['01 m-a wrong format !'])
 })
 
+test('wake: an EMPTY slot with reason shape_mismatch is tallied as wrong format, as its toast says', async ($, on) => {
+  const h = harness(on, { models: ['m-a'] })
+  await start($ as never)
+  await teamRun($, h)
+  const run = h.fake.runs[0]!
+  h.fake.set(run.runId, '01', 'EMPTY', 'shape_mismatch')
+  await h.clock.advance(1000)
+  expect(h.submits).toHaveLength(1)
+  expect(h.submits[0]).toContain('slot 01 m-a: EMPTY (shape_mismatch)')
+  expect(h.submits[0]).toContain('run finished: 1 of 1 slot done (1 wrong format)')
+  expect(h.submits[0]).not.toContain('1 empty')
+  expect(h.toasts).toEqual(['01 m-a wrong format !'])
+})
+
 // REGRESSION: a run is LOST only when neither the feed nor its status.json knows it — session dev-fix-20261121-113021-b87954e5
 test('wake: LOST recovers — unreachable 5 min with no status.json: LOST unsettled, "state unknown"; listed again: RUNNING, then COMPLETED wakes', async ($, on) => {
   let refuse = false

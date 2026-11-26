@@ -120,7 +120,7 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep, Write, Edit, Ski
       member. `--models` accepts any number of ids; the rule is written for any N.
 
       After fault tolerance every panel member holds exactly one of APPROVE,
-      REJECT or ABSTAIN — a missing, malformed, FAILED, EMPTY or still-RUNNING
+      REJECT or ABSTAIN — a missing, malformed, FAILED, EMPTY, SHAPE_MISMATCH or still-RUNNING
       slot is an ABSTAIN with CONFIDENCE 0, and in Phase B the internal report is
       mapped to its vote first — so A + R + X = N, where A = APPROVE count,
       R = REJECT count, X = ABSTAIN count, and V = A + R is the number of votes
@@ -623,8 +623,9 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep, Write, Edit, Ski
           ignored, so a leftover one reads as a deadline while enforcing nothing.
 
           `require_pattern` pins the vote schema at the tool: a model that finished
-          without emitting a `VERDICT:` line is reported FAILED (state EMPTY, reason
-          `shape_mismatch`) rather than returning prose for the parse step to interpret.
+          without emitting a `VERDICT:` line is reported in state SHAPE_MISMATCH (claudish
+          before 14.29.0: state EMPTY, reason `shape_mismatch`) rather than returning prose
+          for the parse step to interpret.
           Exit code 0 is not a success oracle — it is also 0 on an API error.
         </step>
 
@@ -1009,8 +1010,9 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep, Write, Edit, Ski
         so a leftover one reads as a deadline while enforcing nothing.
 
         `require_pattern` pins the vote schema at the tool: a model that finished without
-        emitting a `VERDICT:` line is reported FAILED (state EMPTY, reason
-        `shape_mismatch`) instead of handing prose to the parse step. Exit code 0 is not
+        emitting a `VERDICT:` line is reported in state SHAPE_MISMATCH (claudish before
+        14.29.0: state EMPTY, reason `shape_mismatch`) instead of handing prose to the
+        parse step. Exit code 0 is not
         a success oracle — it is also 0 on an API error.
 
         Internal reviewer — always — as the `internal` slot of its own call. It judges
@@ -1123,7 +1125,7 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep, Write, Edit, Ski
                    `**Verdict**:` line to a vote exactly as THRESHOLDS says. Every
                    response-<slot>.md carries VERDICT, CONFIDENCE, REGRESSION_RISK and
                    PATCH_SCOPE_ASSESSMENT. Parse them case-insensitively. A review that is
-                   missing, malformed, or whose slot reported FAILED or EMPTY counts as
+                   missing, malformed, or whose slot reported FAILED, EMPTY or SHAPE_MISMATCH counts as
                    ABSTAIN with CONFIDENCE=0; an explicit VERDICT: ABSTAIN keeps the
                    CONFIDENCE it states.
                    Tabulate | Model | Verdict | Confidence | Regression Risk | Patch Scope |,
@@ -1139,7 +1141,7 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep, Write, Edit, Ski
         - External votes: extract VERDICT, REGRESSION_RISK, PATCH_SCOPE_ASSESSMENT
           (case-insensitive). Internal report: map per the table above.
         - Malformed output, or a slot whose `status.models[<slot>].state` is FAILED or
-          EMPTY → treat as ABSTAIN with CONFIDENCE=0. A slot still `RUNNING` at your poll
+          EMPTY or SHAPE_MISMATCH → treat as ABSTAIN with CONFIDENCE=0. A slot still `RUNNING` at your poll
           ceiling is also an ABSTAIN, and must be reported as still running, not crashed.
         - An explicit `VERDICT: ABSTAIN` is a well-formed vote, not a malformed one:
           it counts as ABSTAIN and keeps the CONFIDENCE it states.
@@ -1415,7 +1417,7 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep, Write, Edit, Ski
   | Phase B re-vote still REJECT | AskUserQuestion with full evidence; user decides |
   | Monitoring FAIL (error count increases) | Alert immediately; provide: `git revert {commit_hash}` |
   | Monitoring TIMEOUT after 9 polls | Document; user decides whether to continue watching |
-  | External slot FAILED, EMPTY, or still RUNNING at the poll ceiling | It is not a ballot. Both gates set `MIN_BALLOTS` = every launched slot, so one missing ballot is GATE NOT MET: `gate not met:` line in `gates.log`, no tally, AskUserQuestion with re-run / proceed-with-override / stop. ABSTAIN with CONFIDENCE=0 applies only to a malformed vote inside a met gate |
+  | External slot FAILED, EMPTY, SHAPE_MISMATCH, or still RUNNING at the poll ceiling | It is not a ballot. Both gates set `MIN_BALLOTS` = every launched slot, so one missing ballot is GATE NOT MET: `gate not met:` line in `gates.log`, no tally, AskUserQuestion with re-run / proceed-with-override / stop. ABSTAIN with CONFIDENCE=0 applies only to a malformed vote inside a met gate |
   | `team` tool_result is_error "Pass input_file or input, not both" | Retry once with `input_file` alone; a second failure is a panel with 0 ballots, which is GATE NOT MET |
   | MODELS resolves to "none" | Each gate runs its internal voter alone and that verdict stands; no external panel, no dev:aggregator dispatch; Phase B's internal reviewer still runs in its own session; record MODELS "none" in the review file and `gate skipped: fix-gate-A — MODELS none` / `fix-gate-B` in `gates.log`, except on the nested route, whose `gate route:` line is the record |
   | claudish absent | Both gates take the route `team-gate/cli-sessions.md` picks once in Phase 0: CLI sessions in terminal slots, the nested route inside a claudish child, or a stop naming what to install — never a subagent fallback |

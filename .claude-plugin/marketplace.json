@@ -80,7 +80,7 @@
       "name": "claudish",
       "source": "./plugins/claudish",
       "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting, manages async sessions, and shows the session's runs live above the prompt, with stop and live-screen tabs. Required by code-search, dev, multimodel and designer.",
-      "version": "2.18.2",
+      "version": "2.18.3",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -100,6 +100,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "2.18.3",
+          "date": "2026-11-26",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "A slot that missed the required format is counted as \"wrong format\" in a run's tally, as its\u2026"
+        },
         {
           "version": "2.18.2",
           "date": "2026-11-21",
@@ -132,14 +140,6 @@
             "Fixed"
           ],
           "summary": "The run-status band says once when herdr leaves its colours to a fallback"
-        },
-        {
-          "version": "2.17.1",
-          "date": "2026-11-12",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "The claudish-usage skill lists task_type on team and create_session (claudish 14.20.0 or\u2026"
         }
       ]
     },
@@ -211,7 +211,7 @@
       "name": "multimodel",
       "source": "./plugins/multimodel",
       "description": "Multi-model collaboration and orchestration. Runs one task across several AI models under a task type (judge, research, plan, debug, brainstorm, implement, test, collaborate), each with its own result, or delegates it to one model running a full Claude Code session.",
-      "version": "6.4.1",
+      "version": "6.4.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -235,6 +235,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "6.4.2",
+          "date": "2026-11-26",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "/team, the deep-analyst agent and the error-recovery and multi-model-validation skills describe\u2026"
+        },
         {
           "version": "6.4.1",
           "date": "2026-11-26",
@@ -266,14 +274,6 @@
             "Changed"
           ],
           "summary": "deep-analyst and /multimodel:delegate pass each external model the live catalog's effort for\u2026"
-        },
-        {
-          "version": "6.2.0",
-          "date": "2026-11-12",
-          "kinds": [
-            "Added"
-          ],
-          "summary": "/team names its task type on every claudish call"
         }
       ]
     },
@@ -281,7 +281,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "9.9.0",
+      "version": "9.9.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -321,6 +321,14 @@
       "strict": true,
       "releases": [
         {
+          "version": "9.9.1",
+          "date": "2026-11-26",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "/dev:fix describes a require_pattern miss as state SHAPE_MISMATCH, which claudish 14.29.0 and\u2026"
+        },
+        {
           "version": "9.9.0",
           "date": "2026-11-26",
           "kinds": [
@@ -351,14 +359,6 @@
             "Changed"
           ],
           "summary": "Multimodel gates pass a reasoning effort to each external model, taken from the live claudish\u2026"
-        },
-        {
-          "version": "9.7.1",
-          "date": "2026-11-19",
-          "kinds": [
-            "Fixed"
-          ],
-          "summary": "The terminal plugin's MCP server is named mux, not tmux"
         }
       ]
     },

@@ -4,6 +4,43 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [claudish 2.18.3] - 2026-11-26
+
+### Fixed
+
+- **A slot that missed the required format is counted as "wrong format" in a run's tally,
+  as its toast already said.** With claudish before 14.29.0 such a slot ends in state EMPTY
+  with reason `shape_mismatch`. The toast read `wrong format`, but the message that tells
+  the model how the run ended counted it as `1 empty`. Both now say `wrong format`, the same
+  as a SHAPE_MISMATCH slot from claudish 14.29.0 and later.
+- The claudish-usage skill describes a `require_pattern` miss as state SHAPE_MISMATCH, which
+  claudish 14.29.0 and later report, and notes that older claudish reports state EMPTY with
+  reason `shape_mismatch`.
+
+---
+
+## [dev 9.9.1] - 2026-11-26
+
+### Changed
+
+- **/dev:fix describes a `require_pattern` miss as state SHAPE_MISMATCH**, which claudish
+  14.29.0 and later report, and notes that older claudish reports state EMPTY with reason
+  `shape_mismatch`. Both review gates count a SHAPE_MISMATCH slot as no ballot, the same
+  as a FAILED or EMPTY slot.
+
+---
+
+## [multimodel 6.4.2] - 2026-11-26
+
+### Changed
+
+- **/team, the deep-analyst agent and the error-recovery and multi-model-validation skills
+  describe a `require_pattern` miss as state SHAPE_MISMATCH**, which claudish 14.29.0 and
+  later report, and note that older claudish reports state EMPTY with reason
+  `shape_mismatch`.
+
+---
+
 ## [browser-use 2.2.2] - 2026-11-26
 
 ### Changed

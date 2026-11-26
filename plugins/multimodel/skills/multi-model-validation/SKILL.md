@@ -657,8 +657,8 @@ loaded, so `TARGET: BRANCH` resolves through dev's own capture script. Its copy,
 that failed leaves no copy, and dev's team-gate says what that means for the gate.
 
 **`require_pattern` is what turns exit 0 into a real success check.** A slot that finished
-without producing the required shape is reported FAILED (state EMPTY, reason
-`shape_mismatch`) instead of counted as a success. Exit code 0 also occurs on API errors and
+without producing the required shape is reported in state SHAPE_MISMATCH (claudish before
+14.29.0: state EMPTY, reason `shape_mismatch`) instead of counted as a success. Exit code 0 also occurs on API errors and
 on a child that simply ignored the format, so without this the panel can report a verdict it
 never actually received.
 

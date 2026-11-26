@@ -451,18 +451,18 @@ passthrough — no API key, no translation. Because they go through the tool, th
 covered by `require_pattern` like every other slot.
 
 **`require_pattern` is the success oracle, not the exit code.** A slot that exits 0 having
-never produced the shape the prompt demanded is reported FAILED (state EMPTY, reason
-`shape_mismatch`). Set it whenever the prompt mandates an output shape. Omitting it is how
+never produced the shape the prompt demanded is reported in state SHAPE_MISMATCH (claudish
+before 14.29.0: state EMPTY, reason `shape_mismatch`). Set it whenever the prompt mandates an output shape. Omitting it is how
 a vote-less response gets counted as a vote.
 
 **An `agent` with its own report format can override the shape your prompt asks for.** The
 agent's definition is the child's system prompt, so its format wins over a format stated in
 `input.md`. Measured: a `dev:reviewer` child answered in its reviewer format
 (`**Verdict**: PASS`) and failed `require_pattern="VERDICT:"`, so a full review was reported
-`shape_mismatch` (EMPTY), while two other slots happened to comply. Before you pair an `agent`
+SHAPE_MISMATCH, while two other slots happened to comply. Before you pair an `agent`
 with `require_pattern`, read the agent's output section and make the pattern match a line
 that format writes. If the two cannot agree, keep the pattern and run that panel without
-`agent`. `shape_mismatch` therefore means "wrong format", not "no answer": the answer is
+`agent`. SHAPE_MISMATCH therefore means "wrong format", not "no answer": the answer is
 still in `response-<slot>.md`.
 
 #### The three-step lifecycle
@@ -995,7 +995,7 @@ response, which returns before any slot has finished.
 | What you see | What it means |
 |---|---|
 | state `FAILED` | The slot errored. `error.reason` carries the cause. |
-| state EMPTY, reason `shape_mismatch` | The slot exited 0 but never matched `require_pattern`. Treat as failed. |
+| state `SHAPE_MISMATCH` (claudish before 14.29.0: state EMPTY, reason `shape_mismatch`) | The slot exited 0 but never matched `require_pattern`. Treat as failed; the answer is still in `response-<slot>.md`. |
 | reason `nonzero_exit` | The child process died. Check `errors/<slot>.log`. |
 | reason `cancelled` | **You** cancelled it. Report it as a decision, not a crash. |
 | below `min_output_bytes` | Effectively empty. Treat as failed. |
@@ -1162,7 +1162,7 @@ server registers. Confirm with `claudish --version`.
 
 Read the error from the per-model result (`team`) or call `get_diagnostics` (`create_session`).
 Common causes: rate limits, an ID the catalog no longer lists, a missing credential for that
-provider. An empty response that exited 0 usually means `require_pattern` did its job.
+provider. A SHAPE_MISMATCH slot that exited 0 means `require_pattern` did its job.
 
 ### Every slot failed with `prompt_not_accepted`
 

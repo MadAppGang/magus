@@ -160,9 +160,9 @@ team(mode="run", path=SESSION_DIR, models=["grok"], input_file=INPUT_MD,
   require_pattern=<regex for the shape PROMPT mandates>)
 team(mode="status", path=SESSION_DIR)   # poll until no slot has state === "RUNNING"
 # Check per-model status in the SETTLED status response, not the run response — run
-# returns before any model has answered. A slot reported EMPTY with reason
-# shape_mismatch is a FAILURE to recover from, not a short answer to accept — the
-# model finished without producing the required shape.
+# returns before any model has answered. A slot reported SHAPE_MISMATCH (claudish
+# before 14.29.0: EMPTY with reason shape_mismatch) is a FAILURE to recover from, not
+# a short answer to accept — the model finished without producing the required shape.
 #
 # Before treating a quiet slot as hung, read idle_seconds_by_slot together with
 # activity_by_slot: 90s idle in "tool_executing" is a build or test suite and is

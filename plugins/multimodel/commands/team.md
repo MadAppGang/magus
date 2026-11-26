@@ -393,8 +393,8 @@ passthrough — no API key, no translation.
 
 **`require_pattern` is not optional — it is the point.** It is why the native slot goes
 through this call rather than a background `Agent`: a slot that exits 0 having never
-produced the required format is reported FAILED (state EMPTY, reason `shape_mismatch`)
-instead of being silently counted as a success. Exit code 0 is not a success oracle — it is
+produced the required format is reported in state SHAPE_MISMATCH (claudish before 14.29.0:
+state EMPTY, reason `shape_mismatch`) instead of being silently counted as a success. Exit code 0 is not a success oracle — it is
 also 0 on an API error, and on a child that simply ignored the required format.
 
 ## Step 2b: Wait until the run settles
@@ -1084,7 +1084,7 @@ A slot's outcome comes from `status.models[{slot}].state`:
 |---|---|
 | `COMPLETED` | Usable: read its response. Judge: parse the vote |
 | `FAILED` / `EMPTY` / `SHAPE_MISMATCH` | Not usable. `error.reason` says why |
-| reason `shape_mismatch` | It answered but not in the required format. Report FAILED; **do not go hunting for a verdict or findings in its prose** |
+| `SHAPE_MISMATCH`, or reason `shape_mismatch` (claudish before 14.29.0) | It answered but not in the required format. Report FAILED; **do not go hunting for a verdict or findings in its prose** |
 | reason `agent_rejected` in every slot | The agent is not installed, or a preference names a bad one. Report FAILED naming `claude plugin install dev@magus` or the preference; never retry with another agent |
 | reason `cancelled` | You cancelled it in Step 2c. Report CANCELLED |
 | reason `prompt_not_accepted` in every slot | The children never took the prompt. Do not retry: follow claudish-usage, "Every slot failed with `prompt_not_accepted`" |
@@ -1325,7 +1325,7 @@ Save the verification table and the result to `{SESSION_DIR}/report.md`.
 
 | Condition | Report as | Counts? |
 |---|---|---|
-| `shape_mismatch` | FAILED; no hunting in the reply | No |
+| `SHAPE_MISMATCH`, or reason `shape_mismatch` (claudish before 14.29.0) | FAILED; no hunting in the reply | No |
 | `FAILED`, `EMPTY`, `SHAPE_MISMATCH` | FAILED + `error.reason` | No |
 | `team` start refused after a `user_required_model` retry, or `unknown_model` | the code and the live alternatives; nothing started | n/a |
 | `agent_rejected` in every slot | FAILED, names the install or the bad preference; no retry with another agent | No |

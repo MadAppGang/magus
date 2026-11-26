@@ -162,8 +162,8 @@ description: Orchestrates a multi-source deep investigation — parallel web res
 
     State the shape in the prompt AND pin it with `require_pattern` (needs
     claudish >= 8.0.0): a slot that finished without producing that shape
-    is reported FAILED — state EMPTY, reason `shape_mismatch` — instead of
-    counted as a success. Exit 0 is not a success oracle: it is 0 on API
+    is reported in state SHAPE_MISMATCH (claudish before 14.29.0: state
+    EMPTY, reason `shape_mismatch`) instead of counted as a success. Exit 0 is not a success oracle: it is 0 on API
     errors and on a child that ignored the format. Earlier plugin versions
     hand-validated each slot here because the parameter did not exist; it
     does now, and the tool applies it to native slots too. Zero-byte,

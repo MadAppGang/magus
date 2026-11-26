@@ -37,6 +37,7 @@ import {
   isWaiting,
   parseWakeKey,
   runLabel,
+  STATE_LOOK,
   wakeUnits,
   type WakeUnit,
 } from './domain'
@@ -237,8 +238,10 @@ function progressLine(run: ClaudishRun): string | null {
   if (total === 0) return null
   const done = run.slots.filter(s => isTerminal(s.state) && s.state !== 'LOST')
   const lost = run.slots.filter(s => s.state === 'LOST').length
+  // Tallied as the slot looks, so an EMPTY slot that only missed the required shape counts as wrong format.
+  const tallied = done.map(s => (lookOf(s.state, s.reason) === STATE_LOOK.SHAPE_MISMATCH ? 'SHAPE_MISMATCH' : s.state))
   const tally = OUTCOMES
-    .map(([state, word]) => [done.filter(s => s.state === state).length, word] as const)
+    .map(([state, word]) => [tallied.filter(t => t === state).length, word] as const)
     .filter(([n]) => n > 0)
     .map(([n, word]) => `${n} ${word}`)
     .join(', ')
