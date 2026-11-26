@@ -243,11 +243,11 @@ Skills for the Claude Code session meroku's "Fix with AI" opens at a project roo
 
 ---
 
-#### LSP - Language Servers That Stop When Idle
+#### Language Servers That Stop When Idle (in go and bunjs)
 
-**Plugin:** `lsp` | **Category:** Development Tools | **Needs:** bun, and `gopls` or `typescript-language-server` on PATH
+**Plugins:** `go` (gopls), `bunjs` (typescript-language-server) | **Category:** Development Tools | **Needs:** bun, and `gopls` or `typescript-language-server` on PATH
 
-Go and TypeScript/JavaScript language servers for Claude Code, behind a small wrapper. Install it in place of the official `gopls-lsp` and `typescript-lsp` plugins.
+Go and TypeScript/JavaScript language servers for Claude Code, behind a small wrapper. They replace the official `gopls-lsp` and `typescript-lsp` plugins and the earlier `lsp` plugin; each session start names any of them still installed, and a language server missing from PATH with its install command.
 
 - A server with no requests for 10 minutes stops (`MAGUS_LSP_IDLE_MINUTES` changes it). Claude Code starts it again on the next request; the stop shows as `crashed with exit code 1` in its log.
 - Sessions in one worktree share one gopls daemon. Two sessions on a real Go module measured 2699 MB alone against 1301 MB shared.
@@ -294,7 +294,7 @@ if you need them:
 
 | Marketplace | Contains |
 |---|---|
-| `MadAppGang/magus` | Core development plugins — dev, code-search, terminal, designer, browser-use, aside, meroku, lsp, and more |
+| `MadAppGang/magus` | Core development plugins — dev, code-search, terminal, designer, browser-use, aside, meroku, and more |
 | `MadAppGang/magus-marketing` | AI image generation and editing, video editing |
 | `MadAppGang/magus-alpha` | Experimental plugins with evolving interfaces — none published yet |
 

@@ -1,6 +1,8 @@
 // Behaviour tests for hooks/conflict-check.ts, the SessionStart warning about
-// official language server plugins that claim the same file extensions as lsp.
-// Each test runs the script as its own process against a temporary HOME and project.
+// plugins that claim the same file extensions as go's language server.
+// Each test runs the script as its own process against a temporary HOME and project,
+// with the argv go's hooks.json registers. CLAUDE_PLUGIN_ROOT names the temporary HOME,
+// which holds no manifest, so only the conflict finding is exercised here.
 
 import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
@@ -10,9 +12,23 @@ import { join, resolve } from "node:path";
 const SCRIPT = resolve(import.meta.dir, "..", "hooks", "conflict-check.ts");
 const HOOKS_JSON = resolve(import.meta.dir, "..", "hooks", "hooks.json");
 const GOPLS = "gopls-lsp@claude-plugins-official";
-const TS = "typescript-lsp@claude-plugins-official";
+const TS = "lsp@magus";
 
 type Scope = "user" | "project" | "local";
+
+/** The arguments after the script path in go's registered conflict-check command. */
+function registeredArgv(): string[] {
+  const hooks = JSON.parse(readFileSync(HOOKS_JSON, "utf8")) as {
+    hooks: { SessionStart?: { hooks: { command: string }[] }[] };
+  };
+  for (const group of hooks.hooks.SessionStart ?? []) {
+    for (const hook of group.hooks) {
+      const match = /conflict-check\.ts" ([^|]*?) \|\|/.exec(hook.command);
+      if (match?.[1]) return match[1].split(" ");
+    }
+  }
+  throw new Error("hooks.json registers no conflict-check.ts");
+}
 
 interface Env {
   home: string;
@@ -65,9 +81,9 @@ interface RunResult {
 function run(env: Env, opts: { stdin?: string; cwd?: string } = {}): RunResult {
   const stdin =
     opts.stdin ?? JSON.stringify({ hook_event_name: "SessionStart", cwd: env.project, source: "startup" });
-  const proc = Bun.spawnSync(["bun", "--env-file=/dev/null", "--config=/dev/null", SCRIPT], {
+  const proc = Bun.spawnSync(["bun", "--env-file=/dev/null", "--config=/dev/null", SCRIPT, ...registeredArgv()], {
     cwd: opts.cwd,
-    env: { ...process.env, HOME: env.home, BUN_RUNTIME_TRANSPILER_CACHE_PATH: "0" },
+    env: { ...process.env, HOME: env.home, CLAUDE_PLUGIN_ROOT: env.home, BUN_RUNTIME_TRANSPILER_CACHE_PATH: "0" },
     stdin: new TextEncoder().encode(stdin),
     stdout: "pipe",
     stderr: "pipe",
@@ -117,7 +133,7 @@ function listTree(root: string): string[] {
   return out;
 }
 
-describe("lsp conflict check at session start", () => {
+describe("go conflict check at session start", () => {
   test("REQ-W1 prints nothing and exits 0 when no settings files exist", () => {
     const env = makeEnv();
     expectSilent(run(env));
@@ -184,9 +200,9 @@ describe("lsp conflict check at session start", () => {
     expect(out.systemMessage).toContain(uninstall(GOPLS, "local"));
   });
 
-  test("REQ-W9 detects typescript-lsp from another marketplace name", () => {
+  test("REQ-W9 detects gopls-lsp from another marketplace name", () => {
     const env = makeEnv();
-    const id = "typescript-lsp@some-other-market";
+    const id = "gopls-lsp@some-other-market";
     writeEnabled(env, "user", { [id]: true });
     const result = run(env);
     expect(result.exitCode).toBe(0);
@@ -210,13 +226,13 @@ describe("lsp conflict check at session start", () => {
 
   test("REQ-W11 prints nothing for a key whose name only starts with gopls-lsp", () => {
     const env = makeEnv();
-    writeEnabled(env, "user", { "gopls-lsp-extra@x": true, "typescript-lsp-pro@y": true, "my-gopls-lsp@z": true });
+    writeEnabled(env, "user", { "gopls-lsp-extra@x": true, "lsp-pro@y": true, "my-gopls-lsp@z": true });
     expectSilent(run(env));
   });
 
   test("REQ-W12 prints nothing for an unrelated enabled plugin", () => {
     const env = makeEnv();
-    writeEnabled(env, "user", { "lsp@magus": true, "dev@magus": true });
+    writeEnabled(env, "user", { "typescript-lsp@claude-plugins-official": true, "dev@magus": true });
     expectSilent(run(env));
   });
 
@@ -302,7 +318,7 @@ describe("lsp conflict check at session start", () => {
         g.hooks.some(
           (h) =>
             h.type === "command" &&
-            h.command.includes("conflict-check.ts") &&
+            h.command.includes('conflict-check.ts" go gopls-lsp lsp ||') &&
             h.command.includes("--env-file=/dev/null") &&
             h.command.includes("--config=/dev/null"),
         ),

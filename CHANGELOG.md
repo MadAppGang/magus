@@ -4,6 +4,71 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 14.0.0] - 2026-11-26
+
+### Removed
+
+- **BREAKING — `lsp@magus` is deleted.** Its marketplace entry, `plugins/lsp/` and its
+  generated userdocs page are gone. Its Go language server ships in `go` 0.3.0 and its
+  TypeScript/JavaScript language server in `bunjs` 0.6.0, with the same wrapper, idle stop
+  and shared gopls daemon. The magus channel ships 17 plugins. Source is recoverable from
+  git history.
+
+### Migration notes
+
+An installed `lsp@magus` stays installed and no longer updates. It declares the same file
+types as `go` and `bunjs`, and Claude Code gives each file type to one plugin only, so
+uninstall it: `claude plugin uninstall lsp@magus --scope <scope>`. Until then, `go` and
+`bunjs` name it, with that command, at every session start.
+
+---
+
+## [go 0.3.0] - 2026-11-26
+
+### Added
+
+- **go serves `.go` files through gopls, behind a wrapper that stops it when idle.** After
+  10 minutes with no traffic the server stops, and Claude Code starts it again at the next
+  request. Sessions in one worktree with the same Go settings share one gopls daemon. When
+  Bun is missing or older than 1.4.0, the plain gopls runs. `MAGUS_LSP_IDLE_MINUTES` sets
+  the idle time (`0` turns it off).
+- At session start, go names the official `gopls-lsp` plugin and `lsp` when either is also
+  enabled, with the `claude plugin uninstall … --scope …` command for each.
+- At session start, go says when `gopls` is not on the PATH Claude Code started with, and
+  names its install command. Only code intelligence for `.go` files is off until it is
+  installed; the rest of go works.
+
+### Migration notes
+
+- Needs `gopls` on the `PATH` Claude Code starts with
+  (`go install golang.org/x/tools/gopls@latest`).
+- Uninstall `gopls-lsp` and `lsp`: they declare `.go` too.
+
+---
+
+## [bunjs 0.6.0] - 2026-11-26
+
+### Added
+
+- **bunjs serves TypeScript and JavaScript files through typescript-language-server,
+  behind a wrapper that stops it when idle.** After 10 minutes with no traffic the server
+  stops, and Claude Code starts it again at the next request. When Bun is missing or older
+  than 1.4.0, the plain server runs. `MAGUS_LSP_IDLE_MINUTES` sets the idle time (`0` turns
+  it off).
+- At session start, bunjs names the official `typescript-lsp` plugin and `lsp` when either
+  is also enabled, with the `claude plugin uninstall … --scope …` command for each.
+- At session start, bunjs says when `typescript-language-server` is not on the PATH Claude
+  Code started with, and names its install command. Only code intelligence for TypeScript
+  and JavaScript files is off until it is installed; the skills work as before.
+
+### Migration notes
+
+- Needs `typescript-language-server` on `PATH`
+  (`npm install -g typescript-language-server typescript`).
+- Uninstall `typescript-lsp` and `lsp`: they declare the same file types.
+
+---
+
 ## [magus 7.17.2] - 2026-11-26
 
 ### Fixed
@@ -31,45 +96,6 @@
   with `prompt N was not delivered`; and such a run is an ERROR that is never graded.
   `madbench skills --check` reports `current`. Where Homebrew is not used (Linux), the
   plugin installs madbench v0.60.0 when madbench is missing.
-
----
-
-## [lsp 0.1.1] - 2026-11-25
-
-### Added
-- At session start, lsp warns when the official `gopls-lsp` or `typescript-lsp` plugin is
-  also enabled, and names the `claude plugin uninstall … --scope …` command for each.
-  Claude Code gives a file type to only one language server plugin and records the other
-  only in its debug log, so with both installed lsp could silently not run for Go or
-  TypeScript files.
-
----
-
-## [lsp 0.1.0] - 2026-11-25
-
-### Added
-
-- **New `lsp` plugin: language servers that stop when idle, and one shared gopls per worktree.**
-  It serves `gopls` for Go and `typescript-language-server` for TypeScript and JavaScript.
-  After 10 minutes with no traffic the server stops, and Claude Code starts it again at the
-  next request, so an open but idle session holds no language server memory. Sessions in
-  the same worktree with the same Go settings connect to one shared gopls daemon. Each
-  session keeps its own gopls session, so unsaved edits never cross. Measured with 2
-  sessions on a 400-file Go module: 2699 MB before, 1301 MB with the shared daemon.
-- **The plain server runs when the wrapper cannot.** If Bun is missing or older than 1.4.0,
-  or the start check takes over 3 seconds, the plugin starts the plain server instead. A
-  shared gopls that fails during startup is replaced once by a plain one. Every reason is
-  printed on the server's stderr, starting with `lsp:`.
-- `MAGUS_LSP_IDLE_MINUTES` sets the idle time (default 10, `0` turns idle stop off).
-
-### Migration notes
-
-- The plugin declares the same file extensions as the official `gopls-lsp` and
-  `typescript-lsp` plugins, and the first plugin loaded wins an extension. Uninstall those
-  two: `/plugin uninstall gopls-lsp` and `/plugin uninstall typescript-lsp`.
-- Each idle stop shows as `crashed with exit code 1` in `/plugin`'s Errors tab. That is
-  how Claude Code learns to restart the server; a request at the exact moment of the stop
-  can fail once.
 
 ---
 

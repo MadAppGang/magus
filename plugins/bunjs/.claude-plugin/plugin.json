@@ -1,7 +1,7 @@
 {
   "name": "bunjs",
-  "version": "0.5.0",
-  "description": "Bun and TypeScript toolkit. A `/bunjs:bun` index routes any task to the right one of eight task-shaped skills — setup, HTTP, errors, testing, security, production, performance, TUI — each shipping copyable code verified against Bun. Only Bun is tested.",
+  "version": "0.6.0",
+  "description": "Bun and TypeScript toolkit. A `/bunjs:bun` index routes any task to one of eight task-shaped skills (setup, HTTP, errors, testing, security, production, performance, TUI) with copyable code verified against Bun, plus a TypeScript/JavaScript language server that stops when idle. Only Bun is tested.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
@@ -30,7 +30,10 @@
     "terminal-ui",
     "node-best-practices",
     "router",
-    "skill-index"
+    "skill-index",
+    "javascript",
+    "lsp",
+    "language-server"
   ],
   "skills": [
     "./skills/bun",
@@ -43,6 +46,44 @@
     "./skills/performance",
     "./skills/tui"
   ],
+  "lspServers": {
+    "typescript": {
+      "command": "sh",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/language-server/bin/launch.sh",
+        "typescript-language-server",
+        "--stdio"
+      ],
+      "extensionToLanguage": {
+        ".ts": "typescript",
+        ".tsx": "typescriptreact",
+        ".js": "javascript",
+        ".jsx": "javascriptreact",
+        ".mts": "typescript",
+        ".cts": "typescript",
+        ".mjs": "javascript",
+        ".cjs": "javascript"
+      }
+    }
+  },
+  "requires": {
+    "schema": 2,
+    "bin": [
+      {
+        "name": "bun",
+        "check": [
+          "bun",
+          "--version"
+        ],
+        "install": [
+          {
+            "via": "bootstrap",
+            "tool": "bun"
+          }
+        ]
+      }
+    ]
+  },
   "compatibility": {
     "claudeCode": ">=0.1.0"
   }

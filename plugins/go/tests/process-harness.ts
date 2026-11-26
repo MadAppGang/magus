@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { splitFrame } from "./wire.ts";
 
-const originalLauncher = join(import.meta.dir, "../bin/launch.sh");
+const originalLauncher = join(import.meta.dir, "../language-server/bin/launch.sh");
 const fake = join(import.meta.dir, "fake-lsp.ts");
 export const dash = Bun.which("dash");
 const quote = (s: string) => "'" + s.replaceAll("'", "'\\''") + "'";
@@ -204,7 +204,7 @@ export class TestLaunch {
     mkdirSync(join(plugin, "bin"), { recursive: true });
     this.launcher = join(plugin, "bin", "launch.sh");
     cpSync(originalLauncher, this.launcher);
-    cpSync(join(import.meta.dir, "../src"), join(plugin, "src"), { recursive: true });
+    cpSync(join(import.meta.dir, "../language-server/src"), join(plugin, "src"), { recursive: true });
     writeFileSync(join(plugin, "src/relay.ts"), "export {\n");
   }
   start({ shared = false, shell = "sh", readOutput = true, rawInput = false, argv }: {

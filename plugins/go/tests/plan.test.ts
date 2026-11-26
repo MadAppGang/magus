@@ -3,9 +3,9 @@ import { chmodSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, w
 import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { goplsId, guardBasenameBytes, socketDirProblem, type Env } from "../src/adapters.ts";
-import { bunVersionSupported, idleMsFrom, plan } from "../src/plan.ts";
-import { worktreeRoot } from "../src/worktree.ts";
+import { goplsId, guardBasenameBytes, socketDirProblem, type Env } from "../language-server/src/adapters.ts";
+import { bunVersionSupported, idleMsFrom, plan } from "../language-server/src/plan.ts";
+import { worktreeRoot } from "../language-server/src/worktree.ts";
 
 function tree(run: (root: string) => void) {
   const root = mkdtempSync(join(tmpdir(), "lp-"));
@@ -16,19 +16,11 @@ function executable(path: string, body = "fake binary") {
   return path;
 }
 
-test("REQ-1 manifest registers both servers, all extensions and only Bun as a dependency", async () => {
+test("REQ-1 manifest registers gopls for .go only, through the launcher, and only Bun as a dependency", async () => {
   const manifest = await Bun.file(join(import.meta.dir, "../.claude-plugin/plugin.json")).json();
-  const launch = "${CLAUDE_PLUGIN_ROOT}/bin/launch.sh";
+  const launch = "${CLAUDE_PLUGIN_ROOT}/language-server/bin/launch.sh";
   expect(manifest.lspServers).toEqual({
     gopls: { command: "sh", args: [launch, "gopls"], extensionToLanguage: { ".go": "go" } },
-    typescript: {
-      command: "sh", args: [launch, "typescript-language-server", "--stdio"],
-      extensionToLanguage: {
-        ".ts": "typescript", ".tsx": "typescriptreact", ".js": "javascript",
-        ".jsx": "javascriptreact", ".mts": "typescript", ".cts": "typescript",
-        ".mjs": "javascript", ".cjs": "javascript",
-      },
-    },
   });
   expect(manifest.requires.bin.map(({ name }: { name: string }) => name)).toEqual(["bun"]);
 });

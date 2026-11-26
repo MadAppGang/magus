@@ -1,0 +1,21 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v bun >/dev/null 2>&1 && exec bun --env-file=/dev/null --config=/dev/null \"${CLAUDE_PLUGIN_ROOT}/hooks/deps-check.ts\" bunjs || exec sh \"${CLAUDE_PLUGIN_ROOT}/hooks/bun-missing.sh\" bunjs",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "command -v bun >/dev/null 2>&1 && exec bun --env-file=/dev/null --config=/dev/null \"${CLAUDE_PLUGIN_ROOT}/hooks/conflict-check.ts\" bunjs typescript-lsp lsp || true",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

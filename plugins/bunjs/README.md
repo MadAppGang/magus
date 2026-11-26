@@ -119,6 +119,60 @@ code fingerprints (`Bun.password`, `timingSafeEqual`) score **identically with a
 skill**, because the model writes them from general knowledge. Both produced a confident wrong
 answer; only one was caught at the time.
 
+## Language server
+
+bunjs gives Claude Code's code intelligence for `.ts`, `.tsx`, `.js`, `.jsx`, `.mts`,
+`.cts`, `.mjs` and `.cjs` files to `typescript-language-server`, behind a small wrapper
+that stops it when idle. After 10 minutes with no traffic from Claude Code and no
+request waiting for an answer, the wrapper stops the server and exits with code 1.
+Claude Code treats that as a crash and starts the server again on the next request, so a
+session left open overnight holds no language server memory.
+
+The plain server runs instead of the wrapper when the wrapper cannot start: no Bun, a Bun
+older than 1.4.0, or a check slower than 3 seconds. Every reason is printed on the
+server's stderr, starting with `lsp:`.
+
+### Requirements
+
+- `typescript-language-server` on the `PATH` Claude Code starts with:
+  `npm install -g typescript-language-server typescript`. Without it, every session
+  starts with a note that names this command; the skills work as before.
+- [Bun](https://bun.sh) 1.4.0 or later for the wrapper. Without it the plain server
+  still runs.
+
+### Replacing `typescript-lsp` and `lsp`
+
+bunjs declares the same file types as `typescript-lsp` from the official marketplace and
+the `lsp` plugin bunjs replaces. When two installed plugins declare one extension, the
+first one loaded wins, so remove those two:
+
+```
+/plugin uninstall typescript-lsp
+/plugin uninstall lsp
+```
+
+While either one is still enabled, every new session starts with a warning that names it
+and the `claude plugin uninstall … --scope …` command that removes it.
+
+### Configuration
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `MAGUS_LSP_IDLE_MINUTES` | `10` | Minutes without traffic before the server is stopped. Decimal, `0` turns idle stop off. Anything else, or a positive value under 1 ms or over about 24.8 days, uses the default and prints a note. |
+
+### Exit codes
+
+| Situation | Exit |
+|---|---|
+| Claude Code sends `exit` or closes stdin | 0 |
+| Idle stop, a wrapper error | 1 |
+| The server exits by itself | its code; 128 + signal for a signal; 1 for 0 |
+| The wrapper gets TERM / INT / HUP | 143 / 130 / 129 |
+
+The wrapper never exits 0 on its own: Claude Code would then treat the server as running,
+and every later request would fail. The wrapper's tests live in the `go` plugin; this copy
+is held byte-identical to it.
+
 ## Reference
 
 These skills lean on the community's accumulated Node.js practice, adapted to Bun and verified

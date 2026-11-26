@@ -7,7 +7,7 @@
   },
   "metadata": {
     "description": "Curated collection of Claude Code plugins for modern full-stack development with LLM performance tracking and E2E skill testing",
-    "version": "13.9.2",
+    "version": "14.0.0",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -362,8 +362,8 @@
     {
       "name": "go",
       "source": "./plugins/go",
-      "description": "Go development toolkit. Ships the go-tui skill for building Charm-stack terminal UIs (Bubble Tea, Lip Gloss, Bubbles, ntcharts), with a colour-accurate screenshot workflow for reviewing a running TUI.",
-      "version": "0.2.0",
+      "description": "Go development toolkit. Ships the go-tui skill for Charm-stack terminal UIs (Bubble Tea, Lip Gloss, Bubbles, ntcharts) with a colour-accurate screenshot workflow, and gopls behind a wrapper that stops it when idle and lets sessions in one worktree share one gopls daemon.",
+      "version": "0.3.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -377,10 +377,21 @@
         "bubbletea",
         "charm",
         "lipgloss",
-        "terminal-ui"
+        "terminal-ui",
+        "gopls",
+        "lsp",
+        "language-server"
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.3.0",
+          "date": "2026-11-26",
+          "kinds": [
+            "Added"
+          ],
+          "summary": "go serves .go files through gopls, behind a wrapper that stops it when idle"
+        },
         {
           "version": "0.2.0",
           "date": "2026-09-27",
@@ -406,11 +417,6 @@
             "Fixed"
           ],
           "summary": "go-tui's screenshot loop taught tools the terminal plugin no longer has"
-        },
-        {
-          "version": "0.1.2",
-          "date": "2026-08-26",
-          "summary": "The same manifest move, with no change to what each registers"
         }
       ]
     },
@@ -476,8 +482,8 @@
     {
       "name": "bunjs",
       "source": "./plugins/bunjs",
-      "description": "Bun and TypeScript toolkit. A `/bunjs:bun` index routes any task to the right one of eight task-shaped skills \u2014 setup, HTTP, errors, testing, security, production, performance, TUI \u2014 each shipping copyable code verified against Bun. Only Bun is tested.",
-      "version": "0.5.0",
+      "description": "Bun and TypeScript toolkit. A `/bunjs:bun` index routes any task to one of eight task-shaped skills (setup, HTTP, errors, testing, security, production, performance, TUI) with copyable code verified against Bun, plus a TypeScript/JavaScript language server that stops when idle. Only Bun is tested.",
+      "version": "0.6.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -504,10 +510,21 @@
         "terminal-ui",
         "node-best-practices",
         "router",
-        "skill-index"
+        "skill-index",
+        "javascript",
+        "lsp",
+        "language-server"
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.6.0",
+          "date": "2026-11-26",
+          "kinds": [
+            "Added"
+          ],
+          "summary": "bunjs serves TypeScript and JavaScript files through typescript-language-server, behind a\u2026"
+        },
         {
           "version": "0.5.0",
           "date": "2026-09-27",
@@ -530,11 +547,6 @@
           "version": "0.4.3",
           "date": "2026-08-29",
           "summary": "The README's discovery table and the bun index state their measured findings directly instead\u2026"
-        },
-        {
-          "version": "0.4.2",
-          "date": "2026-08-26",
-          "summary": "The same manifest move, and additionally dropped a [\"./commands\"] declaration \u2014 the default\u2026"
         }
       ]
     },
@@ -1090,47 +1102,6 @@
             "Changed"
           ],
           "summary": "The skills cover meroku 6.2.0's KMS signing keys"
-        }
-      ]
-    },
-    {
-      "name": "lsp",
-      "source": "./plugins/lsp",
-      "description": "Language servers for Go (gopls) and TypeScript/JavaScript behind a wrapper that stops an idle server and lets Claude Code restart it on demand. Sessions in one worktree with the same Go settings share one gopls daemon; when the wrapper cannot start, the plain server runs.",
-      "version": "0.1.1",
-      "author": {
-        "name": "Jack Rudenko",
-        "email": "i@madappgang.com",
-        "company": "MadAppGang"
-      },
-      "category": "development",
-      "keywords": [
-        "lsp",
-        "language-server",
-        "gopls",
-        "go",
-        "typescript",
-        "javascript",
-        "idle",
-        "memory"
-      ],
-      "strict": true,
-      "releases": [
-        {
-          "version": "0.1.1",
-          "date": "2026-11-25",
-          "kinds": [
-            "Added"
-          ],
-          "summary": "At session start, lsp warns when the official gopls-lsp or typescript-lsp plugin is also\u2026"
-        },
-        {
-          "version": "0.1.0",
-          "date": "2026-11-25",
-          "kinds": [
-            "Added"
-          ],
-          "summary": "New lsp plugin: language servers that stop when idle, and one shared gopls per worktree"
         }
       ]
     }

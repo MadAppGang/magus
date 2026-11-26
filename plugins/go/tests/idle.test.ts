@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { IdleTracker } from "../src/idle.ts";
+import { IdleTracker } from "../language-server/src/idle.ts";
 
 function clock(ms = 100, start = 500) {
   let now = start;

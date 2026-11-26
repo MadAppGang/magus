@@ -3,17 +3,17 @@
 
 # bunjs
 
-Bun and TypeScript toolkit. A `/bunjs:bun` index routes any task to the right one of eight task-shaped skills — setup, HTTP, errors, testing, security, production, performance, TUI — each shipping copyable code verified against Bun. Only Bun is tested.
+Bun and TypeScript toolkit. A `/bunjs:bun` index routes any task to one of eight task-shaped skills (setup, HTTP, errors, testing, security, production, performance, TUI) with copyable code verified against Bun, plus a TypeScript/JavaScript language server that stops when idle. Only Bun is tested.
 
 | | |
 |---|---|
-| Version | `0.5.0` |
+| Version | `0.6.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 9 |
 | Subagents | 0 |
 | Skills | 9 |
 | MCP server | no |
-| Hooks | no |
+| Hooks | yes |
 
 ## Install
 
@@ -67,6 +67,11 @@ Prefer to do it by hand? [Installing Magus](../../guides/install.md) has the man
 | ○ | `bunjs:security` | Harden or review a Bun/TypeScript service — secrets, password and token handling, SQL injection, authn/authz, rate limiting, CORS and security headers, dependency audit. |
 | ○ | `bunjs:testing` — [4 more docs](./bunjs-testing.md) | Write and fix Bun tests — bun:test surface, component tests over HTTP, doubles, coverage gating, flake control. Ships a tested harness, fake upstream and builders. |
 | ○ | `bunjs:tui` — [30 more docs](./bunjs-tui.md) | Build, review, or debug OpenTUI terminal UIs — React JSX or core constructs, Yoga flexbox, gradient meters, colour screenshots. Any Bun/TypeScript TUI. Only Bun is tested; |
+
+## Hooks
+
+This plugin installs hooks. They run automatically and are the usual first place to look
+if its behaviour stops firing.
 
 ## Source
 

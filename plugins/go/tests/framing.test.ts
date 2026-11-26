@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { FrameParser, requestKey, responseKey } from "../src/framing.ts";
+import { FrameParser, requestKey, responseKey } from "../language-server/src/framing.ts";
 import { frame } from "./wire.ts";
 
 test("REQ-2 parser preserves exact UTF-8 bytes across split chunks and returns multiple frames in order", () => {

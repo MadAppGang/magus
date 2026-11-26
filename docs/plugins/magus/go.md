@@ -3,17 +3,17 @@
 
 # go
 
-Go development toolkit. Ships the go-tui skill for building Charm-stack terminal UIs (Bubble Tea, Lip Gloss, Bubbles, ntcharts), with a colour-accurate screenshot workflow for reviewing a running TUI.
+Go development toolkit. Ships the go-tui skill for Charm-stack terminal UIs (Bubble Tea, Lip Gloss, Bubbles, ntcharts) with a colour-accurate screenshot workflow, and gopls behind a wrapper that stops it when idle and lets sessions in one worktree share one gopls daemon.
 
 | | |
 |---|---|
-| Version | `0.2.0` |
+| Version | `0.3.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 0 |
 | Subagents | 0 |
 | Skills | 1 |
 | MCP server | no |
-| Hooks | no |
+| Hooks | yes |
 
 ## Install
 
@@ -35,6 +35,11 @@ Prefer to do it by hand? [Installing Magus](../../guides/install.md) has the man
 | Skill | What it covers |
 |---|---|
 | `go:go-tui` — [8 more docs](./go-go-tui.md) | Build, review, or debug Go terminal UIs with the Charm stack — Bubble Tea, Lip Gloss, Bubbles, ntcharts. |
+
+## Hooks
+
+This plugin installs hooks. They run automatically and are the usual first place to look
+if its behaviour stops firing.
 
 ## Source
 

@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { Relay, type Child, type ChildExit, type Clock } from "../src/relay.ts";
+import { Relay, type Child, type ChildExit, type Clock } from "../language-server/src/relay.ts";
 import { frame } from "./wire.ts";
 
 const tick = () => new Promise<void>(resolve => setImmediate(resolve));

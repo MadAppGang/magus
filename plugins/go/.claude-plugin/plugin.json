@@ -1,7 +1,7 @@
 {
   "name": "go",
-  "version": "0.2.0",
-  "description": "Go development toolkit. Ships the go-tui skill for building Charm-stack terminal UIs (Bubble Tea, Lip Gloss, Bubbles, ntcharts), with a colour-accurate screenshot workflow for reviewing a running TUI.",
+  "version": "0.3.0",
+  "description": "Go development toolkit. Ships the go-tui skill for Charm-stack terminal UIs (Bubble Tea, Lip Gloss, Bubbles, ntcharts) with a colour-accurate screenshot workflow, and gopls behind a wrapper that stops it when idle and lets sessions in one worktree share one gopls daemon.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
@@ -15,12 +15,45 @@
     "bubbletea",
     "charm",
     "lipgloss",
-    "terminal-ui"
+    "terminal-ui",
+    "gopls",
+    "lsp",
+    "language-server"
   ],
   "category": "development",
   "skills": [
     "./skills/go-tui"
   ],
+  "lspServers": {
+    "gopls": {
+      "command": "sh",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/language-server/bin/launch.sh",
+        "gopls"
+      ],
+      "extensionToLanguage": {
+        ".go": "go"
+      }
+    }
+  },
+  "requires": {
+    "schema": 2,
+    "bin": [
+      {
+        "name": "bun",
+        "check": [
+          "bun",
+          "--version"
+        ],
+        "install": [
+          {
+            "via": "bootstrap",
+            "tool": "bun"
+          }
+        ]
+      }
+    ]
+  },
   "compatibility": {
     "claudeCode": ">=0.1.0"
   }
