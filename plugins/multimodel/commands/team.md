@@ -821,7 +821,7 @@ Per slot, `<wt>` being its worktree:
 to `<SESSION_DIR>/reads-<slot>.txt`:
 
 ```
-jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="tool_use") | if .name=="Read" then "path \(.input.file_path // "")" elif .name=="Grep" then "path \(.input.path // ".")" elif .name=="Glob" then "path \(.input.path // ".")", "path \(.input.pattern // "")" elif .name=="Bash" then "bash \(.input.command // "" | gsub("\n"; " "))" elif .name=="Write" or .name=="Edit" then empty else "tool \(.name)" end' <transcriptPath>
+jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="tool_use") | if .name=="Read" then "path \(.input.file_path // "")" elif .name=="Grep" then "path \(.input.path // ".")" elif .name=="Glob" then "path \(.input.path // ".")", "path \(.input.pattern // "")" elif .name=="Bash" then "bash \(.input.command // "" | gsub("\n"; " "))" elif (.name | IN("Write","Edit","MultiEdit","NotebookEdit","ToolSearch")) then empty else "tool \(.name)" end' <transcriptPath>
 ```
 
 A `path` line passes only if it has no `..` segment, does not start with `~`, and is relative
@@ -832,8 +832,12 @@ hold `worktrees/`: first replace every `<sb>` that is followed by `/`, a quote, 
 `;`, `&`, `|`, a backtick or the end of the line with `.`, and delete every `/dev/null`; then
 the rest fails when it names `<top>`, holds `worktrees/` or a `..` segment, or holds an
 absolute or `~` path. So `bun test <sb>/tests` (read as `bun test ./tests`), `$(ls <sb>)` and
-`cd <sb>;ls` pass, and `cat <sb>/../x` (read as `cat ./../x`) fails. A `tool` line never
-passes: an MCP search or a subagent reads outside what this filter sees. A missing transcript
+`cd <sb>;ls` pass, and `cat <sb>/../x` (read as `cat ./../x`) fails. The filter prints no
+line for the write tools (Write, Edit, MultiEdit, NotebookEdit) or for `ToolSearch`, which
+only loads a tool schema and reads no file; this is the set `/dev:qa` Phase 2 allows. A
+`tool` line never passes: an MCP tool (code search included), `Agent`, `Skill` or a web
+fetch reads outside what this filter sees, and the MCP call that follows a `ToolSearch` is
+still a `tool` line. A missing transcript
 or a `jq` failure also fails, because blindness was not established. Any failure marks the
 slot `SUSPECT`: listed with the paths or the reason, patch kept, **not usable and not offered
 in the pick**. The check reads file tools and Bash command text; a path a command builds at

@@ -4,6 +4,27 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [multimodel 6.4.1] - 2026-11-26
+
+### Fixed
+
+- **A `/team --type test` writer that calls `ToolSearch` is no longer marked SUSPECT.** The
+  blindness check now lets through the tools that read no repo file: `ToolSearch` and the
+  write tools (Write, Edit, MultiEdit, NotebookEdit), the same set `/dev:qa` allows. An MCP
+  tool such as a code search, `Agent`, `Skill` or a web fetch still marks the writer SUSPECT.
+
+---
+
+## [madbench 0.13.1] - 2026-11-26
+
+### Fixed
+
+- **The `madbench:bench` agent is told it never calls `Agent` or `Task`.** It now inherits
+  every session tool, so its instructions say it does every step itself: a nested agent
+  returns a summary where gate output must be quoted verbatim, and can start a second run.
+
+---
+
 ## [dev 9.9.0] - 2026-11-26
 
 ### Changed

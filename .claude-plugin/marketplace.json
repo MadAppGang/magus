@@ -211,7 +211,7 @@
       "name": "multimodel",
       "source": "./plugins/multimodel",
       "description": "Multi-model collaboration and orchestration. Runs one task across several AI models under a task type (judge, research, plan, debug, brainstorm, implement, test, collaborate), each with its own result, or delegates it to one model running a full Claude Code session.",
-      "version": "6.4.0",
+      "version": "6.4.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -235,6 +235,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "6.4.1",
+          "date": "2026-11-26",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "A /team --type test writer that calls ToolSearch is no longer marked SUSPECT"
+        },
         {
           "version": "6.4.0",
           "date": "2026-11-26",
@@ -266,14 +274,6 @@
             "Added"
           ],
           "summary": "/team names its task type on every claudish call"
-        },
-        {
-          "version": "6.1.0",
-          "date": "2026-11-07",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "/multimodel:team names its session folder after the task type\u2026"
         }
       ]
     },
@@ -917,7 +917,7 @@
       "name": "madbench",
       "source": "./plugins/madbench",
       "description": "Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. Carries madbench's own skills with /madbench:madbench as the entry point, checks them against the installed madbench, and runs benches in a visible pane through the madbench:bench agent.",
-      "version": "0.13.0",
+      "version": "0.13.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -938,6 +938,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.13.1",
+          "date": "2026-11-26",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "The madbench:bench agent is told it never calls Agent or Task"
+        },
         {
           "version": "0.13.0",
           "date": "2026-11-26",
@@ -969,14 +977,6 @@
             "Changed"
           ],
           "summary": "The madbench skills are synced to madbench 0.58.1, so /madbench:madbench and the bench agent\u2026"
-        },
-        {
-          "version": "0.12.7",
-          "date": "2026-11-14",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "The madbench skills are synced to madbench 0.58.0, so /madbench:madbench and the bench agent\u2026"
         }
       ]
     },

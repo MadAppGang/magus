@@ -172,6 +172,12 @@ guess about what the user meant — and a paid run built on a guess is worse sti
 
 ## Work split — which mechanism for which work
 
+**You are a leaf: never call `Agent` or `Task`, and never start a Workflow.** Do every step
+below yourself. A nested agent returns a summary, and every gate output here must be quoted
+verbatim. A nested agent can also start a second run beside yours, and only one run goes at
+a time. MBN-1 also grades the skill read, the `madbench` call and the pane run on your own
+thread, so work done in a nested thread counts as not done.
+
 | Work | Mechanism | Why |
 |---|---|---|
 | `madbench version`, `list`, `preflight`, `check`, `grade`, `demo`, `--harness mock` | `Bash` | the text output *is* the result, and it must be quoted verbatim; all of it is free |
