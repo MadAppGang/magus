@@ -224,6 +224,16 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, Write, Glob, Grep, mcp__plugi
       `launch-*` path, or any other path outside the sandbox, is a blindness breach:
       report it in red and keep the tests marked "suspect". The internal `Agent` writer has
       no transcript path; keep the `Files Read` check for it.
+    - The writer inherits every tool of its session, MCP tools included, and an MCP search
+      or a subagent reads outside what the Read list shows. So also list its other calls:
+      `jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="tool_use") | select(.name | IN("Read","Grep","Glob","Bash","Write","Edit","MultiEdit","NotebookEdit","ToolSearch") | not) | .name' <transcriptPath>`.
+      The set holds the file tools, Bash, and tools that read nothing (`ToolSearch` only
+      loads a schema; the MCP call that follows it is still listed). Any line it prints
+      (an `mcp__…` tool, `Agent`, `Skill`, `WebFetch`, anything else) is a blindness
+      breach: report it in red and keep the tests marked "suspect".
+    - The internal `Agent` writer inherits the same tools and leaves no transcript to
+      check, so its result says `MCP blindness: unverified (internal writer)` beside
+      `not blind across families`.
   </phase>
 
   <phase number="3" name="Run and prove" optional="true">

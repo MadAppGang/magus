@@ -15,7 +15,7 @@
       "name": "code-search",
       "source": "./plugins/code-search",
       "description": "Read-only code search and investigation behind one stable tool surface. Finds code by meaning or structure, traces callers, callees and blast radius, and dispatches an analyze agent for deep dives. The search engine is named in project settings and is swappable.",
-      "version": "8.8.0",
+      "version": "8.9.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -37,6 +37,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "8.9.0",
+          "date": "2026-11-26",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "The analyze agent gets every tool of its session, MCP tools included"
+        },
         {
           "version": "8.8.0",
           "date": "2026-11-19",
@@ -65,11 +73,6 @@
           "version": "8.6.2",
           "date": "2026-10-21",
           "summary": "A session claudish started no longer stops on the setup question. The offer is skipped where\u2026"
-        },
-        {
-          "version": "8.6.1",
-          "date": "2026-10-20",
-          "summary": "In a project managed by magus profiles, /code-search:setup writes a project-level engine choice\u2026"
         }
       ]
     },
@@ -208,7 +211,7 @@
       "name": "multimodel",
       "source": "./plugins/multimodel",
       "description": "Multi-model collaboration and orchestration. Runs one task across several AI models under a task type (judge, research, plan, debug, brainstorm, implement, test, collaborate), each with its own result, or delegates it to one model running a full Claude Code session.",
-      "version": "6.3.1",
+      "version": "6.4.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -232,6 +235,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "6.4.0",
+          "date": "2026-11-26",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "The deep-analyst agent gets every tool of its session, MCP tools included"
+        },
         {
           "version": "6.3.1",
           "date": "2026-11-21",
@@ -263,14 +274,6 @@
             "Changed"
           ],
           "summary": "/multimodel:team names its session folder after the task type\u2026"
-        },
-        {
-          "version": "6.0.0",
-          "date": "2026-11-07",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "/multimodel:team runs each task as one of eight task types, each with its own result"
         }
       ]
     },
@@ -278,7 +281,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "9.8.2",
+      "version": "9.9.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -318,6 +321,14 @@
       "strict": true,
       "releases": [
         {
+          "version": "9.9.0",
+          "date": "2026-11-26",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "Every dev agent gets every tool of its session, MCP tools included"
+        },
+        {
           "version": "9.8.2",
           "date": "2026-11-25",
           "kinds": [
@@ -348,14 +359,6 @@
             "Fixed"
           ],
           "summary": "The terminal plugin's MCP server is named mux, not tmux"
-        },
-        {
-          "version": "9.7.0",
-          "date": "2026-11-12",
-          "kinds": [
-            "Added"
-          ],
-          "summary": "Every claudish panel and session the dev commands start names its kind of work"
         }
       ]
     },
@@ -715,7 +718,7 @@
       "name": "browser-use",
       "source": "./plugins/browser-use",
       "description": "Full-platform browser automation through its own MCP server: navigation, clicks and typing, live-page JS eval, keyboard and focus, file screenshots, session export and a configurable agent LLM, on local or cloud browsers. Runs Playwright's own Chromium, never your real Chrome. Ships 6 skills.",
-      "version": "2.2.0",
+      "version": "2.2.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -737,6 +740,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "2.2.1",
+          "date": "2026-11-26",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "The core-api skill says an agent reaches the browser tools by inheriting them from its session,\u2026"
+        },
         {
           "version": "2.2.0",
           "date": "2026-11-26",
@@ -772,11 +783,6 @@
             "Fixed"
           ],
           "summary": "The MCP server runs on browser-use 1.0"
-        },
-        {
-          "version": "1.10.0",
-          "date": "2026-10-20",
-          "summary": "Dependencies declared in requires schema 2"
         }
       ]
     },
@@ -784,7 +790,7 @@
       "name": "designer",
       "source": "./plugins/designer",
       "description": "UI design validation. Compares a rendered screen against its reference by pixel diff, then reviews the result for spacing, hierarchy and design-system consistency.",
-      "version": "0.13.1",
+      "version": "0.14.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -806,6 +812,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.14.0",
+          "date": "2026-11-26",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "designer:ui and designer:review get every tool of their session, MCP tools included"
+        },
         {
           "version": "0.13.1",
           "date": "2026-11-21",
@@ -834,14 +848,6 @@
           "version": "0.11.1",
           "date": "2026-10-20",
           "summary": "Sharp moves from ^0.33.0 to ^0.35.5, which closes the three high-severity Dependabot alerts\u2026"
-        },
-        {
-          "version": "0.11.0",
-          "date": "2026-10-13",
-          "kinds": [
-            "Added"
-          ],
-          "summary": "Both agents have a color: field again: review is purple, ui is green. With agent-colours\u2026"
         }
       ]
     },
@@ -849,7 +855,7 @@
       "name": "terminal",
       "source": "./plugins/terminal",
       "description": "Slot-addressed terminal control over tmux or herdr. Runs interactive commands, dev servers, test watchers, REPLs and TUI apps in numbered helper panes \u2014 beside the user or isolated from view \u2014 that the server places and owns, so an agent never holds a pane id or targets the user's own session.",
-      "version": "5.6.2",
+      "version": "5.7.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -867,6 +873,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "5.7.0",
+          "date": "2026-11-26",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "The tui-navigator agent gets every tool of its session, MCP tools included"
+        },
         {
           "version": "5.6.2",
           "date": "2026-11-19",
@@ -896,14 +910,6 @@
           "version": "5.5.0",
           "date": "2026-10-20",
           "summary": "Dependencies declared in requires schema 2"
-        },
-        {
-          "version": "5.4.0",
-          "date": "2026-10-13",
-          "kinds": [
-            "Added"
-          ],
-          "summary": "The tui-navigator agent has a color: field again: cyan"
         }
       ]
     },
@@ -911,7 +917,7 @@
       "name": "madbench",
       "source": "./plugins/madbench",
       "description": "Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. Carries madbench's own skills with /madbench:madbench as the entry point, checks them against the installed madbench, and runs benches in a visible pane through the madbench:bench agent.",
-      "version": "0.12.10",
+      "version": "0.13.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -932,6 +938,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.13.0",
+          "date": "2026-11-26",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "The bench agent gets every tool of its session, MCP tools included"
+        },
         {
           "version": "0.12.10",
           "date": "2026-11-25",
@@ -963,14 +977,6 @@
             "Changed"
           ],
           "summary": "The madbench skills are synced to madbench 0.58.0, so /madbench:madbench and the bench agent\u2026"
-        },
-        {
-          "version": "0.12.6",
-          "date": "2026-11-14",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "The madbench skills are synced to madbench 0.57.2, so /madbench:madbench and the bench agent\u2026"
         }
       ]
     },

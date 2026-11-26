@@ -204,10 +204,11 @@ unlike the kebab-case of skills, and a misspelled key is dropped without an erro
 
 - `description` is what the parent reads to decide whether to delegate. Write it as the
   situation that calls for this agent.
-- `tools` omitted gives the agent every tool the parent can pass on; listed, it gets exactly
-  those. Check every step of the prompt against the list: an agent told to delegate without
-  `Agent`, or to edit without `Edit`, cannot do it. The delegation tool is `Agent`; its old
-  name `Task` still works as an alias. Name MCP tools by their full scoped name
+- Declare no `tools` line. Without one the agent inherits every tool of its session, MCP
+  tools included; a `tools` list gives it exactly those tools and hides every MCP tool it
+  does not name. Keep a reviewer read-only through its prompt ("You do not edit files"),
+  and remove one specific tool with `disallowedTools`. The delegation tool is `Agent`; its
+  old name `Task` still works as an alias. Name MCP tools by their full scoped name
   (`references/mcp-servers.md`).
 - `skills:` preloads the full text of each listed skill into the agent at startup, and agent
   files are the only place it works. A skill flagged `disable-model-invocation` cannot be
@@ -220,7 +221,6 @@ unlike the kebab-case of skills, and a misspelled key is dropped without an erro
 ---
 name: type-reviewer
 description: Reviews a TypeScript diff for type-safety holes (any, unchecked casts, non-null assertions) and reports each with a fix. Use after TypeScript changes, before merge.
-tools: Read, Grep, Glob, Bash
 skills: ts-guard:type-safety
 ---
 

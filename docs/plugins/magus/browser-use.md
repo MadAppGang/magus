@@ -7,7 +7,7 @@ Full-platform browser automation through its own MCP server: navigation, clicks 
 
 | | |
 |---|---|
-| Version | `2.2.0` |
+| Version | `2.2.1` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 0 |
 | Subagents | 0 |

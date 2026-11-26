@@ -8,7 +8,6 @@ description: |
   and STYLE_FILE when it is not the default. Screenshots each artboard when browser-use is
   installed and self-checks through an external vision model. Use when asked to design a
   screen, component or flow. Judging a finished screen against a reference is designer:review.
-tools: Read, Write, Bash, Glob, Grep, mcp__plugin_claudish_claudish__list_models, mcp__plugin_claudish_claudish__search_models, mcp__plugin_claudish_claudish__team, mcp__plugin_browser-use_browser-use__browser_list_sessions, mcp__plugin_browser-use_browser-use__browser_navigate, mcp__plugin_browser-use_browser-use__browser_save_screenshot, mcp__plugin_browser-use_browser-use__browser_close_session
 skills:
   - designer:ui-style-format
   - designer:design-references

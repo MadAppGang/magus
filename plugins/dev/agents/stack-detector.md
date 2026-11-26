@@ -2,7 +2,6 @@
 name: stack-detector
 color: orange
 description: "Classifies a repo's stacks and quality commands, resolves what the task is, inventories reachable MCP servers, and writes a per-agent reading list to context.json. Requires the `SESSION_PATH` to write into, the task as a `TASK:` block (or requirements.md / bug-report.md in that directory), and whether plan mode is active. Use before dispatching implementation agents in an unfamiliar repo."
-tools: Read, Write, Glob, Grep, Bash
 ---
 
 <role>
@@ -244,14 +243,13 @@ tools: Read, Write, Glob, Grep, Bash
     <objective>`mcp`</objective>
 
     <constraint>
-      **You cannot see your own MCP surface.** This agent declares an explicit `tools:` list,
-      and an agent with an explicit tool list receives no MCP tools at all. Introspection is
-      not available to you and asking the model what tools it has is not a measurement.
+      **Your own tool list is not the inventory.** You inherit this session's tools, MCP
+      tools included, but the inventory reports servers and their health, which a tool list
+      does not show. Asking the model what tools it has is not a measurement.
 
       Every mechanism below is therefore out-of-band: a CLI call, or a file read. Do not
-      propose removing the `tools:` restriction — that would hand a detector the ability to
-      drive a browser and spawn external models, which is a much larger change than the
-      problem warrants.
+      call MCP tools to take the inventory: a detector does not drive a browser or spawn
+      external models.
     </constraint>
 
     <steps>

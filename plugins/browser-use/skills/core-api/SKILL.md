@@ -6,7 +6,7 @@ user-invocable: false
 
 # Browser Use Core API
 
-Reference for the 27 MCP tools the Browser Use plugin's own server exposes, built on browser-use 1.0. Their full names are `mcp__plugin_browser-use_browser-use__<tool_name>`, as the examples below write them; an agent's `tools:` line uses the same full name. The parameters here were read from the live tool schemas. The authoritative list is whatever the server registers at runtime, so check there rather than counting this table.
+Reference for the 27 MCP tools the Browser Use plugin's own server exposes, built on browser-use 1.0. Their full names are `mcp__plugin_browser-use_browser-use__<tool_name>`, as the examples below write them; an agent with no `tools:` line inherits them from its session under the same full name. The parameters here were read from the live tool schemas. The authoritative list is whatever the server registers at runtime, so check there rather than counting this table.
 
 ---
 

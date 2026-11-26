@@ -7,7 +7,7 @@ Slot-addressed terminal control over tmux or herdr. Runs interactive commands, d
 
 | | |
 |---|---|
-| Version | `5.6.2` |
+| Version | `5.7.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 9 |
 | Subagents | 1 |

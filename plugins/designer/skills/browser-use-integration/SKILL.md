@@ -46,7 +46,8 @@ browser_use_available = try mcp__plugin_browser-use_browser-use__browser_list_se
 ```
 
 The tool names carry the plugin namespace: `mcp__plugin_browser-use_browser-use__<tool>`.
-An agent that wants them must list them in its `tools:` line by that full name.
+An agent declares no `tools:` line, so it inherits them from its session whenever
+browser-use is connected; call them by that full name.
 
 ## Screenshot Capture Pattern
 

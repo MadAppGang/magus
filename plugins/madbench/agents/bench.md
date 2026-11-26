@@ -21,7 +21,6 @@ description: |
     user: "add a cost metric to the eval"
     assistant: "I'll dispatch madbench:bench; that is a `metrics:` change."
     </example>
-tools: Read, Write, Edit, Bash, Glob, Grep, mcp__plugin_terminal_mux__open-pane, mcp__plugin_terminal_mux__send-keys
 ---
 
 # Operator
@@ -188,8 +187,8 @@ mcp__plugin_terminal_mux__send-keys({ slot: 1, keys: "madbench <bench.yaml> --re
 
 **If `mcp__plugin_terminal_mux__open-pane` is not available to you, the real run is BLOCKED.
 Never fall back to `Bash` for it.** The pane tools come from the `terminal@magus` plugin,
-which this plugin declares as a dependency; listing a tool name in an agent's allowlist does
-not install the server that provides it. A `Bash` call has stderr that is not a terminal,
+which this plugin declares as a dependency; this agent inherits the pane tools only when
+that plugin's server is installed and running in the session. A `Bash` call has stderr that is not a terminal,
 which **implies `--plain`** — so falling back does not degrade the run, it silently produces
 the exact CI-shaped, colourless, unwatchable run the visible-run rule forbids, and reports it
 as a success. Return instead:

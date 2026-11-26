@@ -65,8 +65,13 @@ command is there): take `transcriptPath` from `get_diagnostics(<the writer's
 session_id>)` and list its Read calls. Every Read must be inside the sandbox, except the
 first Read only, which may be exactly one `claudish-mux-*/launch-*/turn-<n>.md` (its own
 prompt). A second `launch-*` path, or any other path outside the sandbox, is a blindness
-breach: record it and mark the tests "suspect". The internal `Agent` writer has no
-transcript path; keep the `Files Read` check for it.
+breach: record it and mark the tests "suspect". Also list its other tool calls with
+`/dev:qa` Phase 2's second jq command: any call that is not Read, Grep, Glob, Bash,
+Write or Edit, or one of the tools that read nothing it also allows (an MCP tool,
+`Agent`, `Skill`), is a blindness breach too, because the writer inherits its session's
+MCP tools and those read outside the sandbox unseen. The internal `Agent` writer has no
+transcript path; keep the `Files Read` check for it, and record
+`MCP blindness: unverified (internal writer)`.
 
 Negative control (mandatory): mutate one expected value in one test, run that file,
 paste the failure into `${SESSION_PATH}/tests/negative-control.md`, restore the test.

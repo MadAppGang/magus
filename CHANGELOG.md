@@ -4,6 +4,82 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [dev 9.9.0] - 2026-11-26
+
+### Changed
+
+- **Every dev agent gets every tool of its session, MCP tools included.** The 12 agents
+  declare no `tools:` list any more. Claude Code gave an agent with a list only those tools,
+  so a connected MCP server never reached it: `dev:developer` saw Read, Write, Edit, Bash
+  and Skill and nothing else. Read-only agents such as `dev:reviewer` and `dev:debugger`
+  stay read-only by their instructions.
+- `/dev:qa` and the `/dev:dev` testing phase count any tool call by the blind test writer
+  other than Read, Grep, Glob, Bash, Write or Edit (an MCP search, a subagent, a skill) as
+  a blindness breach, and mark its tests suspect. The writer now inherits MCP tools, and
+  those read outside its sandbox where a list of Read calls cannot see them.
+- The plugin-authoring skill tells authors to leave `tools:` out of an agent and use
+  `disallowedTools` to remove a specific tool.
+
+---
+
+## [code-search 8.9.0] - 2026-11-26
+
+### Changed
+
+- **The `analyze` agent gets every tool of its session, MCP tools included.** It declares
+  no `tools:` list, so an MCP server the session has connected is reachable from it. It
+  still never edits files, by its instructions.
+
+---
+
+## [designer 0.14.0] - 2026-11-26
+
+### Changed
+
+- **`designer:ui` and `designer:review` get every tool of their session, MCP tools
+  included.** Neither declares a `tools:` list any more. `designer:review` still captures
+  nothing and returns BLOCKED on a URL source.
+
+---
+
+## [madbench 0.13.0] - 2026-11-26
+
+### Changed
+
+- **The `bench` agent gets every tool of its session, MCP tools included.** It declares no
+  `tools:` list; it reaches the terminal pane tools whenever the terminal plugin's server
+  runs in the session.
+
+---
+
+## [multimodel 6.4.0] - 2026-11-26
+
+### Changed
+
+- **The `deep-analyst` agent gets every tool of its session, MCP tools included.** It
+  declares no `tools:` list, so every connected MCP server is reachable from it, not only
+  the three claudish tools it listed before.
+
+---
+
+## [terminal 5.7.0] - 2026-11-26
+
+### Changed
+
+- **The `tui-navigator` agent gets every tool of its session, MCP tools included.** It
+  declares no `tools:` list any more; before, it had the terminal pane tools and Bash only.
+
+---
+
+## [browser-use 2.2.1] - 2026-11-26
+
+### Changed
+
+- The `core-api` skill says an agent reaches the browser tools by inheriting them from its
+  session, not by listing them in a `tools:` line.
+
+---
+
 ## [Marketplace 14.0.0] - 2026-11-26
 
 ### Removed

@@ -8,7 +8,6 @@ description: |
   named as REFERENCE_SOURCE and IMPL_SOURCE; give only IMPL_SOURCE for a single-screen
   usability and WCAG audit. A URL returns BLOCKED — this agent captures nothing.
   Use when validating that a built screen matches its design, or auditing one screenshot.
-tools: Read, Write, Bash, Glob, Grep, mcp__plugin_claudish_claudish__list_models, mcp__plugin_claudish_claudish__search_models, mcp__plugin_claudish_claudish__team
 skills:
   - designer:ui-analyse
   - designer:review-services
@@ -314,7 +313,7 @@ skills:
   <error_handling>
     <scenario name="A source is a Figma or page URL">
       Stop before Phase 2. Verdict BLOCKED, naming the export or screenshot the caller
-      must produce. No configuration changes this — the tools are not in `tools:`.
+      must produce. No configuration changes this: this agent captures nothing, even when the session has browser tools.
     </scenario>
     <scenario name="Judge failed, timed out, or claudish absent">
       Do NOT stop. Fall back to a local read, label the header, record the reason.

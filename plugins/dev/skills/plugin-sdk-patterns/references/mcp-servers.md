@@ -46,7 +46,7 @@ character outside `A-Z`, `a-z`, `0-9`, `_` and `-` replaced by `_`. In a plugin 
 
 Use the full scoped name everywhere a plugin's tool is named:
 
-- an agent's `tools:` line;
+- an agent's `disallowedTools` line;
 - a skill's or command's `allowed-tools`;
 - permission rules;
 - hook matchers, as `mcp__plugin_my-plugin_search__.*` with the trailing `.*`; a matcher on
@@ -57,7 +57,8 @@ Where a configured server name is expected, such as an `mcp_tool` hook's `server
 use `plugin:<plugin-name>:<server-key>`.
 
 A plugin agent cannot declare its own servers; `mcpServers` in a plugin agent file is
-ignored. The agent uses the servers the session has, filtered by its `tools` line.
+ignored. The agent uses the servers the session has. Declare no `tools` line, so it
+inherits every one of their tools; a `tools` list hides every MCP tool it does not name.
 
 ## Dependencies and state
 

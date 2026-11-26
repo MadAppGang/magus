@@ -16,10 +16,11 @@ Paths in this file are relative to the dev plugin root: the directory that holds
 
 ## Who can run this
 
-Browser tools live in the main session. No dev agent has them — every agent in `agents/`
-declares a `tools:` list of file and shell tools only. An agent that reads this file
-without browser tools reports the browser check as not performed and names the
-observation that would settle it. It never describes a page it did not see.
+Browser tools come from MCP servers connected to the session. No agent in `agents/`
+declares a `tools:` line, so each inherits its session's tools, the browser tools included
+when the session has them. An agent that reads this file and finds no browser tools in its
+tool list reports the browser check as not performed and names the observation that would
+settle it. It never describes a page it did not see.
 
 When a subagent needs visual evidence, the main session supplies it as a file path;
 `dev:frontend-developer` reads images with Read. Producing that file is not automatic —
