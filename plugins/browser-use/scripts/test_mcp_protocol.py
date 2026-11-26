@@ -93,7 +93,7 @@ def _tool(properties=(), required=()):
 # property names and required list. tools/list must match this exactly, so a
 # tool that disappears, appears or changes its inputs fails here by name.
 TOOL_CONTRACT = {
-    "browser_navigate": _tool(("url", "new_tab"), ("url",)),
+    "browser_navigate": _tool(("url", "new_tab", "visible"), ("url",)),
     "browser_click": _tool(("index", "coordinate_x", "coordinate_y", "new_tab")),
     "browser_type": _tool(("index", "text"), ("index", "text")),
     "browser_get_state": _tool(("include_screenshot",)),

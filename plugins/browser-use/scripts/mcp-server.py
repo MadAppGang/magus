@@ -490,7 +490,7 @@ def _downloads_dir() -> Path:
     return Path.home() / ".config" / "browseruse" / "downloads"
 
 
-def _local_browser_options() -> dict[str, Any]:
+def _local_browser_options(visible: bool | None = None) -> dict[str, Any]:
     """
     Keyword arguments for a local browser_use.Browser: Playwright's Chromium.
 
@@ -499,20 +499,30 @@ def _local_browser_options() -> dict[str, Any]:
     it unset is how the real Chrome gets hijacked. headless is always set too:
     1.0 does not read BROWSER_USE_HEADLESS. No user_data_dir: 1.0 then gives
     each Browser its own temp profile and removes it on stop.
+
+    The browser is headless unless BROWSER_USE_HEADLESS is "false", "0" or
+    "no" (any case, surrounding whitespace ignored). A headless browser has no
+    window, so it never takes focus from the user's own app; any other value,
+    or none, keeps it that way. `visible`, when not None, overrides the
+    environment: True gives a window, False none.
     """
+    if visible is None:
+        shows_window = os.environ.get("BROWSER_USE_HEADLESS", "").strip().lower() in ("false", "0", "no")
+    else:
+        shows_window = visible
     return {
         "kind": "chromium",
         "executable_path": _resolve_chromium_binary(),
-        "headless": _env_flag("BROWSER_USE_HEADLESS"),
+        "headless": not shows_window,
     }
 
 
-def _browser_options() -> dict[str, Any]:
+def _browser_options(visible: bool | None = None) -> dict[str, Any]:
     """
     Keyword arguments for the browser_use.Browser a primary session starts.
 
     BROWSER_USE_CLOUD=true makes it a Browser Use cloud browser, which takes no
-    local options at all.
+    local options at all, so `visible` does not apply to it.
     """
     if _env_flag("BROWSER_USE_CLOUD"):
         if not os.environ.get("BROWSER_USE_API_KEY"):
@@ -521,12 +531,44 @@ def _browser_options() -> dict[str, Any]:
                 "Get a key at https://cloud.browser-use.com and export BROWSER_USE_API_KEY."
             )
         return {"use_cloud": True}
-    return _local_browser_options()
+    return _local_browser_options(visible)
 
 
 # ---------------------------------------------------------------------------
 # Tool definitions — the public contract
 # ---------------------------------------------------------------------------
+
+# Inclusive bounds of the integer arguments that repeat work: every press_key
+# count is a key event, and every agent step is a billed model call.
+_PRESS_COUNT_RANGE = (1, 100)
+_MAX_STEPS_RANGE = (1, 200)
+
+
+def _bounded_int(args: dict[str, Any], name: str, default: int, bounds: tuple[int, int]) -> int:
+    """
+    The integer argument `name`, or `default` when it is absent or null.
+    Raises _ToolError for anything else that is not an integer within bounds;
+    a bool is refused, though Python counts it as an int.
+    """
+    value = args.get(name)
+    if value is None:
+        return default
+    low, high = bounds
+    if isinstance(value, bool) or not isinstance(value, int) or not low <= value <= high:
+        raise _ToolError(f"Error: {name} must be an integer from {low} to {high}, got {value!r}.")
+    return value
+
+
+def _visible_arg(args: dict[str, Any]) -> bool | None:
+    """
+    browser_navigate's `visible`: True, False, or None when absent or null.
+    Raises _ToolError for anything else, before any browser starts.
+    """
+    value = args.get("visible")
+    if value is not None and not isinstance(value, bool):
+        raise _ToolError(f"Error: visible must be true or false, got {value!r}.")
+    return value
+
 
 _READ_ONLY = types.ToolAnnotations(read_only_hint=True)
 _EMPTY_SCHEMA: dict[str, Any] = {"type": "object", "properties": {}}
@@ -538,12 +580,27 @@ _INDEX_DESCRIPTION = (
 _PAGE_TOOLS: list[types.Tool] = [
     types.Tool(
         name="browser_navigate",
-        description="Navigate to a URL in the browser",
+        description=(
+            "Navigate to a URL in the browser. Starts the browser when none is running: "
+            "headless unless visible is true."
+        ),
         input_schema={
             "type": "object",
             "properties": {
                 "url": {"type": "string", "description": "The URL to navigate to"},
                 "new_tab": {"type": "boolean", "description": "Whether to open in a new tab", "default": False},
+                "visible": {
+                    "type": "boolean",
+                    "description": (
+                        "Set true only when the user wants to watch or interact with the browser "
+                        "(log in by hand, solve a captcha); otherwise leave it out and the browser "
+                        "runs headless. Applies when this call starts the browser. A visible browser "
+                        "comes to the front once when it starts; tool calls never raise it after "
+                        "that, and the user can switch to it at any time. If the running browser is "
+                        "in the other mode, the call returns an error and changes nothing: close it "
+                        "with browser_close_session, then navigate again. Ignored for a cloud browser."
+                    ),
+                },
             },
             "required": ["url"],
         },
@@ -602,7 +659,12 @@ _PAGE_TOOLS: list[types.Tool] = [
         name="browser_get_state",
         description=(
             "Get the current state of the page including all interactive elements. Each "
-            "element's index is a Chrome backendNodeId; pass it to browser_click or browser_type."
+            "element's index is a Chrome backendNodeId; pass it to browser_click or browser_type. "
+            "Controls inside cross-site iframes are listed separately in frame_elements, with "
+            "no index. Click only an entry that has x/y, with browser_click "
+            "coordinate_x/coordinate_y. An entry with visible false has no point: scroll the "
+            "page (browser_scroll) and call browser_get_state again. frame_elements_truncated "
+            "true means the list was cut short."
         ),
         input_schema={
             "type": "object",
@@ -737,8 +799,10 @@ _PAGE_TOOLS: list[types.Tool] = [
                 },
                 "max_steps": {
                     "type": "integer",
-                    "description": "Maximum number of steps an agent can take.",
+                    "description": "Maximum number of steps an agent can take, from 1 to 200.",
                     "default": 100,
+                    "minimum": _MAX_STEPS_RANGE[0],
+                    "maximum": _MAX_STEPS_RANGE[1],
                 },
                 "model": {
                     "type": "string",
@@ -921,8 +985,10 @@ _CUSTOM_TOOLS: list[types.Tool] = [
                 },
                 "count": {
                     "type": "integer",
-                    "description": "How many times to press the key. Defaults to 1.",
+                    "description": "How many times to press the key, from 1 to 100. Defaults to 1.",
                     "default": 1,
+                    "minimum": _PRESS_COUNT_RANGE[0],
+                    "maximum": _PRESS_COUNT_RANGE[1],
                 },
             },
             "required": ["key"],
@@ -1098,6 +1164,9 @@ _LOAD_TIMEOUT_SECONDS = 15.0
 _LOAD_POLL_SECONDS = 0.3
 _SCROLL_PIXELS = 500
 _ELEMENT_TEXT_CHARS = 100
+# Per get_state: cross-site frames attached and read, and frame elements listed.
+_FRAME_READ_CAP = 10
+_FRAME_ELEMENT_CAP = 100
 _EXTRACT_PAGE_CHARS = 100_000
 _SESSION_IDLE_SECONDS = 600
 _MAINTENANCE_INTERVAL_SECONDS = 120
@@ -1163,6 +1232,9 @@ class _Session:
 
     browser: Any
     kind: str  # "local", "cloud" or "import"
+    # The mode the browser was started in: True headless, False with a window,
+    # None for a cloud browser, which has no window on this machine.
+    headless: bool | None = None
     created_at: float = field(default_factory=time.time)
     last_activity: float = field(default_factory=time.time)
     url: str | None = None
@@ -1279,7 +1351,8 @@ class MagusBrowserServer:
                 return await handler(arguments)
             async with self._lock:
                 if name in _AUTOSTART_TOOLS:
-                    await self._ensure_primary()
+                    visible = _visible_arg(arguments) if name == "browser_navigate" else None
+                    await self._ensure_primary(visible)
                 return await handler(arguments)
         except _ToolError as exc:
             return str(exc)
@@ -1289,8 +1362,15 @@ class MagusBrowserServer:
     # ------------------------------------------------------------------
 
     def _register(self, browser: Any, kind: str, url: str | None = None) -> str:
+        """
+        Add a started browser as a session. Its mode is read once, here, from
+        the headless the Browser was built with; a cloud browser has none.
+        """
         key = uuid.uuid4().hex
-        self._sessions[key] = _Session(browser=browser, kind=kind, url=url)
+        headless = None if kind == "cloud" else getattr(browser, "headless", None)
+        self._sessions[key] = _Session(
+            browser=browser, kind=kind, url=url, headless=None if headless is None else bool(headless)
+        )
         return key
 
     def _primary_session(self) -> _Session | None:
@@ -1309,13 +1389,31 @@ class MagusBrowserServer:
         session.last_activity = time.time()
         return session
 
-    async def _ensure_primary(self) -> _Session:
-        """The primary session, starting a browser for it when there is none."""
+    async def _ensure_primary(self, visible: bool | None = None) -> _Session:
+        """
+        The primary session, starting a browser for it when there is none.
+
+        `visible` (True, False, or None for the environment's default) sets the
+        mode of a local browser started here. A running local primary in the
+        other mode is never restarted, since that would lose its logins and
+        tabs: _ToolError names how to close it instead. A cloud browser has no
+        mode, so `visible` does not apply to it.
+        """
         session = self._primary_session()
         if session is not None:
+            if visible is not None and session.headless is visible:
+                running = "headless" if session.headless else "visible (with a window)"
+                wanted = "visible" if visible else "headless"
+                raise _ToolError(
+                    f"Error: the browser is already running {running}; it cannot become "
+                    f"{wanted} without a restart, which would lose its logins and tabs. "
+                    f"Close it with browser_close_session (session_id \"{self._primary}\") or "
+                    f"browser_close_all, then call browser_navigate again with visible "
+                    f"{'true' if visible else 'false'}. Or leave visible out to keep using it."
+                )
             session.last_activity = time.time()
             return session
-        options = _browser_options()
+        options = _browser_options(visible=visible)
         browser = browser_use.Browser(**options)
         await browser.start()
         kind = "cloud" if options.get("use_cloud") else "local"
@@ -1483,13 +1581,25 @@ class MagusBrowserServer:
     async def _current_target(self, session: _Session) -> dict:
         return await self._daemon_meta(session.name, "current_tab")
 
+    @staticmethod
+    def _activates_tabs(session: _Session) -> bool:
+        """Whether tab activation is sent to this session's browser: cloud or headless only."""
+        return session.kind == "cloud" or bool(session.headless)
+
     async def _activate_current_tab(self) -> None:
         """
-        Bring the attached tab to the front. A browser-harness daemon works in a
-        background tab, where Chrome may answer a capture or key event late or
-        not at all.
+        Bring the attached tab to the front, on a cloud or headless browser only.
+
+        A hidden tab of a headless or cloud browser may not answer a capture
+        until it is active, and there is no window on the user's screen to
+        raise. On a headed browser the attached tab answers capture and key
+        events without activation (measured on macOS, also after switch_tab),
+        and activation there raises the window over the user's app and takes
+        focus, so it is never sent there.
         """
         session = self._live()
+        if not self._activates_tabs(session):
+            return
         target = (await self._current_target(session)).get("targetId")
         if target:
             await self._daemon(session.name, "Target.activateTarget", None, targetId=target)
@@ -1746,6 +1856,7 @@ class MagusBrowserServer:
     async def _handle_get_state(self, args: dict[str, Any]) -> list[types.TextContent | types.ImageContent]:
         session = self._live()
         info = await self._evaluate_value(_PAGE_INFO_JS) or {}
+        frame_elements, frames_truncated = await self._frame_elements(session, (info.get("w"), info.get("h")))
         result: dict[str, Any] = {
             "url": info.get("url"),
             "title": info.get("title"),
@@ -1753,10 +1864,13 @@ class MagusBrowserServer:
                 {"url": t.get("url"), "title": t.get("title")} for t in await self._page_targets(session)
             ],
             "interactive_elements": await self._interactive_elements(),
+            "frame_elements": frame_elements,
             "viewport": {"width": info.get("w"), "height": info.get("h")},
             "page": {"width": info.get("pw"), "height": info.get("ph")},
             "scroll": {"x": info.get("sx"), "y": info.get("sy")},
         }
+        if frames_truncated:
+            result["frame_elements_truncated"] = True
         if info.get("url"):
             session.url = info["url"]
         image: str | None = None
@@ -1777,8 +1891,9 @@ class MagusBrowserServer:
         frames), in frame-tree order. This is what AxHelpers reads for its own
         state, so every index listed here is one its click and type can reach.
 
-        A cross-site iframe runs out of process: its tree is not readable
-        through this tab's session, the call fails, and that frame is skipped.
+        A cross-site iframe runs out of process, as a target of its own: it is
+        not in this tab's frame tree at all, so it is not read here.
+        _frame_elements reads it through a session of its own.
         """
         nodes = list((await self._page("Accessibility.getFullAXTree")).get("nodes") or [])
         frame_ids: list[str] = []
@@ -1834,6 +1949,158 @@ class MagusBrowserServer:
                 element["href"] = attributes["href"]
             elements.append(element)
         return elements
+
+    async def _frame_elements(
+        self, session: _Session, viewport: tuple[Any, Any]
+    ) -> tuple[list[dict[str, Any]], bool]:
+        """
+        The controls of the cross-site (out-of-process) iframes in the attached
+        tab, and whether a cap cut the list short.
+
+        A control whose content-box centre, in main-viewport CSS pixels (scaled
+        by owner box size over the frame's own viewport size) and rounded,
+        lies inside its frame's content box and inside `viewport` (width, height)
+        carries that point as x and y, which browser_click takes as
+        coordinate_x and coordinate_y. Any other control carries
+        "visible": false and no point: a click there would land on the host
+        page, or off screen.
+
+        Such a frame is an "iframe" target of its own. It is attached with a
+        session of its own, read there, and detached; the daemon stays on the
+        tab. Its backendNodeIds name nodes in another process, so no element
+        carries an index. A frame that cannot be attached or read is skipped,
+        and so is one whose owner content box has no width or height, before
+        it is attached. At most _FRAME_READ_CAP frames are read and at most
+        _FRAME_ELEMENT_CAP elements listed. Frames nested inside another
+        cross-site frame are not listed.
+        """
+        tab_id = (await self._current_target(session)).get("targetId")
+        frame_ids: set[str] = {tab_id} if tab_id else set()
+
+        def walk(tree: dict) -> None:
+            frame_id = (tree.get("frame") or {}).get("id")
+            if frame_id:
+                frame_ids.add(frame_id)
+            for child in tree.get("childFrames") or []:
+                walk(child)
+
+        try:
+            walk((await self._page("Page.getFrameTree")).get("frameTree") or {})
+        except RuntimeError:
+            pass
+        infos = (await self._daemon(session.name, "Target.getTargets")).get("targetInfos") or []
+        elements: list[dict[str, Any]] = []
+        frames_read = 0
+        for info in infos:
+            if info.get("type") != "iframe" or info.get("parentFrameId") not in frame_ids:
+                continue
+            if frames_read == _FRAME_READ_CAP or len(elements) == _FRAME_ELEMENT_CAP:
+                return elements, True
+            try:
+                owner = await self._frame_owner_box(info["targetId"])
+                if owner is None:
+                    continue
+                frames_read += 1
+                listed, cut = await self._read_frame(
+                    session, info, owner, viewport, _FRAME_ELEMENT_CAP - len(elements)
+                )
+            except (RuntimeError, KeyError, IndexError, TypeError):
+                continue
+            elements.extend(listed)
+            if cut:
+                return elements, True
+        return elements, False
+
+    async def _frame_owner_box(self, target_id: str) -> tuple[float, float, float, float] | None:
+        """
+        The content box (left, top, right, bottom) of the element that owns a
+        frame, in main-viewport CSS pixels; None when it has no width or height.
+        """
+        owner = await self._page("DOM.getFrameOwner", frameId=target_id)
+        quad = (await self._page("DOM.getBoxModel", backendNodeId=owner["backendNodeId"]))["model"]["content"]
+        left, right = min(quad[0::2]), max(quad[0::2])
+        top, bottom = min(quad[1::2]), max(quad[1::2])
+        if right <= left or bottom <= top:
+            return None
+        return left, top, right, bottom
+
+    async def _read_frame(
+        self,
+        session: _Session,
+        info: dict,
+        owner: tuple[float, float, float, float],
+        viewport: tuple[Any, Any],
+        room: int,
+    ) -> tuple[list[dict[str, Any]], bool]:
+        """
+        One out-of-process frame's controls, at most `room` of them, and
+        whether more were left out. Raises when it cannot be read.
+        """
+        # The frame's own viewport starts at its owner element's content box.
+        left, top, right, bottom = owner
+        width, height = viewport
+        on_screen = isinstance(width, (int, float)) and isinstance(height, (int, float))
+        attached = await self._daemon(
+            session.name, "Target.attachToTarget", None, targetId=info["targetId"], flatten=True
+        )
+        frame_session = attached["sessionId"]
+        try:
+            # Frame-local CSS pixels are drawn into the owner's content box, so
+            # a CSS-scaled frame maps them through box size / own viewport size.
+            # Without a usable viewport size no point can be placed.
+            try:
+                metrics = await self._daemon(session.name, "Page.getLayoutMetrics", frame_session)
+            except RuntimeError:
+                metrics = {}
+            layout = metrics.get("cssLayoutViewport") or metrics.get("layoutViewport") or {}
+            frame_width, frame_height = layout.get("clientWidth"), layout.get("clientHeight")
+            scaled = (
+                isinstance(frame_width, (int, float)) and isinstance(frame_height, (int, float))
+                and frame_width > 0 and frame_height > 0
+            )
+            scale_x = (right - left) / frame_width if scaled else 0.0
+            scale_y = (bottom - top) / frame_height if scaled else 0.0
+            tree = await self._daemon(session.name, "Accessibility.getFullAXTree", frame_session)
+            elements: list[dict[str, Any]] = []
+            seen: set[int] = set()
+            for node in tree.get("nodes") or []:
+                backend_id = node.get("backendDOMNodeId")
+                if node.get("ignored") or backend_id is None or backend_id in seen:
+                    continue
+                role = _ax_value(node.get("role"))
+                if role not in CONTROLS:
+                    continue
+                if len(elements) == room:
+                    return elements, True
+                seen.add(backend_id)
+                try:
+                    model = (await self._daemon(
+                        session.name, "DOM.getBoxModel", frame_session, backendNodeId=backend_id
+                    ))["model"]
+                except RuntimeError:
+                    continue  # Not rendered, or gone since the tree was read.
+                quad = model["content"]
+                x = round(left + scale_x * sum(quad[0::2]) / 4)
+                y = round(top + scale_y * sum(quad[1::2]) / 4)
+                element: dict[str, Any] = {
+                    "frame_url": info.get("url"),
+                    "role": role,
+                    "text": str(_ax_value(node.get("name")) or "")[:_ELEMENT_TEXT_CHARS],
+                }
+                if (
+                    on_screen and scaled
+                    and left <= x < right and top <= y < bottom and 0 <= x < width and 0 <= y < height
+                ):
+                    element["x"], element["y"] = x, y
+                else:
+                    element["visible"] = False
+                elements.append(element)
+            return elements, False
+        finally:
+            try:
+                await self._daemon(session.name, "Target.detachFromTarget", None, sessionId=frame_session)
+            except RuntimeError:
+                pass
 
     async def _handle_extract_content(self, args: dict[str, Any]) -> str:
         query = args.get("query")
@@ -1956,7 +2223,8 @@ class MagusBrowserServer:
     async def _handle_switch_tab(self, args: dict[str, Any]) -> str:
         session = self._live()
         target = await self._resolve_tab(session, args.get("tab_id"))
-        await self._daemon(session.name, "Target.activateTarget", None, targetId=target["targetId"])
+        if self._activates_tabs(session):
+            await self._daemon(session.name, "Target.activateTarget", None, targetId=target["targetId"])
         await self._attach(session, target["targetId"])
         session.url = target.get("url")
         return f"Switched to tab {args.get('tab_id')}: {target.get('url')}"
@@ -1997,7 +2265,7 @@ class MagusBrowserServer:
         task = args.get("task")
         if not isinstance(task, str) or not task.strip():
             return "Error: task is required."
-        max_steps = int(args.get("max_steps") or 100)
+        max_steps = _bounded_int(args, "max_steps", 100, _MAX_STEPS_RANGE)
         choice = self._agent_llm_choice()
         if args.get("model"):
             choice = replace(choice, model=str(args["model"]))
@@ -2338,7 +2606,7 @@ class MagusBrowserServer:
         key = args.get("key", "")
         if not isinstance(key, str) or not key:
             return "Error: key is required."
-        count = max(1, int(args.get("count", 1) or 1))
+        count = _bounded_int(args, "count", 1, _PRESS_COUNT_RANGE)
         self._live()
         try:
             await self._activate_current_tab()

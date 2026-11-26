@@ -69,6 +69,45 @@ uninstall it: `claude plugin uninstall lsp@magus --scope <scope>`. Until then, `
 
 ---
 
+## [browser-use 2.2.0] - 2026-11-26
+
+### Fixed
+
+- **A browser tool call no longer brings the browser window to the front or takes focus from
+  the app you are working in.** The server raised the attached tab before every screenshot,
+  `get_state` screenshot, key press and focus call, and on every `switch_tab`. On macOS that
+  made Chromium the frontmost app. A visible local browser is now never raised; a headless
+  or cloud browser, which has no window on your screen, still is.
+- **`browser_press_key` `count` is 1 to 100 and `retry_with_browser_use_agent` `max_steps`
+  is 1 to 200.** A value outside the range, a bool or a non-integer is refused with an
+  error before any key is pressed or any agent starts. Both were unbounded before.
+
+### Changed
+
+- **The local browser is headless by default, and the agent chooses a visible one per run
+  with `browser_navigate` `visible`.** A headless browser opens no window. `visible: true`
+  on the navigate that starts the browser opens it in a window, for when you want to watch
+  it, log in by hand or solve a captcha; `visible: false` keeps it headless. A running
+  browser keeps its mode: asking for the other one returns an error naming the session to
+  close, and never restarts it with its logins and tabs. Left out, `BROWSER_USE_HEADLESS`
+  sets the default (`false`, `0` or `no` gives a window). A visible browser comes to the
+  front once, when it starts, and the tools never raise it after that. The README's "The
+  browser window" section has the details.
+
+### Added
+
+- **`browser_get_state` lists the controls inside cross-site iframes** in a new
+  `frame_elements` list, each with its frame's URL, role, text and the viewport point to
+  click with `browser_click` `coordinate_x`/`coordinate_y`. A control outside its frame's
+  visible area or the viewport is marked `visible: false` with no point. At most 10 frames
+  and 100 controls are read; `frame_elements_truncated` says when the list was cut. Frames
+  nested inside another cross-site frame are not listed. A point follows a CSS-scaled frame
+  and is rounded before it is checked against the frame and the viewport, so a listed point
+  always lands inside both; a frame whose size cannot be read lists its controls as
+  `visible: false`.
+
+---
+
 ## [magus 7.17.2] - 2026-11-26
 
 ### Fixed

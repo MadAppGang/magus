@@ -32,7 +32,7 @@ Patterns for combining Browser Use MCP tools with claude-in-chrome to achieve fu
 | Autonomous agent mode | `retry_with_browser_use_agent` | Not available |
 | Multi-tab session | `browser_navigate(new_tab=True)` | Tab enumeration only |
 | Export/import session cookies | `browser_export/import_session` | Not available |
-| Work on headless browser | Yes (Chromium, with `BROWSER_USE_HEADLESS=true`) | No (requires headed Chrome) |
+| Work on headless browser | Yes (Chromium, headless by default; `browser_navigate(visible=True)` shows a window when the user wants to watch or log in by hand) | No (requires headed Chrome) |
 | Work on developer's Chrome | No | Yes (attaches to running Chrome) |
 
 ---

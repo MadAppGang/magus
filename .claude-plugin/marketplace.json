@@ -715,7 +715,7 @@
       "name": "browser-use",
       "source": "./plugins/browser-use",
       "description": "Full-platform browser automation through its own MCP server: navigation, clicks and typing, live-page JS eval, keyboard and focus, file screenshots, session export and a configurable agent LLM, on local or cloud browsers. Runs Playwright's own Chromium, never your real Chrome. Ships 6 skills.",
-      "version": "2.1.0",
+      "version": "2.2.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -737,6 +737,16 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "2.2.0",
+          "date": "2026-11-26",
+          "kinds": [
+            "Fixed",
+            "Changed",
+            "Added"
+          ],
+          "summary": "A browser tool call no longer brings the browser window to the front or takes focus from the\u2026"
+        },
         {
           "version": "2.1.0",
           "date": "2026-11-12",
@@ -767,14 +777,6 @@
           "version": "1.10.0",
           "date": "2026-10-20",
           "summary": "Dependencies declared in requires schema 2"
-        },
-        {
-          "version": "1.9.1",
-          "date": "2026-10-07",
-          "kinds": [
-            "Fixed"
-          ],
-          "summary": "Installing uv no longer edits your shell rc file behind magus's back"
         }
       ]
     },

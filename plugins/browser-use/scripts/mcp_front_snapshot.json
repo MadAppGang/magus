@@ -21,7 +21,7 @@
     "toolsList": {
       "tools": [
         {
-          "description": "Navigate to a URL in the browser",
+          "description": "Navigate to a URL in the browser. Starts the browser when none is running: headless unless visible is true.",
           "inputSchema": {
             "properties": {
               "new_tab": {
@@ -32,6 +32,10 @@
               "url": {
                 "description": "The URL to navigate to",
                 "type": "string"
+              },
+              "visible": {
+                "description": "Set true only when the user wants to watch or interact with the browser (log in by hand, solve a captcha); otherwise leave it out and the browser runs headless. Applies when this call starts the browser. A visible browser comes to the front once when it starts; tool calls never raise it after that, and the user can switch to it at any time. If the running browser is in the other mode, the call returns an error and changes nothing: close it with browser_close_session, then navigate again. Ignored for a cloud browser.",
+                "type": "boolean"
               }
             },
             "required": [
@@ -92,7 +96,7 @@
           "annotations": {
             "readOnlyHint": true
           },
-          "description": "Get the current state of the page including all interactive elements. Each element's index is a Chrome backendNodeId; pass it to browser_click or browser_type.",
+          "description": "Get the current state of the page including all interactive elements. Each element's index is a Chrome backendNodeId; pass it to browser_click or browser_type. Controls inside cross-site iframes are listed separately in frame_elements, with no index. Click only an entry that has x/y, with browser_click coordinate_x/coordinate_y. An entry with visible false has no point: scroll the page (browser_scroll) and call browser_get_state again. frame_elements_truncated true means the list was cut short.",
           "inputSchema": {
             "properties": {
               "include_screenshot": {
@@ -241,7 +245,9 @@
               },
               "max_steps": {
                 "default": 100,
-                "description": "Maximum number of steps an agent can take.",
+                "description": "Maximum number of steps an agent can take, from 1 to 200.",
+                "maximum": 200,
+                "minimum": 1,
                 "type": "integer"
               },
               "model": {
@@ -392,7 +398,9 @@
             "properties": {
               "count": {
                 "default": 1,
-                "description": "How many times to press the key. Defaults to 1.",
+                "description": "How many times to press the key, from 1 to 100. Defaults to 1.",
+                "maximum": 100,
+                "minimum": 1,
                 "type": "integer"
               },
               "key": {
@@ -575,7 +583,7 @@
       "resultType": "complete",
       "tools": [
         {
-          "description": "Navigate to a URL in the browser",
+          "description": "Navigate to a URL in the browser. Starts the browser when none is running: headless unless visible is true.",
           "inputSchema": {
             "properties": {
               "new_tab": {
@@ -586,6 +594,10 @@
               "url": {
                 "description": "The URL to navigate to",
                 "type": "string"
+              },
+              "visible": {
+                "description": "Set true only when the user wants to watch or interact with the browser (log in by hand, solve a captcha); otherwise leave it out and the browser runs headless. Applies when this call starts the browser. A visible browser comes to the front once when it starts; tool calls never raise it after that, and the user can switch to it at any time. If the running browser is in the other mode, the call returns an error and changes nothing: close it with browser_close_session, then navigate again. Ignored for a cloud browser.",
+                "type": "boolean"
               }
             },
             "required": [
@@ -646,7 +658,7 @@
           "annotations": {
             "readOnlyHint": true
           },
-          "description": "Get the current state of the page including all interactive elements. Each element's index is a Chrome backendNodeId; pass it to browser_click or browser_type.",
+          "description": "Get the current state of the page including all interactive elements. Each element's index is a Chrome backendNodeId; pass it to browser_click or browser_type. Controls inside cross-site iframes are listed separately in frame_elements, with no index. Click only an entry that has x/y, with browser_click coordinate_x/coordinate_y. An entry with visible false has no point: scroll the page (browser_scroll) and call browser_get_state again. frame_elements_truncated true means the list was cut short.",
           "inputSchema": {
             "properties": {
               "include_screenshot": {
@@ -795,7 +807,9 @@
               },
               "max_steps": {
                 "default": 100,
-                "description": "Maximum number of steps an agent can take.",
+                "description": "Maximum number of steps an agent can take, from 1 to 200.",
+                "maximum": 200,
+                "minimum": 1,
                 "type": "integer"
               },
               "model": {
@@ -946,7 +960,9 @@
             "properties": {
               "count": {
                 "default": 1,
-                "description": "How many times to press the key. Defaults to 1.",
+                "description": "How many times to press the key, from 1 to 100. Defaults to 1.",
+                "maximum": 100,
+                "minimum": 1,
                 "type": "integer"
               },
               "key": {

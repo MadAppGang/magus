@@ -124,6 +124,20 @@ Open a URL in the current browser. Starts a browser if none is running.
 |-----------|------|----------|-------------|
 | `url` | string | Yes | Full URL including scheme (`https://`, `http://`, `file://`, `data:`) |
 | `new_tab` | boolean | No | Open in a new tab (default: false) |
+| `visible` | boolean | No | Mode of the browser this call starts: `true` with a window, `false` headless. Left out, `BROWSER_USE_HEADLESS` decides (headless unless it says `false`, `0` or `no`). Ignored for a cloud browser |
+
+**When to pass `visible=true`**: only when the user wants to watch the browser or act in
+it themselves: they ask to see it, log in by hand, solve a captcha, or click through
+something. Otherwise leave it out and the browser runs headless. If it is unclear whether
+the user wants to watch, ask them before the first navigate. A visible browser comes to
+the front once when it starts; tool calls never raise it after that, and the user can
+switch to it at any time.
+
+`visible` only chooses the mode of a browser this call starts. A running browser keeps its
+mode: passing the other one returns `Error: the browser is already running …` naming its
+session id, and nothing changes. To switch, close it with `browser_close_session` (export
+the session first if its logins matter), then call `browser_navigate` again with `visible`
+set. Leaving `visible` out always navigates the running browser.
 
 **Returns**: text, `Navigated to: <url>` (or `Opened new tab with URL: <url>`) once
 the new page has loaded. It waits up to 15 s; a page still loading then gets
@@ -144,7 +158,7 @@ The current page: URL, title, tabs, indexed interactive elements, viewport, page
 | `include_screenshot` | boolean | No | Also return a screenshot (default: false) |
 
 **Returns**: JSON with `url`, `title`, `tabs` (`url` and `title` each; tab ids come
-from `browser_list_tabs`), `interactive_elements`, `viewport`, `page`, `scroll`, and
+from `browser_list_tabs`), `interactive_elements`, `frame_elements`, `viewport`, `page`, `scroll`, and
 `screenshot_dimensions` when a screenshot was asked for. Each element has `index`,
 `tag`, `text` (its accessible name, up to 100 characters), plus `placeholder` and
 `href` when it has them. Elements come in accessibility-tree order, and only
@@ -157,8 +171,21 @@ Controls inside iframes are listed too, after the main page's, frame by frame:
 same-origin, `srcdoc` and `about:blank` iframes. Their indexes work with
 `browser_click` and `browser_type` like any other. A **cross-site** iframe (another
 site, such as an embedded payment or login widget) runs in a separate browser
-process: its controls are not listed and have no index. Click them by coordinates
-from a screenshot, or open the iframe's URL with `browser_navigate`.
+process: its controls are not in `interactive_elements` and have no index. They are
+listed in `frame_elements` instead, each with `frame_url`, `role` and `text` (its
+accessible name). A control you can see has `x`, `y` too: the viewport point at its
+centre, inside both its iframe and the viewport. Click only an entry that has `x`/`y`,
+with `browser_click(coordinate_x=x, coordinate_y=y)`. An entry with `"visible": false`
+has no point, because a click there would hit the host page or land off screen: scroll
+the page (`browser_scroll`) to bring the iframe into view, then call `browser_get_state`
+again. Controls scrolled out of view inside the iframe itself cannot be scrolled into
+view from here.
+
+At most 10 cross-site iframes are read and 100 entries listed per call; when either
+limit cuts the list short, the JSON carries `"frame_elements_truncated": true`. An
+iframe with no width or height, one that cannot be read, and an iframe nested inside
+another cross-site iframe are left out. A page with no cross-site iframe has an empty
+`frame_elements`.
 
 ---
 
@@ -312,7 +339,7 @@ it, the tool returns an error naming the variable and starts no browser.
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `task` | string | Yes | The goal, step-by-step detail, relevant data, and what earlier attempts tried |
-| `max_steps` | integer | No | Step limit (default: 100) |
+| `max_steps` | integer | No | Step limit, 1 to 200 (default: 100). Anything else is an error, and no agent starts |
 | `use_vision` | boolean | No | `false` keeps screenshots from the agent's model (default: true) |
 | `allowed_domains` | array | No | Domains the agent's browser may open, e.g. `example.com`, `*.example.com`; omit (or pass `[]`) for no restriction |
 | `model` | string | No | Model name for the configured agent provider, replacing its model for this run (see `browser-use:agent-model`) |
@@ -427,7 +454,7 @@ Press a single key or keyboard shortcut in the live page (CDP
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `key` | string | Yes | Key/shortcut. Modifiers via `+`: `Meta+a` (Cmd+A), `Control+a`, `Shift+ArrowDown`. Named keys: `Enter`, `Escape`, `Tab`, `Backspace`, `Delete`, `Arrow{Up,Down,Left,Right}`, `Home`, `End`, `PageUp`, `PageDown`. |
-| `count` | integer | No | Times to press (default 1). |
+| `count` | integer | No | Times to press, 1 to 100 (default 1). Anything else is an error, and no key is pressed. |
 
 **Returns**: `{"pressed": "Enter", "count": 1}`
 

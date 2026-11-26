@@ -111,6 +111,10 @@ class _FakeDaemon:
     An answer is a dict, a callable taking the call's params, or an exception
     to raise. Runtime.evaluate answers "complete" unless a test says otherwise,
     which is what the server's document.readyState poll waits for.
+
+    `session_answers` is keyed by (CDP session id, method) and is consulted
+    before `answers`: it is how a test gives an out-of-process iframe's own
+    session a different answer from the attached tab's (session id None).
     """
 
     def __init__(self):
@@ -120,6 +124,7 @@ class _FakeDaemon:
             "Runtime.evaluate": {"result": {"value": "complete"}},
             "Target.attachToBrowserTarget": {"sessionId": "browser-target-session"},
         }
+        self.session_answers: dict = {}
         self.meta_answers: dict = {
             "current_tab": {"targetId": "TARGETAAAA", "url": "https://example.com/", "title": "Example"},
             "set_session": {"ok": True},
@@ -128,7 +133,7 @@ class _FakeDaemon:
     # Positional-only like the server's own _cdp: CDP params may be called `name`.
     def cdp(self, name, method, session_id=None, /, **params):
         self.calls.append((name, method, session_id, params))
-        answer = self.answers.get(method, {})
+        answer = self.session_answers.get((session_id, method), self.answers.get(method, {}))
         if callable(answer):
             answer = answer(params)
         if isinstance(answer, BaseException):
@@ -166,6 +171,9 @@ class _FakeBrowser:
 
     def __init__(self, **kwargs):
         self.kwargs = kwargs
+        # browser_use.Browser keeps the headless it was built with: None for a
+        # cloud browser, which has no window of its own.
+        self.headless = kwargs.get("headless")
         self.name = None
         self.started = False
         self.stopped = False
@@ -197,8 +205,8 @@ def _fake_browsers(options=None):
     _FakeBrowser.start_error = None
     local = options or {"kind": "chromium", "executable_path": "/fake/chromium", "headless": True}
     with patch.object(browser_use, "Browser", _FakeBrowser), \
-            patch.object(_mod, "_local_browser_options", lambda: dict(local)), \
-            patch.object(_mod, "_browser_options", lambda: dict(local)):
+            patch.object(_mod, "_local_browser_options", lambda visible=None: dict(local)), \
+            patch.object(_mod, "_browser_options", lambda visible=None: dict(local)):
         yield _FakeBrowser.created
     _FakeBrowser.start_error = None
 
@@ -229,7 +237,13 @@ class _ToolTestCase(unittest.IsolatedAsyncioTestCase):
     A server with one live primary session (daemon "budaemon01") on a fake
     daemon, and a fake AxHelpers. Tests call tools through _execute_tool, the
     same entry point the MCP call_tool handler uses.
+
+    The session is a local headless browser unless a subclass sets
+    `session_kind` and `browser_kwargs` (the kwargs its Browser was built with).
     """
+
+    session_kind = "local"
+    browser_kwargs: dict = {"headless": True}
 
     def setUp(self):
         super().setUp()
@@ -248,13 +262,25 @@ class _ToolTestCase(unittest.IsolatedAsyncioTestCase):
         self.enterContext(patch.object(_mod, "_make_ax_helpers", make_ax))
         self.enterContext(patch.object(_mod, "_import_harness_helpers", lambda: self.harness))
         self.server = _make_server()
-        self.browser = _FakeBrowser()
+        self.browser = _FakeBrowser(**self.browser_kwargs)
         self.browser.name = "budaemon01"
-        self.session_id = self.server._register(self.browser, "local", url="https://example.com/")
+        self.session_id = self.server._register(self.browser, self.session_kind, url="https://example.com/")
         self.server._primary = self.session_id
 
     async def call(self, name, **arguments):
         return await self.server._execute_tool(name, arguments)
+
+    async def call_text(self, name, **arguments) -> str:
+        """
+        The text a client reads back, through the MCP call_tool handler: a
+        handler that raises shows up as its "Error: ..." text, not a crash.
+        """
+        import mcp.types as mcp_types
+
+        result = await self.server._handle_call_tool(
+            None, mcp_types.CallToolRequestParams(name=name, arguments=arguments)
+        )
+        return result.content[0].text
 
 
 class TestHermeticEnvironment(unittest.TestCase):
@@ -329,6 +355,13 @@ class TestDaemonChannel(unittest.TestCase):
 # The MCP surface: tool list and call_tool error handling
 # ---------------------------------------------------------------------------
 
+# Integer arguments with a bound the server enforces: (tool, argument, minimum, maximum).
+_BOUNDED_ARGUMENTS = (
+    ("browser_press_key", "count", 1, 100),
+    ("retry_with_browser_use_agent", "max_steps", 1, 200),
+)
+
+
 class TestToolList(unittest.IsolatedAsyncioTestCase):
     """The full contract is frozen in test_mcp_protocol.py; this checks the shape."""
 
@@ -356,6 +389,42 @@ class TestToolList(unittest.IsolatedAsyncioTestCase):
                      "browser_list_tabs", "browser_list_sessions"):
             self.assertTrue(tools[name].annotations and tools[name].annotations.read_only_hint, name)
         self.assertIsNone(tools["browser_navigate"].annotations)
+
+    # REGRESSION: press_key count and the agent's max_steps advertised no
+    # bounds.
+
+    async def test_bounded_integers_advertise_their_range(self):
+        tools = {tool.name: tool for tool in (await _make_server()._handle_list_tools(None, None)).tools}
+        for tool, argument, low, high in _BOUNDED_ARGUMENTS:
+            with self.subTest(tool=tool, argument=argument):
+                schema = tools[tool].input_schema["properties"][argument]
+                self.assertEqual(schema.get("type"), "integer")
+                self.assertEqual((schema.get("minimum"), schema.get("maximum")), (low, high), schema)
+
+    def test_the_front_snapshot_advertises_the_same_ranges(self):
+        # The lazy front answers tools/list from this file without starting the
+        # server, so a range the server advertises must be in it too.
+        snapshot = json.loads((_SERVER_FILE.parent / "mcp_front_snapshot.json").read_text())
+        for era in ("legacy", "modern"):
+            tools = {tool["name"]: tool for tool in snapshot[era]["toolsList"]["tools"]}
+            for tool, argument, low, high in _BOUNDED_ARGUMENTS:
+                with self.subTest(era=era, tool=tool, argument=argument):
+                    schema = tools[tool]["inputSchema"]["properties"][argument]
+                    self.assertEqual(
+                        (schema.get("minimum"), schema.get("maximum")), (low, high),
+                        "regenerate with python3 plugins/browser-use/scripts/write_front_snapshot.py",
+                    )
+
+    async def test_the_front_snapshot_matches_the_live_schemas(self):
+        live = {tool.name: tool.input_schema for tool in (await _make_server()._handle_list_tools(None, None)).tools}
+        snapshot = json.loads((_SERVER_FILE.parent / "mcp_front_snapshot.json").read_text())
+        for era in ("legacy", "modern"):
+            for tool in snapshot[era]["toolsList"]["tools"]:
+                with self.subTest(era=era, tool=tool["name"]):
+                    self.assertEqual(
+                        tool["inputSchema"], live[tool["name"]],
+                        "regenerate with python3 plugins/browser-use/scripts/write_front_snapshot.py",
+                    )
 
 
 class TestCallToolErrors(_ToolTestCase):
@@ -427,7 +496,7 @@ class TestPrimarySessionStart(unittest.IsolatedAsyncioTestCase):
         self.assertTrue((Path.home() / ".config" / "browseruse" / "downloads").is_dir())
 
     async def test_cloud_start_sets_no_downloads(self):
-        with _fake_browsers(), patch.object(_mod, "_browser_options", lambda: {"use_cloud": True}):
+        with _fake_browsers(), patch.object(_mod, "_browser_options", lambda visible=None: {"use_cloud": True}):
             server = _make_server()
             await server._execute_tool("browser_get_html", {})
         self.assertEqual(server._sessions[server._primary].kind, "cloud")
@@ -551,6 +620,185 @@ class TestNavigateTool(_ToolTestCase):
         self.assertNotIn("Page.navigate", self.daemon.methods())
 
 
+@contextlib.contextmanager
+def _fake_browsers_real_options():
+    """
+    browser_use.Browser replaced by _FakeBrowser, with the server's own option
+    building left in place: only the Chromium lookup is fixed.
+    """
+    import browser_use
+
+    _FakeBrowser.created = []
+    _FakeBrowser.start_error = None
+    with patch.object(browser_use, "Browser", _FakeBrowser), \
+            patch.object(_mod, "_resolve_chromium_binary", lambda: "/fake/chromium"):
+        yield _FakeBrowser.created
+    _FakeBrowser.start_error = None
+
+
+class TestNavigateVisible(unittest.IsolatedAsyncioTestCase):
+    """
+    browser_navigate's `visible` chooses a headed or headless primary browser
+    when navigate starts it, and never restarts one already running.
+    """
+
+    def setUp(self):
+        self.daemon = _FakeDaemon()
+        self.enterContext(self.daemon.installed())
+        self.enterContext(patch.object(_mod, "_LOAD_POLL_SECONDS", 0))
+        self.enterContext(patch.dict(os.environ))
+        os.environ.pop("BROWSER_USE_HEADLESS", None)
+        os.environ.pop("BROWSER_USE_CLOUD", None)
+        self.created = self.enterContext(_fake_browsers_real_options())
+        self.server = _make_server()
+
+    async def navigate(self, **arguments) -> str:
+        return await self.server._execute_tool("browser_navigate", {"url": "https://a.test/", **arguments})
+
+    def primary(self):
+        return self.server._sessions[self.server._primary]
+
+    async def test_visible_true_starts_a_headed_browser(self):
+        text = await self.navigate(visible=True)
+        self.assertEqual(text, "Navigated to: https://a.test/")
+        self.assertEqual(len(self.created), 1)
+        self.assertIs(self.created[0].kwargs["headless"], False)
+        self.assertIs(self.primary().headless, False)
+
+    async def test_visible_false_starts_a_headless_browser(self):
+        await self.navigate(visible=False)
+        self.assertEqual(len(self.created), 1)
+        self.assertIs(self.created[0].kwargs["headless"], True)
+        self.assertIs(self.primary().headless, True)
+
+    async def test_visible_false_overrides_a_headed_env_default(self):
+        os.environ["BROWSER_USE_HEADLESS"] = "false"
+        await self.navigate(visible=False)
+        self.assertIs(self.created[0].kwargs["headless"], True)
+
+    async def test_omitted_follows_the_env_default(self):
+        for env, headless in ((None, True), ("true", True), ("false", False), ("0", False), ("no", False)):
+            with self.subTest(BROWSER_USE_HEADLESS=env):
+                if env is None:
+                    os.environ.pop("BROWSER_USE_HEADLESS", None)
+                else:
+                    os.environ["BROWSER_USE_HEADLESS"] = env
+                self.created.clear()
+                self.server = _make_server()
+                await self.navigate()
+                self.assertEqual(len(self.created), 1)
+                self.assertIs(self.created[0].kwargs["headless"], headless)
+                self.assertIs(self.primary().headless, headless)
+
+    async def test_null_visible_follows_the_env_default(self):
+        await self.navigate(visible=None)
+        self.assertIs(self.created[0].kwargs["headless"], True)
+
+    async def test_a_mismatch_with_a_running_headless_browser_is_refused(self):
+        await self.navigate()
+        primary = self.server._primary
+        self.daemon.calls.clear()
+        text = await self.navigate(visible=True)
+        self.assertTrue(text.startswith("Error: "), text)
+        self.assertIn("headless", text)
+        self.assertIn("browser_close_session", text)
+        self.assertIn(primary, text)
+        self.assertIn("visible", text)
+        self.assertEqual(len(self.created), 1, "a second browser was started")
+        self.assertFalse(self.created[0].stopped, "the running browser was stopped")
+        self.assertEqual(self.server._primary, primary)
+        self.assertNotIn("Page.navigate", self.daemon.methods())
+
+    async def test_a_mismatch_with_a_running_headed_browser_is_refused(self):
+        await self.navigate(visible=True)
+        primary = self.server._primary
+        self.daemon.calls.clear()
+        text = await self.navigate(visible=False)
+        self.assertTrue(text.startswith("Error: "), text)
+        self.assertIn("visible", text)
+        self.assertIn("browser_close_session", text)
+        self.assertIn(primary, text)
+        self.assertEqual(len(self.created), 1, "a second browser was started")
+        self.assertFalse(self.created[0].stopped, "the running browser was stopped")
+        self.assertNotIn("Page.navigate", self.daemon.methods())
+
+    async def test_a_matching_mode_navigates_the_running_browser(self):
+        await self.navigate(visible=True)
+        self.daemon.calls.clear()
+        text = await self.navigate(visible=True)
+        self.assertEqual(text, "Navigated to: https://a.test/")
+        self.assertEqual(len(self.created), 1)
+        self.assertEqual(self.daemon.params_of("Page.navigate"), [{"url": "https://a.test/"}])
+
+    async def test_omitted_navigates_a_running_browser_of_either_mode(self):
+        await self.navigate(visible=True)
+        self.daemon.calls.clear()
+        self.assertEqual(await self.navigate(), "Navigated to: https://a.test/")
+        self.assertEqual(len(self.created), 1)
+
+    async def test_a_non_bool_visible_is_refused_before_anything_starts(self):
+        for value in ("true", 1, 0, "yes", [True], {}):
+            with self.subTest(visible=value):
+                text = await self.navigate(visible=value)
+                self.assertTrue(text.startswith("Error: "), text)
+                self.assertIn("visible must be true or false", text)
+                self.assertEqual(self.created, [])
+                self.assertIsNone(self.server._primary)
+
+    async def test_a_non_bool_visible_never_navigates_a_running_browser(self):
+        await self.navigate()
+        self.daemon.calls.clear()
+        text = await self.navigate(visible="false")
+        self.assertIn("visible must be true or false", text)
+        self.assertNotIn("Page.navigate", self.daemon.methods())
+
+    async def test_visible_is_ignored_for_a_cloud_primary(self):
+        cloud = _FakeBrowser(use_cloud=True)
+        cloud.name = "bucloud01"
+        self.server._primary = self.server._register(cloud, "cloud")
+        self.created.clear()
+        for visible in (True, False):
+            with self.subTest(visible=visible):
+                self.assertEqual(await self.navigate(visible=visible), "Navigated to: https://a.test/")
+        self.assertEqual(self.created, [])
+
+    async def test_visible_is_ignored_when_navigate_starts_a_cloud_browser(self):
+        os.environ["BROWSER_USE_CLOUD"] = "true"
+        os.environ["BROWSER_USE_API_KEY"] = "bu-test-key"
+        await self.navigate(visible=True)
+        self.assertEqual(self.created[0].kwargs, {"use_cloud": True})
+        self.assertEqual(self.primary().kind, "cloud")
+
+    async def test_a_visible_browser_is_never_activated_after_navigate(self):
+        self.daemon.answers["Page.getLayoutMetrics"] = {
+            "cssVisualViewport": {"pageX": 0, "pageY": 0, "clientWidth": 800, "clientHeight": 600},
+        }
+        self.daemon.answers["Page.captureScreenshot"] = {"data": _PNG_1x1}
+        await self.navigate(visible=True)
+        self.daemon.calls.clear()
+        await self.server._execute_tool("browser_screenshot", {})
+        methods = self.daemon.methods()
+        self.assertIn("Page.captureScreenshot", methods)
+        self.assertNotIn("Target.activateTarget", methods)
+
+    async def test_a_headless_browser_from_navigate_is_activated_before_capture(self):
+        self.daemon.answers["Page.getLayoutMetrics"] = {
+            "cssVisualViewport": {"pageX": 0, "pageY": 0, "clientWidth": 800, "clientHeight": 600},
+        }
+        self.daemon.answers["Page.captureScreenshot"] = {"data": _PNG_1x1}
+        await self.navigate(visible=False)
+        self.daemon.calls.clear()
+        await self.server._execute_tool("browser_screenshot", {})
+        self.assertIn("Target.activateTarget", self.daemon.methods())
+
+    async def test_activation_follows_the_recorded_start_mode(self):
+        await self.navigate(visible=True)
+        session = self.primary()
+        # The Browser object's own attribute is not what decides it.
+        session.browser.headless = True
+        self.assertFalse(self.server._activates_tabs(session))
+
+
 class TestClickTool(_ToolTestCase):
     async def test_click_by_index_goes_through_ax_helpers(self):
         text = await self.call("browser_click", index=42)
@@ -637,7 +885,9 @@ class TestTypeTool(_ToolTestCase):
         self.assertEqual(self.ax.typed, [])
 
 
-class TestGetStateTool(_ToolTestCase):
+class _FormPageCase(_ToolTestCase):
+    """A form page in the attached tab: page facts, three tabs and targets, an AX tree."""
+
     def setUp(self):
         super().setUp()
         self.daemon.evaluate({_mod._PAGE_INFO_JS: {
@@ -669,6 +919,8 @@ class TestGetStateTool(_ToolTestCase):
         }
         self.daemon.answers["DOM.describeNode"] = lambda params: {"node": nodes[params["backendNodeId"]]}
 
+
+class TestGetStateTool(_FormPageCase):
     async def test_reports_page_facts_and_controls(self):
         content = await self.call("browser_get_state")
         self.assertEqual(len(content), 1)
@@ -740,6 +992,324 @@ class TestGetStateTool(_ToolTestCase):
         self.assertEqual(content[1].type, "image")
         self.assertEqual(content[1].mime_type, "image/png")
         self.assertEqual(content[1].data, _PNG_1x1)
+
+
+def _box(left: float, top: float, right: float, bottom: float) -> list:
+    """A CDP box-model quad: the four corners, clockwise from top-left."""
+    return [left, top, right, top, right, bottom, left, bottom]
+
+
+# REGRESSION: browser_get_state left out every control inside a cross-site
+# (out-of-process) iframe.
+#
+# A cross-site iframe renders in its own process with its own CDP target, so
+# the tab's session never sees it. get_state lists its controls in a separate
+# frame_elements list, with the main-viewport point a coordinate click needs
+# when that point is inside both the iframe and the viewport ("visible": false
+# otherwise), and never with an index: a backendNodeId from another process
+# names a different node, or none, in the tab's own session.
+
+class TestGetStateCrossSiteFrames(_FormPageCase):
+    def setUp(self):
+        super().setUp()
+        self.daemon.answers["Target.getTargets"] = {"targetInfos": [
+            {"targetId": "TARGETAAAA", "type": "page", "url": "https://a.test/form", "title": "Form",
+             "attached": True},
+            {"targetId": "IFRAME0001", "type": "iframe", "url": "https://other.example/pay", "title": "",
+             "attached": False, "parentFrameId": "TARGETAAAA"},
+        ]}
+        self.daemon.answers["Page.getFrameTree"] = {"frameTree": {
+            "frame": {"id": "TARGETAAAA", "loaderId": "L1", "url": "https://a.test/form"},
+        }}
+        self.iframe_sessions = {"IFRAME0001": "oopif-session-1"}
+        self.daemon.answers["Target.attachToTarget"] = lambda params: (
+            {"sessionId": self.iframe_sessions[params["targetId"]]}
+            if params["targetId"] in self.iframe_sessions
+            else RuntimeError(f"Target.attachToTarget failed: no target {params['targetId']}")
+        )
+        self.daemon.answers["Target.detachFromTarget"] = {}
+
+        # The iframe element in the main frame: a 10px border around the
+        # content box at (40, 100). The frame's own viewport starts at the
+        # content box, so that is the offset of everything inside it.
+        owners = {"IFRAME0001": 900}
+        self.daemon.answers["DOM.getFrameOwner"] = lambda params: (
+            {"backendNodeId": owners[params["frameId"]]}
+            if params.get("frameId") in owners
+            else RuntimeError("DOM.getFrameOwner failed: Frame with the given id was not found")
+        )
+        main_boxes = {
+            900: {"content": _box(40, 100, 440, 400), "padding": _box(40, 100, 440, 400),
+                  "border": _box(30, 90, 450, 410), "margin": _box(30, 90, 450, 410),
+                  "width": 420, "height": 320},
+        }
+        self.daemon.answers["DOM.getBoxModel"] = lambda params: (
+            {"model": main_boxes[params["backendNodeId"]]}
+            if params.get("backendNodeId") in main_boxes
+            else RuntimeError("DOM.getBoxModel failed: Could not compute box model.")
+        )
+        self.add_frame_session("oopif-session-1", {
+            # backendDOMNodeId 11 is the main frame's "Go" button's id too: ids
+            # are per process, and the same number names a different node here.
+            11: ("button", "Pay", "BUTTON", _box(20, 30, 100, 50)),
+            12: ("textbox", "Card number", "INPUT", _box(20, 70, 220, 90)),
+        })
+
+    def add_frame_session(self, session_id: str, controls: dict):
+        """An out-of-process frame's session: its AX tree, nodes and boxes, frame-local."""
+        nodes = [{"nodeId": "1", "ignored": False, "role": {"value": "RootWebArea"}, "backendDOMNodeId": 1}]
+        for backend_id, (role, name, _tag, _quad) in controls.items():
+            nodes.append({"nodeId": str(backend_id), "ignored": False, "role": {"value": role},
+                          "name": {"value": name}, "backendDOMNodeId": backend_id})
+        nodes.append({"nodeId": "90", "ignored": False, "role": {"value": "StaticText"},
+                      "name": {"value": "Secure payment"}, "backendDOMNodeId": 90})
+        nodes.append({"nodeId": "91", "ignored": True, "role": {"value": "button"},
+                      "name": {"value": "hidden"}, "backendDOMNodeId": 91})
+        answers = self.daemon.session_answers
+        answers[(session_id, "Accessibility.getFullAXTree")] = {"nodes": nodes}
+        answers[(session_id, "DOM.describeNode")] = lambda params: {
+            "node": {"nodeName": controls[params["backendNodeId"]][2], "attributes": []}
+        }
+        answers[(session_id, "DOM.getBoxModel")] = lambda params: {"model": {
+            "content": controls[params["backendNodeId"]][3], "padding": controls[params["backendNodeId"]][3],
+            "border": controls[params["backendNodeId"]][3], "margin": controls[params["backendNodeId"]][3],
+        }}
+        answers[(session_id, "Page.getFrameTree")] = {"frameTree": {"frame": {"id": "inner"}}}
+        # The frame's own layout viewport is the size of its owner's content
+        # box, 400x300: the frame is not scaled.
+        answers[(session_id, "Page.getLayoutMetrics")] = {
+            "cssLayoutViewport": {"pageX": 0, "pageY": 0, "clientWidth": 400, "clientHeight": 300},
+        }
+
+    async def state(self) -> dict:
+        state = json.loads((await self.call("browser_get_state"))[0].text)
+        self.assertIn("frame_elements", state, "get_state has no frame_elements list")
+        return state
+
+    async def test_cross_site_frame_controls_are_listed_at_viewport_points(self):
+        state = await self.state()
+        frame_elements = state["frame_elements"]
+        self.assertEqual(len(frame_elements), 2, frame_elements)
+        pay, card = frame_elements
+        # The control's content-box centre, frame-local, plus the frame's offset.
+        expected = (
+            (pay, {"frame_url": "https://other.example/pay", "role": "button", "text": "Pay", "x": 100, "y": 140}),
+            (card, {"frame_url": "https://other.example/pay", "role": "textbox", "text": "Card number",
+                    "x": 160, "y": 180}),
+        )
+        for element, wanted in expected:
+            with self.subTest(wanted["text"]):
+                self.assertEqual(element, wanted)
+        self.assertNotIn("frame_elements_truncated", state)
+
+    def set_owner_content_box(self, left: float, top: float, right: float, bottom: float):
+        box = _box(left, top, right, bottom)
+        self.daemon.answers["DOM.getBoxModel"] = lambda params: (
+            {"model": {"content": box, "padding": box, "border": box, "margin": box,
+                       "width": right - left, "height": bottom - top}}
+            if params.get("backendNodeId") == 900
+            else RuntimeError("DOM.getBoxModel failed: Could not compute box model.")
+        )
+
+    async def test_a_control_outside_its_frame_box_is_not_visible(self):
+        # Scrolled out of the frame's own 400x300 viewport: its point would land
+        # on the host page below the iframe, so no point is given.
+        self.add_frame_session("oopif-session-1", {
+            11: ("button", "Pay", "BUTTON", _box(20, 30, 100, 50)),
+            12: ("button", "Below", "BUTTON", _box(20, 320, 100, 340)),
+            13: ("button", "Right", "BUTTON", _box(390, 30, 470, 50)),
+        })
+        state = await self.state()
+        self.assertEqual(state["frame_elements"], [
+            {"frame_url": "https://other.example/pay", "role": "button", "text": "Pay", "x": 100, "y": 140},
+            {"frame_url": "https://other.example/pay", "role": "button", "text": "Below", "visible": False},
+            {"frame_url": "https://other.example/pay", "role": "button", "text": "Right", "visible": False},
+        ])
+
+    async def test_a_point_that_rounds_onto_the_frame_edge_is_not_visible(self):
+        # Centres at x=439.75 and y=399.75 lie inside the 40..440 x 100..400
+        # box, but the integer point given would be 440 or 400: on the edge,
+        # outside it. A centre that rounds down stays visible.
+        self.add_frame_session("oopif-session-1", {
+            11: ("button", "Right edge", "BUTTON", _box(399.5, 30, 400, 50)),
+            12: ("button", "Bottom edge", "BUTTON", _box(20, 299.5, 100, 300)),
+            13: ("button", "Inside", "BUTTON", _box(398.8, 30, 400, 50)),
+        })
+        state = await self.state()
+        self.assertEqual(state["frame_elements"], [
+            {"frame_url": "https://other.example/pay", "role": "button", "text": "Right edge", "visible": False},
+            {"frame_url": "https://other.example/pay", "role": "button", "text": "Bottom edge", "visible": False},
+            {"frame_url": "https://other.example/pay", "role": "button", "text": "Inside", "x": 439, "y": 140},
+        ])
+
+    async def test_a_point_that_rounds_onto_the_viewport_edge_is_not_visible(self):
+        # The frame spans x 600..1000 across the 800px viewport's right edge;
+        # a centre at 799.75 would be given as 800, off screen.
+        self.set_owner_content_box(600, 100, 1000, 400)
+        self.add_frame_session("oopif-session-1", {
+            11: ("button", "Viewport edge", "BUTTON", _box(199.5, 30, 200, 50)),
+        })
+        state = await self.state()
+        self.assertEqual(state["frame_elements"], [
+            {"frame_url": "https://other.example/pay", "role": "button", "text": "Viewport edge",
+             "visible": False},
+        ])
+
+    def set_frame_layout_metrics(self, metrics):
+        self.daemon.session_answers[("oopif-session-1", "Page.getLayoutMetrics")] = metrics
+
+    async def test_a_scaled_frame_gives_points_in_main_viewport_pixels(self):
+        # transform: scale(0.5): an 800x600 frame drawn into the 400x300 box.
+        for key in ("cssLayoutViewport", "layoutViewport"):
+            with self.subTest(metrics=key):
+                self.set_frame_layout_metrics({key: {"pageX": 0, "pageY": 0, "clientWidth": 800,
+                                                     "clientHeight": 600}})
+                state = await self.state()
+                self.assertEqual(state["frame_elements"], [
+                    {"frame_url": "https://other.example/pay", "role": "button", "text": "Pay",
+                     "x": 70, "y": 120},
+                    {"frame_url": "https://other.example/pay", "role": "textbox", "text": "Card number",
+                     "x": 100, "y": 140},
+                ])
+
+    async def test_a_scaled_frame_checks_the_scaled_point_against_its_box(self):
+        # Frame-local x=700 is past the unscaled 400px box, but at scale 0.5 it
+        # is drawn at 40 + 350 = 390, inside it.
+        self.add_frame_session("oopif-session-1", {
+            11: ("button", "Far", "BUTTON", _box(690, 30, 710, 50)),
+        })
+        self.set_frame_layout_metrics({"cssLayoutViewport": {"clientWidth": 800, "clientHeight": 600}})
+        state = await self.state()
+        self.assertEqual(state["frame_elements"], [
+            {"frame_url": "https://other.example/pay", "role": "button", "text": "Far", "x": 390, "y": 120},
+        ])
+
+    async def test_a_frame_whose_viewport_size_is_unknown_has_no_visible_controls(self):
+        cases = {
+            "unreadable": RuntimeError("Page.getLayoutMetrics failed: Target closed"),
+            "missing": {},
+            "zero width": {"cssLayoutViewport": {"clientWidth": 0, "clientHeight": 300}},
+            "zero height": {"cssLayoutViewport": {"clientWidth": 400, "clientHeight": 0}},
+        }
+        for name, metrics in cases.items():
+            with self.subTest(name):
+                self.set_frame_layout_metrics(metrics)
+                state = await self.state()
+                self.assertEqual(state["frame_elements"], [
+                    {"frame_url": "https://other.example/pay", "role": "button", "text": "Pay",
+                     "visible": False},
+                    {"frame_url": "https://other.example/pay", "role": "textbox", "text": "Card number",
+                     "visible": False},
+                ])
+
+    async def test_a_frame_below_the_viewport_has_no_visible_controls(self):
+        # The viewport is 800x600; this iframe starts at y=700, below the fold.
+        self.set_owner_content_box(40, 700, 440, 1000)
+        state = await self.state()
+        self.assertEqual(state["frame_elements"], [
+            {"frame_url": "https://other.example/pay", "role": "button", "text": "Pay", "visible": False},
+            {"frame_url": "https://other.example/pay", "role": "textbox", "text": "Card number",
+             "visible": False},
+        ])
+
+    async def test_a_zero_size_frame_is_skipped_without_attaching(self):
+        for left, top, right, bottom in ((40, 100, 40, 400), (40, 100, 440, 100)):
+            with self.subTest(width=right - left, height=bottom - top):
+                self.daemon.calls.clear()
+                self.set_owner_content_box(left, top, right, bottom)
+                state = await self.state()
+                self.assertEqual(state["frame_elements"], [])
+                self.assertNotIn("Target.attachToTarget", self.daemon.methods())
+                self.assertNotIn("frame_elements_truncated", state)
+
+    async def test_at_most_ten_frames_are_read(self):
+        infos = self.daemon.answers["Target.getTargets"]["targetInfos"]
+        owners = {}
+        for n in range(2, 13):
+            target = f"IFRAME{n:04d}"
+            infos.append({"targetId": target, "type": "iframe", "url": f"https://f{n}.example/",
+                          "title": "", "attached": False, "parentFrameId": "TARGETAAAA"})
+            owners[target] = 900
+            self.iframe_sessions[target] = "oopif-session-1"
+        owners["IFRAME0001"] = 900
+        self.daemon.answers["DOM.getFrameOwner"] = lambda params: {"backendNodeId": owners[params["frameId"]]}
+        state = await self.state()
+        self.assertEqual(len(self.daemon.params_of("Target.attachToTarget")), 10)
+        self.assertEqual(len(state["frame_elements"]), 20)
+        self.assertIs(state.get("frame_elements_truncated"), True)
+
+    async def test_at_most_one_hundred_frame_elements_are_listed(self):
+        self.add_frame_session("oopif-session-1", {
+            100 + n: ("button", f"B{n}", "BUTTON", _box(20, 30, 100, 50)) for n in range(101)
+        })
+        state = await self.state()
+        self.assertEqual(len(state["frame_elements"]), 100)
+        self.assertEqual(state["frame_elements"][-1]["text"], "B99")
+        self.assertIs(state.get("frame_elements_truncated"), True)
+
+    async def test_exactly_one_hundred_frame_elements_are_not_truncated(self):
+        self.add_frame_session("oopif-session-1", {
+            100 + n: ("button", f"B{n}", "BUTTON", _box(20, 30, 100, 50)) for n in range(100)
+        })
+        state = await self.state()
+        self.assertEqual(len(state["frame_elements"]), 100)
+        self.assertNotIn("frame_elements_truncated", state)
+
+    async def test_no_attached_tab_reads_no_parentless_frame(self):
+        # With no current tab id, a target that names no parent frame must not
+        # match the missing id.
+        self.daemon.meta_answers["current_tab"] = {}
+        self.daemon.answers["Page.getFrameTree"] = RuntimeError("Page.getFrameTree failed")
+        self.daemon.answers["Target.getTargets"]["targetInfos"][1].pop("parentFrameId")
+        state = await self.state()
+        self.assertEqual(state["frame_elements"], [])
+        self.assertNotIn("Target.attachToTarget", self.daemon.methods())
+
+    async def test_frame_controls_stay_out_of_interactive_elements(self):
+        state = await self.state()
+        self.assertEqual(
+            state["interactive_elements"], [
+                {"index": 11, "tag": "button", "text": "Go"},
+                {"index": 13, "tag": "a", "text": ("Docs " + "x" * 200)[:100], "href": "/docs"},
+                {"index": 14, "tag": "input", "text": "", "placeholder": "Search"},
+            ],
+        )
+        self.assertEqual(state["tabs"], [{"url": "https://a.test/form", "title": "Form"}])
+        self.assertTrue(state["frame_elements"], "the frame's controls were not listed at all")
+
+    async def test_the_tab_stays_attached(self):
+        await self.state()
+        self.assertNotIn(
+            "set_session", [meta for _name, meta, _fields in self.daemon.meta_calls],
+            "reading a frame moved the daemon off the tab",
+        )
+        self.assertEqual(
+            self.daemon.params_of("Target.attachToTarget"), [{"targetId": "IFRAME0001", "flatten": True}]
+        )
+
+    async def test_a_frame_that_cannot_be_read_is_skipped(self):
+        infos = self.daemon.answers["Target.getTargets"]["targetInfos"]
+        infos.append({"targetId": "IFRAME0002", "type": "iframe", "url": "https://broken.example/",
+                      "title": "", "attached": False, "parentFrameId": "TARGETAAAA"})
+        infos.append({"targetId": "IFRAME0003", "type": "iframe", "url": "https://gone.example/",
+                      "title": "", "attached": False, "parentFrameId": "TARGETAAAA"})
+        # IFRAME0002 attaches but its tree cannot be read; IFRAME0003 cannot be attached.
+        self.iframe_sessions["IFRAME0002"] = "oopif-session-2"
+        self.daemon.session_answers[("oopif-session-2", "Accessibility.getFullAXTree")] = RuntimeError(
+            "Accessibility.getFullAXTree failed: Target closed"
+        )
+        state = await self.state()
+        self.assertEqual(
+            {element.get("frame_url") for element in state["frame_elements"]}, {"https://other.example/pay"},
+        )
+        self.assertEqual(len(state["frame_elements"]), 2, state["frame_elements"])
+        self.assertEqual([e["index"] for e in state["interactive_elements"]], [11, 13, 14])
+
+    async def test_no_cross_site_frame_is_an_empty_list(self):
+        self.daemon.answers["Target.getTargets"] = {"targetInfos": [
+            {"targetId": "TARGETAAAA", "type": "page", "url": "https://a.test/form", "title": "Form"},
+        ]}
+        self.assertEqual((await self.state())["frame_elements"], [])
 
 
 class TestExtractContentTool(_ToolTestCase):
@@ -913,7 +1483,9 @@ class TestScreenshotTool(_ToolTestCase):
         )
         self.assertEqual((content[1].type, content[1].data), ("image", _PNG_1x1))
 
-    async def test_brings_the_attached_tab_to_the_front_first(self):
+    async def test_a_headless_browser_brings_the_attached_tab_to_the_front_first(self):
+        # A headless browser has no window to raise, and a hidden tab there may
+        # never answer a capture.
         await self.call("browser_screenshot")
         methods = self.daemon.methods()
         self.assertEqual(self.daemon.params_of("Target.activateTarget"), [{"targetId": "TARGETAAAA"}])
@@ -970,6 +1542,41 @@ class TestGoBackTool(_ToolTestCase):
         self.assertTrue(text.startswith("Error"), text)
         self.assertNotIn("Page.navigateToHistoryEntry", self.daemon.methods())
 
+    # REGRESSION: go_back could return before the previous page finished
+    # loading.
+
+    async def test_waits_for_the_previous_page_to_finish_loading(self):
+        self.daemon.answers["Page.getNavigationHistory"] = {"currentIndex": 1, "entries": [
+            {"id": 101, "url": "https://a.test/"}, {"id": 102, "url": "https://a.test/next"},
+        ]}
+        went_back = []
+        ready_states = ["interactive", "complete"]
+        read_after_back: list = []
+
+        def navigate_to_history_entry(_params):
+            went_back.append(True)
+            return {}
+
+        def evaluate(params):
+            expression = params.get("expression")
+            if expression == "document.readyState":
+                if not went_back:
+                    return {"result": {"value": "complete"}}
+                value = ready_states.pop(0) if ready_states else "complete"
+                read_after_back.append(value)
+                return {"result": {"value": value}}
+            if expression in ("location.href", "window.location.href", "document.location.href"):
+                return {"result": {"value": "https://a.test/" if went_back else "https://a.test/next"}}
+            return {"result": {"value": None}}
+
+        self.daemon.answers["Page.navigateToHistoryEntry"] = navigate_to_history_entry
+        self.daemon.answers["Runtime.evaluate"] = evaluate
+        self.daemon.answers["Page.getFrameTree"] = lambda _params: {"frameTree": {
+            "frame": {"id": "TARGETAAAA", "loaderId": "L-BACK" if went_back else "L-NEXT"},
+        }}
+        self.assertEqual(await self.call("browser_go_back"), "Navigated back")
+        self.assertEqual(read_after_back, ["interactive", "complete"])
+
 
 class TestTabTools(_ToolTestCase):
     def setUp(self):
@@ -989,7 +1596,7 @@ class TestTabTools(_ToolTestCase):
             {"tab_id": "2222", "url": "https://b.test/", "title": "B"},
         ])
 
-    async def test_switch_tab_activates_and_attaches(self):
+    async def test_switch_tab_on_a_headless_browser_activates_and_attaches(self):
         text = await self.call("browser_switch_tab", tab_id="2222")
         self.assertEqual(text, "Switched to tab 2222: https://b.test/")
         self.assertEqual(self.daemon.params_of("Target.activateTarget"), [{"targetId": "BBBBBBBB2222"}])
@@ -1352,6 +1959,7 @@ class TestRetryAgentResults(unittest.IsolatedAsyncioTestCase):
                 test.agents.append(self)
 
             async def run(self, max_steps=100, **_kwargs):
+                self.max_steps = max_steps
                 if test.run_error is not None:
                     raise test.run_error
                 self.kwargs["browser"].name = "buagent0001"
@@ -1410,6 +2018,42 @@ class TestRetryAgentResults(unittest.IsolatedAsyncioTestCase):
             )
         self.assertIn("Task completed", text)
 
+    # REGRESSION: retry_with_browser_use_agent ran a billed agent for any
+    # max_steps it was given.
+    #
+    # max_steps is an integer from 1 to 200. Anything else is refused before a
+    # model, a browser or an agent is built.
+
+    async def run_retry(self, arguments: dict) -> str:
+        """The text a client reads back, through the MCP call_tool handler."""
+        import mcp.types as mcp_types
+
+        result = await _make_server()._handle_call_tool(
+            None, mcp_types.CallToolRequestParams(name="retry_with_browser_use_agent", arguments=arguments)
+        )
+        return result.content[0].text
+
+    async def test_max_steps_out_of_range_is_refused_and_starts_nothing(self):
+        for value in (0, -5, 201, 10**6, True, False, 2.5, "50", "abc"):
+            with self.subTest(max_steps=value):
+                self.agents.clear()
+                self.created.clear()
+                text = await self.run_retry({"task": "t", "max_steps": value})
+                self.assertTrue(text.startswith("Error:"), text)
+                self.assertIn("max_steps", text)
+                self.assertRegex(text, r"\b1\b.*\b200\b", text)
+                self.assertEqual(self.agents, [], f"an agent was built for max_steps={value!r}")
+                self.assertEqual(self.created, [], f"a browser was built for max_steps={value!r}")
+
+    async def test_max_steps_in_range_reaches_the_agent(self):
+        for value, expected in ((None, 100), (1, 1), (100, 100), (200, 200)):
+            with self.subTest(max_steps=value):
+                self.agents.clear()
+                arguments = {"task": "t"} if value is None else {"task": "t", "max_steps": value}
+                text = await self.run_retry(arguments)
+                self.assertIn("Task completed", text)
+                self.assertEqual(self.agents[0].max_steps, expected)
+
 
 # ---------------------------------------------------------------------------
 # Live-page custom tools: evaluate, focus, keyboard, save_screenshot
@@ -1445,7 +2089,7 @@ class TestEvaluateTool(_ToolTestCase):
 
 
 class TestFocusTool(_ToolTestCase):
-    async def test_focused(self):
+    async def test_focused_on_a_headless_browser_brings_the_tab_to_the_front(self):
         self.daemon.answers["Runtime.evaluate"] = {"result": {"value": True}}
         self.assertEqual(json.loads(await self.call("browser_focus", selector="textarea.inputarea")),
                          {"focused": True, "selector": "textarea.inputarea"})
@@ -1512,6 +2156,34 @@ class TestKeyboardTools(_ToolTestCase):
         self.assertEqual(await self.call("browser_keyboard"), "Error: provide `keys` and/or `text`.")
 
 
+# REGRESSION: browser_press_key pressed a key any number of times it was given,
+# holding the browser lock throughout.
+#
+# count is an integer from 1 to 100. Anything else is refused before a single
+# key event is sent. Values far past the limit are left out: the unbounded loop
+# would press them all.
+
+class TestPressKeyCountLimit(_ToolTestCase):
+    async def test_count_out_of_range_is_refused_and_presses_nothing(self):
+        for value in (0, -1, 101, 1000, True, False, 2.5, "3", "abc"):
+            with self.subTest(count=value):
+                self.daemon.calls.clear()
+                text = await self.call_text("browser_press_key", key="Enter", count=value)
+                self.assertTrue(text.startswith("Error:"), text)
+                self.assertIn("count", text)
+                self.assertRegex(text, r"\b1\b.*\b100\b", text)
+                self.assertNotIn("Input.dispatchKeyEvent", self.daemon.methods())
+
+    async def test_count_in_range_presses_that_many_times(self):
+        for value, presses in ((None, 1), (1, 1), (100, 100)):
+            with self.subTest(count=value):
+                self.daemon.calls.clear()
+                arguments = {"key": "Enter"} if value is None else {"key": "Enter", "count": value}
+                result = json.loads(await self.call_text("browser_press_key", **arguments))
+                self.assertEqual(result, {"pressed": "Enter", "count": presses})
+                self.assertEqual(len(self.daemon.params_of("Input.dispatchKeyEvent")), 2 * presses)
+
+
 class TestSaveScreenshotTool(_ToolTestCase):
     def setUp(self):
         super().setUp()
@@ -1542,6 +2214,125 @@ class TestSaveScreenshotTool(_ToolTestCase):
         text = await self.call("browser_save_screenshot", output_path=str(self.dir / "shot.png"))
         self.assertEqual(text, "Error: the browser returned data that is not a PNG.")
         self.assertFalse((self.dir / "shot.png").exists())
+
+
+# REGRESSION: browser-use tool calls raised the headed browser window and took
+# focus from the user's own app.
+#
+# Target.activateTarget makes a headed Chromium the frontmost app on macOS. A
+# local headed browser must never be sent it; a cloud or local headless one,
+# which has no window on the user's screen, still is.
+
+class _ActivationCase(_ToolTestCase):
+    """
+    Answers for every tool that brings the attached tab to the front today:
+    the capture tools, focus, the key tools and switch_tab.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.daemon.answers["Page.getLayoutMetrics"] = {
+            "cssVisualViewport": {"pageX": 0, "pageY": 0, "clientWidth": 800, "clientHeight": 600},
+        }
+        self.daemon.answers["Page.captureScreenshot"] = {"data": _PNG_1x1}
+        self.daemon.evaluate({_mod._PAGE_INFO_JS: {
+            "url": "https://a.test/", "title": "A", "w": 800, "h": 600, "sx": 0, "sy": 0, "pw": 800, "ph": 600,
+        }}, default=True)
+        self.daemon.answers["Target.getTargets"] = {"targetInfos": [
+            {"targetId": "TARGETAAAA", "type": "page", "url": "https://a.test/", "title": "A"},
+            {"targetId": "BBBBBBBB2222", "type": "page", "url": "https://b.test/", "title": "B"},
+        ]}
+        self.daemon.answers["Target.attachToTarget"] = {"sessionId": "attached-session"}
+        self.shots = Path(_tempfile.mkdtemp(prefix="magus-shot-")).resolve()
+        self.addCleanup(_shutil.rmtree, self.shots, ignore_errors=True)
+
+    def scenarios(self):
+        """(tool, arguments, the CDP method that shows the tool did its work)."""
+        return (
+            ("browser_screenshot", {}, "Page.captureScreenshot"),
+            ("browser_save_screenshot", {"output_path": str(self.shots / "shot.png")}, "Page.captureScreenshot"),
+            ("browser_get_state", {"include_screenshot": True}, "Page.captureScreenshot"),
+            ("browser_focus", {"selector": "#q"}, "Runtime.evaluate"),
+            ("browser_press_key", {"key": "Enter"}, "Input.dispatchKeyEvent"),
+            ("browser_keyboard", {"keys": ["Enter"], "text": "x"}, "Input.dispatchKeyEvent"),
+            ("browser_switch_tab", {"tab_id": "2222"}, "Target.attachToTarget"),
+        )
+
+    async def run_tool(self, tool: str) -> list:
+        """Run one scenario's tool on a cleared call log; the CDP methods it sent."""
+        for name, arguments, effect in self.scenarios():
+            if name == tool:
+                self.daemon.calls.clear()
+                text = await self.call(name, **arguments)
+                methods = self.daemon.methods()
+                self.assertIn(effect, methods, f"{name} did not reach the page: {text}")
+                return methods
+        raise AssertionError(f"no scenario for {tool}")
+
+
+class TestHeadedLocalNeverActivates(_ActivationCase):
+    """A local headed browser: its window is on the user's screen, so nothing raises it."""
+
+    browser_kwargs = {"headless": False}
+
+    async def assert_never_activated(self, tool: str):
+        methods = await self.run_tool(tool)
+        self.assertNotIn(
+            "Target.activateTarget", methods,
+            f"{tool} sent Target.activateTarget to a headed local browser: {methods}",
+        )
+
+    async def test_screenshot_never_activates(self):
+        await self.assert_never_activated("browser_screenshot")
+
+    async def test_save_screenshot_never_activates(self):
+        await self.assert_never_activated("browser_save_screenshot")
+
+    async def test_get_state_with_a_screenshot_never_activates(self):
+        await self.assert_never_activated("browser_get_state")
+
+    async def test_focus_never_activates(self):
+        await self.assert_never_activated("browser_focus")
+
+    async def test_press_key_never_activates(self):
+        await self.assert_never_activated("browser_press_key")
+
+    async def test_keyboard_never_activates(self):
+        await self.assert_never_activated("browser_keyboard")
+
+    async def test_switch_tab_never_activates_but_still_attaches(self):
+        await self.assert_never_activated("browser_switch_tab")
+        self.assertEqual(
+            self.daemon.params_of("Target.attachToTarget"), [{"targetId": "BBBBBBBB2222", "flatten": True}]
+        )
+
+
+class _ActivatesFirst:
+    """Every activating tool raises the tab before it acts, as it does today."""
+
+    async def assert_activated_first(self, tool: str):
+        methods = await self.run_tool(tool)
+        effect = next(effect for name, _args, effect in self.scenarios() if name == tool)
+        self.assertIn("Target.activateTarget", methods, f"{tool} did not bring the tab to the front")
+        self.assertLess(methods.index("Target.activateTarget"), methods.index(effect), methods)
+
+    async def test_every_activating_tool_brings_the_tab_to_the_front_first(self):
+        for tool, _arguments, _effect in self.scenarios():
+            with self.subTest(tool):
+                await self.assert_activated_first(tool)
+
+
+class TestHeadlessLocalActivates(_ActivatesFirst, _ActivationCase):
+    """A local headless browser has no window to raise, and a hidden tab may not answer a capture."""
+
+    browser_kwargs = {"headless": True}
+
+
+class TestCloudActivates(_ActivatesFirst, _ActivationCase):
+    """A cloud browser runs on another machine; its hidden tab never answers a capture."""
+
+    session_kind = "cloud"
+    browser_kwargs = {"use_cloud": True}
 
 
 class TestDoctorTool(unittest.IsolatedAsyncioTestCase):
@@ -3015,18 +3806,26 @@ class TestLocalBrowserOptions(_RealBrowserUseTestCase):
         cache = tmp / "ms-playwright"
         binary = _make_fake_chromium(cache, 1234, _current_platform_key())
 
-        with self.subTest("Playwright Chromium, headed by default"):
+        with self.subTest("Playwright Chromium, headless by default"):
             with _chromium_env(cache_root=cache), _captured_streams() as (out, _err):
                 opts = options()
                 browser = browser_use.Browser(**opts)
             self.assertEqual(opts.get("kind"), "chromium")
             self.assertEqual(Path(opts["executable_path"]).resolve(), binary.resolve())
-            self.assertIs(opts.get("headless"), False)
+            self.assertIs(opts.get("headless"), True)
             self.assertIsNone(opts.get("user_data_dir"))
             self.assertEqual(browser.kind, "chromium")
             self.assertFalse(browser.use_cloud)
             self.assertEqual(Path(browser.executable_path).resolve(), binary.resolve())
             self.assertEqual(out.getvalue(), "")
+            # Tab activation is decided by the built Browser's own headless.
+            self.assertIs(browser.headless, True)
+
+        with self.subTest("BROWSER_USE_HEADLESS=false builds a headed Browser"):
+            with _chromium_env(cache_root=cache), \
+                    patch.dict(os.environ, {"BROWSER_USE_HEADLESS": "false"}):
+                browser = browser_use.Browser(**options())
+            self.assertIs(browser.headless, False)
 
         with self.subTest("BROWSER_USE_HEADLESS=true"):
             with _chromium_env(cache_root=cache), \
@@ -3065,6 +3864,43 @@ class TestLocalBrowserOptions(_RealBrowserUseTestCase):
                 self.assertNotIn(local_only, opts)
             self.assertNotEqual(opts.get("kind"), "chromium")
             self.assertEqual(browser.kind, "cloud")
+
+
+# REGRESSION: browser-use launched a visible browser window by default, which
+# could take focus from the user's own app.
+#
+# A local browser runs headless unless BROWSER_USE_HEADLESS explicitly says
+# false, 0 or no; any other value, or none, keeps it off the user's screen.
+
+class TestHeadlessByDefault(_RealBrowserUseTestCase):
+    def setUp(self):
+        super().setUp()
+        self.mod = _load_real_server(self)
+        self.cache = self._tmp() / "ms-playwright"
+        _make_fake_chromium(self.cache, 1234, _current_platform_key())
+
+    def headless_for(self, value: str | None) -> object:
+        with _chromium_env(cache_root=self.cache), patch.dict(os.environ, {}):
+            if value is None:
+                os.environ.pop("BROWSER_USE_HEADLESS", None)
+            else:
+                os.environ["BROWSER_USE_HEADLESS"] = value
+            return self.mod._local_browser_options().get("headless")
+
+    def test_unset_or_empty_is_headless(self):
+        for value in (None, "", "   "):
+            with self.subTest(BROWSER_USE_HEADLESS=value):
+                self.assertIs(self.headless_for(value), True)
+
+    def test_true_1_and_yes_are_headless(self):
+        for value in ("true", "1", "yes", "TRUE", " Yes "):
+            with self.subTest(BROWSER_USE_HEADLESS=value):
+                self.assertIs(self.headless_for(value), True)
+
+    def test_only_false_0_or_no_shows_a_window(self):
+        for value in ("false", "0", "no", "FALSE", " No ", "False\n"):
+            with self.subTest(BROWSER_USE_HEADLESS=value):
+                self.assertIs(self.headless_for(value), False)
 
 
 class TestBuildLLMReal10(_RealBrowserUseTestCase):

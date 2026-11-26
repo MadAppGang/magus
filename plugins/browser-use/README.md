@@ -39,6 +39,35 @@ that `retry_with_browser_use_agent` and `browser_extract_content` use is chosen 
 settings.json (`"browser-use".agentModel`) or with `browser_set_agent_model`;
 `~/.config/browseruse/config.json` is not read.
 
+## The browser window
+
+The local browser is headless by default. It opens no window, so it never comes to the
+front or takes focus from the app you are working in.
+
+The agent chooses per run. `browser_navigate` takes an optional `visible`: when that call
+starts the browser, `visible: true` opens it with a window and `visible: false` keeps it
+headless. The agent sets it to true when you want to watch the browser or work in it
+yourself: log in by hand, solve a captcha, click through something. A browser that is
+already running keeps its mode; asking for the other one returns an error that says to
+close the session and navigate again, so its logins and tabs are never thrown away
+silently. `visible` does not apply to a cloud browser.
+
+A visible browser comes to the front once, when it starts (macOS does this whatever
+launches it). After that the tools never raise it over your app, and you can switch to
+it at any time.
+
+When `visible` is left out, `BROWSER_USE_HEADLESS` sets the default: `false` (or `0`, or
+`no`) opens a window; any other value, or none, keeps it headless. Set it for the Claude
+Code session, in the shell before you start `claude` or in the `env` block of
+settings.json:
+
+```json
+{ "env": { "BROWSER_USE_HEADLESS": "false" } }
+```
+
+or as an `env` entry on the plugin's `browser-use` MCP server. It takes effect for the
+next browser the server starts.
+
 ## What you get
 
 The MCP server is the plugin's own: 27 tools. The page tools (navigate, click, type,
