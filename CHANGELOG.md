@@ -4,6 +4,22 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [magus 7.17.2] - 2026-11-26
+
+### Fixed
+
+- **A dependency a plugin stopped declaring is no longer installed in the project, and
+  stays out of your profile.** 7.17.1 kept the dependency out of the profile on the first
+  check, but left it on in the project. Later in the same `magus update` it was recorded as
+  your own plugin: `Added mnemex@magus to profile "default"`. magus now takes it out:
+  `mnemex@magus is no longer installed at PROJECT scope — no plugin in profile "default"
+  depends on it now`. A project that 7.17.1 left in that state is fixed on the next magus
+  command. A plugin your profile lists itself is not touched.
+- A profile that already records such a dependency as your plugin keeps it: magus cannot
+  tell it from one you added. Remove it from `.claude/profiles.json` and run `magus update`.
+
+---
+
 ## [madbench 0.12.10] - 2026-11-25
 
 ### Changed
