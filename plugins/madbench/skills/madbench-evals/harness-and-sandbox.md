@@ -239,7 +239,9 @@ as keystrokes (never a paste, which Claude Code may hand its model as `<pasted_c
 and pastes a Scenario's `image:` into turn 1 by its file path. A turn written as a list of
 parts (`- type:` · `- paste:` · `- image:`, `clipboard: true`) pastes on purpose. An
 unrequested `<pasted_content>` ends the run as ERROR (`docs/harness.md`, "A turn written as
-parts"). Interactive runs need a magmux with typed send; preflight refuses one without it.
+parts"). Interactive runs need magmux ≥ 0.20.4, which types each prompt only as fast as the
+agent's input box takes it; preflight refuses an older one. A typed part after a `paste:` in the
+same turn is refused as not delivered.
 
 **An interactive agent can stop and ask** (`AskUserQuestion`). The **Driver** answers it:
 every interactive claude-code bench gets the default answering Driver with no `driver:`

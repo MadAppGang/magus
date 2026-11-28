@@ -4,6 +4,17 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [madbench 0.13.3] - 2026-11-28
+
+### Fixed
+
+- **The madbench skills are synced to madbench 0.61.1.** The harness reference now says an
+  interactive run needs magmux 0.20.4 or later, which types each prompt only as fast as the
+  agent's input box takes it, and that preflight refuses an older magmux. A typed part after
+  a `paste:` in the same turn is refused as not delivered.
+
+---
+
 ## [madbench 0.13.2] - 2026-11-28
 
 ### Fixed
