@@ -93,9 +93,10 @@ work from memory: madbench renames and refuses keys between releases.
 ## Step 3 — do the work
 
 - **create** — the bench file, red-state testdata, positive Checks only. Then the free gates.
-- **run** — the free gates first. Then the real run, **by default in a split pane beside
-  this conversation**, so the user watches every Scenario as it happens. How to open that
-  pane, and how to know when the run is over, is "Runs are visible" in
+- **run** — the free gates first. Then the real run, **by default in a split pane that you
+  open beside this conversation**, so the user watches every Scenario as it happens. How to
+  open that pane, how to know when the run is over, and how to close the pane, is "Runs are
+  visible" in
   `../madbench-evals/SKILL.md`; follow it. Only when no pane can be opened, give the user
   `madbench <bench> --ui --report-json <path>` for their own terminal. Never background a
   run and never pipe one; one run at a time. Numbers come from the report JSON, never from

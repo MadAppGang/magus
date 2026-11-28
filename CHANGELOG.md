@@ -4,6 +4,21 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [madbench 0.13.2] - 2026-11-28
+
+### Fixed
+
+- **The `madbench:bench` agent closes the pane it opens for a real run.** It waits until
+  madbench exits and the pane's shell prompt comes back, reads the report, then calls
+  `close-pane` on that slot, also when the run failed before writing a report. Before, the
+  pane stayed open after every run.
+- The report path for each run is a new one, so an old report cannot pass for this run,
+  and the agent never reads a report before madbench exited.
+- The madbench skills are synced to madbench 0.61.0, which removes the `--pane` flag: the
+  bench agent opens and closes the pane itself.
+
+---
+
 ## [claudish 2.18.3] - 2026-11-26
 
 ### Fixed

@@ -108,6 +108,10 @@ Colour is the default and survives a pipe; nothing needs building.
 - **Evidence comes from `--report-json` / `--report-dir`, never from reading the pane.**
   Reading numbers off a terminal was always the wrapper-shaped answer; pass `--report-json`
   on every real run and read the file.
+- **The run is over when madbench exits.** madbench exits on its own when the run ends, and
+  the pane's shell prompt comes back; nothing in the pane holds it open. madbench writes the
+  report before it exits, so read the report only after that, then close the pane you
+  opened. A pane left behind after a run is a leak, and the next run opens beside it.
 - **A graded miss exits 0.** Scenario outcomes are not a harness crash; `--fail-on-failure`
   opts back into a nonzero exit, and errors stay nonzero unconditionally. Read the verdict
   from the report, not from `$?`.
@@ -183,13 +187,31 @@ thread, so work done in a nested thread counts as not done.
 | `madbench version`, `list`, `preflight`, `check`, `grade`, `demo`, `--harness mock` | `Bash` | the text output *is* the result, and it must be quoted verbatim; all of it is free |
 | a real bench run | `mcp__plugin_terminal_mux__open-pane`, then `mcp__plugin_terminal_mux__send-keys` | the user watches it, in colour, at full width |
 | reading the result of a real run | `--report-json` / `--report-dir`, then `Read` | never a pane capture — see §4 |
+| ending a real run | `mcp__plugin_terminal_mux__close-pane` on the slot you opened, once madbench exited | the pane is yours; nobody else closes it |
 
-The pane sequence, one run at a time:
+The pane sequence, one run at a time. `<out.json>` is a **new** absolute path, one that does
+not exist yet:
 
 ```
 mcp__plugin_terminal_mux__open-pane({ slot: 1 })
 mcp__plugin_terminal_mux__send-keys({ slot: 1, keys: "madbench <bench.yaml> --report-json <out.json>", enter: true })
+mcp__plugin_terminal_mux__watch-pane({ slot: 1, triggers: "shell", timeout: 600 })   # repeat until the shell prompt is back
+Read <out.json>                                                                     # only after madbench exited
+mcp__plugin_terminal_mux__close-pane({ slot: 1 })                                   # always, also on failure
 ```
+
+- **Wait for madbench to exit, not for the report file.** `watch-pane` with the `shell`
+  trigger returns when madbench exits and the shell prompt comes back. If it times out, call
+  it again. Waiting on the file fails three ways: a run that stops before grading (the bench
+  does not load, preflight refuses, the guard reports forbidden changes) writes no report, so
+  the wait never ends; madbench creates the file before the JSON is complete, so a file that
+  exists can be half written; and an old report at the same path passes for this run, which
+  is why the path must be new.
+- **No report after madbench exited means the run failed before grading.** Capture the slot
+  once, quote madbench's error, then close the pane.
+- **Close the pane on every path out** — a finished run, a failed run, a run you stopped with
+  `C-c`. Close only the slot you opened; never `slot: "all"`, which closes panes other work in
+  this session owns.
 
 **If `mcp__plugin_terminal_mux__open-pane` is not available to you, the real run is BLOCKED.
 Never fall back to `Bash` for it.** The pane tools come from the `terminal@magus` plugin,
@@ -210,7 +232,7 @@ Run the free gates first regardless, and quote them: a BLOCKED result that still
 `list`, `preflight` and `check` output is worth far more than one that stopped at the tool
 check.
 
-Then wait for the report file to exist and read it. Rates come from the JSON aggregate, never
+Then wait for madbench to exit and read the report. Rates come from the JSON aggregate, never
 from the terminal summary, and **never from a single pair of runs** — these tasks are
 nondeterministic; both conditions passing once is a known outcome shape that carries no
 signal. `--trials` is the instrument.
@@ -264,7 +286,9 @@ Caveats
 |---|---|
 | a script that parses madbench output | the native row from §3, or an upstream issue |
 | running a real bench through `Bash` | `open-pane` + `send-keys`, and `--report-json` for the numbers |
-| running a bench in the background | run it in the pane and wait for the report |
+| running a bench in the background | run it in the pane and wait for madbench to exit |
+| leaving the pane open after the run | `close-pane` on that slot once madbench exited, report or no report |
+| waiting for the report file to appear | wait for the shell prompt (`watch-pane`, `shell` trigger); a run that fails early writes no file, and a file can be half written |
 | a retired word from §6 in the report you return | reread the report before returning and replace it: *run*, *testdata*, *Check*, *pass*. Measured: an operator with §6 in its context still described its bench by the first retired word, twice |
 | citing madbench source you did not build | quote `madbench version` and the installed binary's behaviour |
 | filing "madbench cannot X" from memory | the gap rule's lookup step, then classify |

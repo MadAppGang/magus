@@ -119,30 +119,43 @@ written yet.** "The plumbing was verified out of band" is an `environment:mcp-re
 ## Runs are visible
 
 A real bench run happens **where the user can watch it: by default, a split pane beside the
-conversation**. Nothing needs building. Run it through plain Bash:
+conversation**. The madbench CLI runs in the terminal it is started in and exits when the
+run ends. It opens no pane. You, the caller, open the pane and close it.
 
-```bash
-madbench <bench> --pane --report-json <absolute path>
-```
+With the terminal plugin:
 
-`--pane` decides who owns your pane from the process tree (herdr or tmux, the nearer one when
-they are nested) and opens a split beside the conversation without taking focus. The split
-runs the default coloured output, and the command returns at once. The pane prints
-`madbench exit <code>` and holds until the user presses Enter. The new pane inherits the
-multiplexer's environment, not this shell's, so a key or `MADBENCH_*` knob exported only in
-this shell does not reach the run; `./.env` (read in the pane's working directory) and flags do.
+1. Open a split pane beside the conversation with `mcp__plugin_terminal_mux__open-pane`.
+2. Send the run to that slot with `mcp__plugin_terminal_mux__send-keys`. Give each run a
+   report path that does not exist yet, so an old report cannot pass for this run:
 
-If it prints "no herdr or tmux pane owns this session", give the user the printed command
-(they may add `--ui`) and wait for them to say it has finished.
+   ```bash
+   madbench <bench> --report-json <new absolute path>
+   ```
+
+3. Wait until madbench exits: the slot's shell prompt comes back
+   (`mcp__plugin_terminal_mux__watch-pane` with the shell trigger). That is the end of the
+   run. madbench writes the report before it exits, so the file is complete by then. Do not
+   wait for the file itself, and do not guess from elapsed time: a run that stops before
+   grading (a bench that does not load, a preflight refusal, `FORBIDDEN CHANGES`) exits
+   without a report. Tell the user where the pane is while the run continues.
+4. Read the report. If there is no report, the run failed before grading: capture the slot
+   once and quote the error that madbench printed.
+5. Close that slot with `mcp__plugin_terminal_mux__close-pane`. Always do this, also when
+   the run failed.
+
+A pane that the terminal plugin opens inherits the multiplexer's environment, not this
+shell's. Thus a key or `MADBENCH_*` knob that you export only in this shell does not reach
+the run. `./.env` (read in the pane's working directory) and flags do.
+
+Without pane tools, give the user the command to run in their own terminal (they may add
+`--ui`). Wait until they say that it has finished.
 
 In the pane, use madbench's **default coloured output**, not `--ui`. It ends on its
 own when the run does, while `--ui` waits for a key to quit. Add `--watch` to show every
 agent's live screen as well; it is the view for a driven interactive run (refused beside
-`--ui`, `--plain` and `--manual`). The run is over when the report JSON exists and the pane
-shows `madbench exit <code>`. Wait for that line rather than guessing from elapsed time, and
-tell the user where the pane is while it runs. `--ui` belongs in the user's own terminal:
-it is the live dashboard, and on quit it still writes `--report-json`/`--report-dir` and
-exits with the run's own code.
+`--ui`, `--plain` and `--manual`). `--ui` belongs in the user's own terminal: it is the
+live dashboard, and on quit it still writes `--report-json`/`--report-dir` and exits with
+the run's own code.
 - **`--plain` is the CI shape.** It is implied when stderr is not a terminal or under
   `NO_COLOR`/`TERM=dumb` (`madbench --help`), so piping a run turns it on. Choosing it
   interactively throws away the thing the user asked to watch.
@@ -308,7 +321,7 @@ madbench check bench.yaml           # NEGATIVE control: every graded check must 
 madbench glossary check . --skip testdata   # the words: no deprecated or other tools' word in the Bench, its README, its code
 madbench demo                       # offline emulated bench: no keys, no spend
 madbench bench.yaml --harness mock  # dry-run your YAML offline
-madbench bench.yaml --pane --report-json <absolute path>   # a real run: in a split pane beside the conversation ("Runs are visible")
+madbench bench.yaml --report-json <absolute path>   # a real run, in a pane the caller opens ("Runs are visible")
 madbench bench.yaml --ui --report-json out.json  # the same run in the user's own terminal, when no pane can be opened
 madbench bench.yaml --report-dir .reports   # versioned, incrementally written history
 madbench bench.yaml --fail-on-failure       # CI: exit 1 on a failed scenario

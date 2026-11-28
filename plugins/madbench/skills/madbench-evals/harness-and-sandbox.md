@@ -866,7 +866,6 @@ Read off `madbench --help` on the installed binary; the table is a map, not the 
 | | `--plain` | append-only progress lines — **the CI shape**, implied when stderr is not a terminal, or under `NO_COLOR`/`TERM=dumb`. Choosing it in a terminal throws away the coloured live region |
 | | `--theme <string>` | `auto`·`light`·`dark` (auto reads the terminal background) |
 | | `--watch` | show every agent's screen live while madbench drives it, one slot per concurrent session. Graded as usual — the Driver answers and every check runs. Needs a terminal; refused with `--ui`, `--plain` and `--manual` |
-| | `--pane` | run this invocation in a new split pane beside the caller, and return at once. madbench reads the process tree to pick herdr or tmux (the nearer one when nested); with neither it prints the command to run yourself. The pane prints `madbench exit <code>` when the run ends. Refused with `--ui` and `--manual` — see *Runs are visible* in SKILL.md |
 | Drive it yourself | `--manual` | provision the sandbox exactly as a graded run does, then attach your terminal and hand over. The prompt is printed for you to paste; no checks run; the workspace is kept |
 | Results | `--report-dir <dir>` | persist a versioned report per invocation, enabling `madbench report` history. Written **incrementally**, so a run that dies mid-flight leaves a readable partial |
 | | `--report-json <file>` | write a JSON report — **the evidence channel**; read numbers from here, never off the terminal |
